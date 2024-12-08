@@ -83,3 +83,26 @@ func GetUserByID(userID string) (domain.User, error) {
 
 	return user, nil
 }
+
+func UpdateUser(user *domain.User) error {
+	if err := config.DB.Save(user).Error; err != nil {
+		return errors.New("failed to save user")
+	}
+	return nil
+}
+
+func UpdateUserPassword(userID, newPassword string) error {
+	var user domain.User
+
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		return errors.New("user not found")
+	}
+
+	user.Password = newPassword
+
+	if err := config.DB.Save(&user).Error; err != nil {
+		return errors.New("failed to update password")
+	}
+
+	return nil
+}

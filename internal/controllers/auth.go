@@ -27,9 +27,8 @@ func Register(c *fiber.Ctx) error {
 		))
 	}
 
-	err := services.RegisterUser(userInput.Username, userInput.Name, userInput.Email, userInput.Phone, userInput.Password, userInput.RoleId)
+	err := services.RegisterUser(userInput.Username, userInput.Name, userInput.Email, userInput.Phone, userInput.Password, userInput.ConfirmPassword, userInput.RoleId)
 	if err != nil {
-
 		if err.Error() == "email is already registered" {
 			return c.Status(fiber.StatusConflict).JSON(utils.FormatResponse(
 				fiber.StatusConflict,
@@ -48,6 +47,13 @@ func Register(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusConflict).JSON(utils.FormatResponse(
 				fiber.StatusConflict,
 				"Phone number is already registered",
+				nil,
+			))
+		}
+		if err.Error() == "password dan confirm password tidak cocok" {
+			return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+				fiber.StatusBadRequest,
+				"Password dan confirm password tidak cocok",
 				nil,
 			))
 		}
@@ -147,5 +153,79 @@ func GetUserInfo(c *fiber.Ctx) error {
 		fiber.StatusOK,
 		"data user berhasil ditampilkan",
 		userResponse,
+	))
+}
+
+func UpdateUser(c *fiber.Ctx) error {
+	var userInput dto.UpdateUserInput
+
+	if err := c.BodyParser(&userInput); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	if err := userInput.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			err.Error(),
+			nil,
+		))
+	}
+
+	userID := c.Locals("userID").(string)
+
+	err := services.UpdateUser(userID, userInput.Email, userInput.Username, userInput.Name, userInput.Phone)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			err.Error(),
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"User updated successfully",
+		nil,
+	))
+}
+
+func UpdatePassword(c *fiber.Ctx) error {
+	var passwordInput dto.UpdatePasswordInput
+
+	if err := c.BodyParser(&passwordInput); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	if err := passwordInput.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			err.Error(),
+			nil,
+		))
+	}
+
+	userID := c.Locals("userID").(string)
+
+	err := services.UpdatePassword(userID, passwordInput.OldPassword, passwordInput.NewPassword)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			err.Error(),
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Password updated successfully",
+		nil,
 	))
 }

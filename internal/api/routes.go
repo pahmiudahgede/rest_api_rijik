@@ -11,6 +11,8 @@ func AppRouter(app *fiber.App) {
 	app.Post("/login", controllers.Login)
 
 	app.Get("/user", middleware.AuthMiddleware, controllers.GetUserInfo)
+	app.Put("/update-user", middleware.AuthMiddleware, controllers.UpdateUser)
+	app.Post("/user/update-password", middleware.AuthMiddleware, controllers.UpdatePassword)
 
 	app.Get("/list-address", middleware.AuthMiddleware, controllers.GetListAddress)
 	app.Get("/address/:id", middleware.AuthMiddleware, controllers.GetAddressByID)

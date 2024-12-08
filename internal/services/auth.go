@@ -11,7 +11,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func RegisterUser(username, name, email, phone, password, roleId string) error {
+func RegisterUser(username, name, email, phone, password, confirmPassword, roleId string) error {
+	if password != confirmPassword {
+		return errors.New("password dan confirm password tidak cocok")
+	}
 
 	if repositories.IsEmailExist(email) {
 		return errors.New("email is already registered")
@@ -46,7 +49,8 @@ func LoginUser(emailOrUsername, password string) (string, error) {
 		return "", errors.New("invalid email/username or password")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
 		return "", errors.New("invalid email/username or password")
 	}
 
@@ -77,4 +81,69 @@ func GetUserByID(userID string) (domain.User, error) {
 		return user, errors.New("user not found")
 	}
 	return user, nil
+}
+
+func UpdateUser(userID, email, username, name, phone string) error {
+
+	user, err := repositories.GetUserByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if email != "" && email != user.Email && repositories.IsEmailExist(email) {
+		return errors.New("email is already registered")
+	}
+
+	if username != "" && username != user.Username && repositories.IsUsernameExist(username) {
+		return errors.New("username is already registered")
+	}
+
+	if phone != "" && phone != user.Phone && repositories.IsPhoneExist(phone) {
+		return errors.New("phone number is already registered")
+	}
+
+	if email != "" {
+		user.Email = email
+	}
+	if username != "" {
+		user.Username = username
+	}
+	if name != "" {
+		user.Name = name
+	}
+	if phone != "" {
+		user.Phone = phone
+	}
+
+	err = repositories.UpdateUser(&user)
+	if err != nil {
+		return errors.New("failed to update user")
+	}
+
+	return nil
+}
+
+func UpdatePassword(userID, oldPassword, newPassword string) error {
+
+	user, err := repositories.GetUserByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword))
+	if err != nil {
+		return errors.New("old password is incorrect")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("failed to hash new password")
+	}
+
+	err = repositories.UpdateUserPassword(userID, string(hashedPassword))
+	if err != nil {
+		return errors.New("failed to update password")
+	}
+
+	return nil
 }
