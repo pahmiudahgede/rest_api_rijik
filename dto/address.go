@@ -16,8 +16,6 @@ type AddressInput struct {
 	Geography   string `json:"geography" validate:"required"`
 }
 
-var validate = validator.New()
-
 func (c *AddressInput) ValidatePost() error {
 	err := validate.Struct(c)
 	if err != nil {

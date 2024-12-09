@@ -7,13 +7,21 @@ import (
 )
 
 func AppRouter(app *fiber.App) {
+	// # authentication
 	app.Post("/register", controllers.Register)
 	app.Post("/login", controllers.Login)
 
+	// # userinfo
 	app.Get("/user", middleware.AuthMiddleware, controllers.GetUserInfo)
 	app.Put("/update-user", middleware.AuthMiddleware, controllers.UpdateUser)
 	app.Post("/user/update-password", middleware.AuthMiddleware, controllers.UpdatePassword)
 
+	// # user set pin
+	app.Post("/user/set-pin", middleware.AuthMiddleware, controllers.CreatePin)
+	app.Get("/user/get-pin", middleware.AuthMiddleware, controllers.GetPin)
+	app.Put("/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
+
+	// # address routing
 	app.Get("/list-address", middleware.AuthMiddleware, controllers.GetListAddress)
 	app.Get("/address/:id", middleware.AuthMiddleware, controllers.GetAddressByID)
 	app.Post("/create-address", middleware.AuthMiddleware, controllers.CreateAddress)

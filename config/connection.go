@@ -53,6 +53,9 @@ func InitDatabase() {
 	err = DB.AutoMigrate(
 		&domain.User{},
 		&domain.UserRole{},
+		&domain.UserPin{},
+		&domain.MenuAccess{},
+		&domain.PlatformHandle{},
 		&domain.Address{},
 	)
 	if err != nil {
