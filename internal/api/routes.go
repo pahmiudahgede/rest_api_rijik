@@ -7,6 +7,10 @@ import (
 )
 
 func AppRouter(app *fiber.App) {
+	// # role
+	app.Get("/listrole", controllers.GetAllUserRoles)
+	app.Get("/listrole/:id", controllers.GetUserRoleByID)
+
 	// # authentication
 	app.Post("/register", controllers.Register)
 	app.Post("/login", controllers.Login)
