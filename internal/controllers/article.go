@@ -50,6 +50,7 @@ func CreateArticle(c *fiber.Ctx) error {
 }
 
 func GetArticles(c *fiber.Ctx) error {
+
 	articles, err := services.GetArticles()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
@@ -63,19 +64,32 @@ func GetArticles(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 			fiber.StatusOK,
 			"Articles fetched successfully but data is empty",
-			[]dto.ArticleResponse{},
+			[]dto.FormattedResponse{},
 		))
 	}
 
-	for i := range articles {
-		articles[i].PublishedAtFormatted = utils.FormatDateToIndonesianFormat(articles[i].PublishedAt)
-		articles[i].UpdatedAtFormatted = utils.FormatDateToIndonesianFormat(articles[i].UpdatedAt)
+	var formattedArticles []dto.FormattedResponse
+	for _, article := range articles {
+
+		article.PublishedAtFormatted = utils.FormatDateToIndonesianFormat(article.PublishedAt)
+		article.UpdatedAtFormatted = utils.FormatDateToIndonesianFormat(article.UpdatedAt)
+
+		formattedArticles = append(formattedArticles, dto.FormattedResponse{
+			ID:                   article.ID,
+			Title:                article.Title,
+			CoverImage:           article.CoverImage,
+			Author:               article.Author,
+			Heading:              article.Heading,
+			Content:              article.Content,
+			PublishedAtFormatted: article.PublishedAtFormatted,
+			UpdatedAtFormatted:   article.UpdatedAtFormatted,
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Articles fetched successfully",
-		articles,
+		formattedArticles,
 	))
 }
 
@@ -94,10 +108,21 @@ func GetArticleByID(c *fiber.Ctx) error {
 	article.PublishedAtFormatted = utils.FormatDateToIndonesianFormat(article.PublishedAt)
 	article.UpdatedAtFormatted = utils.FormatDateToIndonesianFormat(article.UpdatedAt)
 
+	response := dto.FormattedResponse{
+		ID:                   article.ID,
+		Title:                article.Title,
+		CoverImage:           article.CoverImage,
+		Author:               article.Author,
+		Heading:              article.Heading,
+		Content:              article.Content,
+		PublishedAtFormatted: article.PublishedAtFormatted,
+		UpdatedAtFormatted:   article.UpdatedAtFormatted,
+	}
+
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Article fetched successfully",
-		article,
+		response,
 	))
 }
 
@@ -136,10 +161,21 @@ func UpdateArticle(c *fiber.Ctx) error {
 	updatedArticle.PublishedAtFormatted = utils.FormatDateToIndonesianFormat(updatedArticle.PublishedAt)
 	updatedArticle.UpdatedAtFormatted = utils.FormatDateToIndonesianFormat(updatedArticle.UpdatedAt)
 
+	response := dto.FormattedResponse{
+		ID:                   updatedArticle.ID,
+		Title:                updatedArticle.Title,
+		CoverImage:           updatedArticle.CoverImage,
+		Author:               updatedArticle.Author,
+		Heading:              updatedArticle.Heading,
+		Content:              updatedArticle.Content,
+		PublishedAtFormatted: updatedArticle.PublishedAtFormatted,
+		UpdatedAtFormatted:   updatedArticle.UpdatedAtFormatted,
+	}
+
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Article updated successfully",
-		updatedArticle,
+		response,
 	))
 }
 

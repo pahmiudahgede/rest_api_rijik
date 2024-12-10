@@ -43,6 +43,7 @@ func GetArticles() ([]dto.ArticleResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var response []dto.ArticleResponse
 	for _, article := range articles {
 		response = append(response, dto.ArticleResponse{

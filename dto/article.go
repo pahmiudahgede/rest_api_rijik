@@ -19,20 +19,19 @@ type ArticleResponse struct {
 	Content              string    `json:"content"`
 	PublishedAt          time.Time `json:"publishedAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
-	PublishedAtFormatted string    `json:"publishedAtFormatted"`
-	UpdatedAtFormatted   string    `json:"updatedAtFormatted"`
+	PublishedAtFormatted string    `json:"publishedAtt"`
+	UpdatedAtFormatted   string    `json:"updatedAtt"`
 }
 
 type FormattedResponse struct {
-	ID         string `json:"id"`
-	Title      string `json:"title"`
-	CoverImage string `json:"coverImage"`
-	Author     string `json:"author"`
-	Heading    string `json:"heading"`
-	Content    string `json:"content"`
-
-	PublishedAtFormatted string `json:"publishedAtFormatted"`
-	UpdatedAtFormatted   string `json:"updatedAtFormatted"`
+	ID                   string `json:"id"`
+	Title                string `json:"title"`
+	CoverImage           string `json:"coverImage"`
+	Author               string `json:"author"`
+	Heading              string `json:"heading"`
+	Content              string `json:"content"`
+	PublishedAtFormatted string `json:"publishedAt"`
+	UpdatedAtFormatted   string `json:"updatedAt"`
 }
 type ArticleUpdateRequest struct {
 	Title      string `json:"title" validate:"required"`
@@ -44,8 +43,4 @@ type ArticleUpdateRequest struct {
 
 func (ar *ArticleRequest) Validate() error {
 	return validate.Struct(ar)
-}
-
-func FormatDateToIndonesianFormat(t time.Time) string {
-	return t.Format("02-01-2006 15:04")
 }
