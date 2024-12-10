@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/services"
@@ -15,6 +14,15 @@ func CreateArticle(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
 			"Invalid input",
+			nil,
+		))
+	}
+
+	if err := articleRequest.ValidatePostArticle(); err != nil {
+
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			err.Error(),
 			nil,
 		))
 	}
@@ -139,13 +147,12 @@ func UpdateArticle(c *fiber.Ctx) error {
 		))
 	}
 
-	validate := validator.New()
-	err := validate.Struct(articleUpdateRequest)
-	if err != nil {
+	if err := articleUpdateRequest.ValidateUpdateArticle(); err != nil {
+
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
-			"Validation error",
 			err.Error(),
+			nil,
 		))
 	}
 

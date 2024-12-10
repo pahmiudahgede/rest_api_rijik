@@ -1,6 +1,11 @@
 package dto
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/go-playground/validator/v10"
+)
 
 type ArticleRequest struct {
 	Title      string `json:"title" validate:"required"`
@@ -41,6 +46,52 @@ type ArticleUpdateRequest struct {
 	Content    string `json:"content" validate:"required"`
 }
 
-func (ar *ArticleRequest) Validate() error {
-	return validate.Struct(ar)
+func (c *ArticleRequest) ValidatePostArticle() error {
+	err := validate.Struct(c)
+	if err != nil {
+
+		for _, e := range err.(validator.ValidationErrors) {
+
+			switch e.Field() {
+			case "Title":
+				return fmt.Errorf("judul harus diisi")
+			case "CoverImage":
+				return fmt.Errorf("gambar cover harus diisi")
+			case "Author":
+				return fmt.Errorf("penulis harus diisi")
+			case "Heading":
+				return fmt.Errorf("heading harus diisi")
+			case "Content":
+				return fmt.Errorf("konten artikel harus diisi")
+			}
+		}
+	}
+	return nil
 }
+
+func (c *ArticleUpdateRequest) ValidateUpdateArticle() error {
+	err := validate.Struct(c)
+	if err != nil {
+
+		for _, e := range err.(validator.ValidationErrors) {
+
+			switch e.Field() {
+			case "Title":
+				return fmt.Errorf("judul harus diisi")
+			case "CoverImage":
+				return fmt.Errorf("gambar cover harus diisi")
+			case "Author":
+				return fmt.Errorf("penulis harus diisi")
+			case "Heading":
+				return fmt.Errorf("heading harus diisi")
+			case "Content":
+				return fmt.Errorf("konten artikel harus diisi")
+			}
+		}
+	}
+	return nil
+}
+
+// func (ar *ArticleRequest) Validate() error {
+// 	return validate.Struct(ar)
+// }
