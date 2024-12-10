@@ -38,14 +38,13 @@ func CreatePin(userID string, input dto.PinInput) (domain.UserPin, error) {
 }
 
 func UpdatePin(userID string, oldPin string, newPin string) (domain.UserPin, error) {
-
 	pin, err := repositories.GetPinByUserID(userID)
 	if err != nil {
 		return pin, errors.New("PIN tidak ditemukan")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(pin.Pin), []byte(oldPin)); err != nil {
-		return pin, errors.New("PIN lama tidak cocok")
+		return pin, errors.New("PIN lama salah")
 	}
 
 	updatedPin, err := repositories.UpdatePin(userID, newPin)

@@ -6,6 +6,9 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+type PinResponse struct {
+	CreatedAt string `json:"createdAt"`
+}
 type PinInput struct {
 	Pin string `json:"pin" validate:"required,len=6,numeric"`
 }

@@ -45,10 +45,13 @@ func CreatePin(c *fiber.Ctx) error {
 		))
 	}
 
-	pinResponse := map[string]interface{}{
-		"id":        pin.ID,
-		"createdAt": pin.CreatedAt,
-		"updatedAt": pin.UpdatedAt,
+	formattedCreatedAt := utils.FormatDateToIndonesianFormat(pin.CreatedAt)
+	// formattedUpdatedAt := utils.FormatDateToIndonesianFormat(pin.UpdatedAt)
+
+	pinResponse := dto.PinResponse{
+		// ID:        pin.ID,
+		CreatedAt: formattedCreatedAt,
+		// UpdatedAt: formattedUpdatedAt,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
@@ -81,10 +84,17 @@ func GetPin(c *fiber.Ctx) error {
 	isPinValid := services.CheckPin(pin.Pin, input.Pin)
 
 	if isPinValid {
+
+		formattedCreatedAt := utils.FormatDateToIndonesianFormat(pin.CreatedAt)
+		formattedUpdatedAt := utils.FormatDateToIndonesianFormat(pin.UpdatedAt)
+
 		return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 			fiber.StatusOK,
 			"PIN benar",
-			true,
+			map[string]interface{}{
+				"createdAt": formattedCreatedAt,
+				"updatedAt": formattedUpdatedAt,
+			},
 		))
 	}
 
@@ -117,6 +127,15 @@ func UpdatePin(c *fiber.Ctx) error {
 
 	updatedPin, err := services.UpdatePin(userID, input.OldPin, input.NewPin)
 	if err != nil {
+
+		if err.Error() == "PIN lama salah" {
+			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+				fiber.StatusUnauthorized,
+				"PIN lama salah",
+				nil,
+			))
+		}
+
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
 			"Failed to update PIN",
@@ -124,9 +143,14 @@ func UpdatePin(c *fiber.Ctx) error {
 		))
 	}
 
+	formattedUpdatedAt := utils.FormatDateToIndonesianFormat(updatedPin.UpdatedAt)
+
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"PIN updated successfully",
-		updatedPin,
+		map[string]interface{}{
+			"id":        updatedPin.ID,
+			"updatedAt": formattedUpdatedAt,
+		},
 	))
 }
