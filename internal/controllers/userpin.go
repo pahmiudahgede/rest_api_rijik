@@ -46,12 +46,10 @@ func CreatePin(c *fiber.Ctx) error {
 	}
 
 	formattedCreatedAt := utils.FormatDateToIndonesianFormat(pin.CreatedAt)
-	// formattedUpdatedAt := utils.FormatDateToIndonesianFormat(pin.UpdatedAt)
 
 	pinResponse := dto.PinResponse{
-		// ID:        pin.ID,
+
 		CreatedAt: formattedCreatedAt,
-		// UpdatedAt: formattedUpdatedAt,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(

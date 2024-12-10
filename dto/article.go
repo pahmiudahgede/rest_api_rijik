@@ -91,7 +91,3 @@ func (c *ArticleUpdateRequest) ValidateUpdateArticle() error {
 	}
 	return nil
 }
-
-// func (ar *ArticleRequest) Validate() error {
-// 	return validate.Struct(ar)
-// }

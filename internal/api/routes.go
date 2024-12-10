@@ -38,4 +38,10 @@ func AppRouter(app *fiber.App) {
 	app.Get("/articles/:id", middleware.AuthMiddleware, controllers.GetArticleByID)
 	app.Put("/articles/:id", middleware.AuthMiddleware, controllers.UpdateArticle)
 	app.Delete("/articles/:id", middleware.AuthMiddleware, controllers.DeleteArticle)
+
+	// # trash type
+	app.Get("/trash-category", controllers.GetTrashCategories)
+	app.Get("/trash-categorydetail/:id", controllers.GetTrashCategoryDetail)
+	app.Post("/addtrash-category", controllers.CreateTrashCategory)
+	app.Post("/addtrash-categorydetail", controllers.CreateTrashDetail)
 }
