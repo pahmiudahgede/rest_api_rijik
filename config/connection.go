@@ -57,6 +57,7 @@ func InitDatabase() {
 		&domain.MenuAccess{},
 		&domain.PlatformHandle{},
 		&domain.Address{},
+		&domain.Article{},
 	)
 	if err != nil {
 		log.Fatal("Error: Failed to auto migrate domain:", err)

@@ -31,4 +31,11 @@ func AppRouter(app *fiber.App) {
 	app.Post("/create-address", middleware.AuthMiddleware, controllers.CreateAddress)
 	app.Put("/address/:id", middleware.AuthMiddleware, controllers.UpdateAddress)
 	app.Delete("/address/:id", middleware.AuthMiddleware, controllers.DeleteAddress)
+
+	// # article
+	app.Post("/articles", middleware.AuthMiddleware, controllers.CreateArticle)
+	app.Get("/articles", middleware.AuthMiddleware, controllers.GetArticles)
+	app.Get("/articles/:id", middleware.AuthMiddleware, controllers.GetArticleByID)
+	app.Put("/articles/:id", middleware.AuthMiddleware, controllers.UpdateArticle)
+	app.Delete("/articles/:id", middleware.AuthMiddleware, controllers.DeleteArticle)
 }
