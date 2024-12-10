@@ -10,7 +10,7 @@ import (
 func GetUserRoleByID(id string) (domain.UserRole, error) {
 	role, err := repositories.GetUserRoleByID(id)
 	if err != nil {
-		return role, errors.New("UserRole tidak ditemukan")
+		return role, errors.New("userRole tidak ditemukan")
 	}
 	return role, nil
 }
@@ -18,7 +18,7 @@ func GetUserRoleByID(id string) (domain.UserRole, error) {
 func GetAllUserRoles() ([]domain.UserRole, error) {
 	roles, err := repositories.GetAllUserRoles()
 	if err != nil {
-		return nil, errors.New("Gagal mengambil data UserRole")
+		return nil, errors.New("gagal mengambil data UserRole")
 	}
 	return roles, nil
 }

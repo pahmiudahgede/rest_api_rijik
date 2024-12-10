@@ -8,23 +8,23 @@ import (
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
 )
 
-func CreateArticle(articleRequest *dto.ArticleRequest) (*dto.ArticleResponse, error) {
+func CreateArticle(articleRequest *dto.ArticleRequest) (dto.ArticleResponse, error) {
 	article := domain.Article{
 		Title:       articleRequest.Title,
 		CoverImage:  articleRequest.CoverImage,
 		Author:      articleRequest.Author,
 		Heading:     articleRequest.Heading,
 		Content:     articleRequest.Content,
-		PublishedAt: articleRequest.PublishedAt,
-		UpdatedAt:   articleRequest.PublishedAt,
+		PublishedAt: time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	err := repositories.CreateArticle(&article)
 	if err != nil {
-		return nil, err
+		return dto.ArticleResponse{}, err
 	}
 
-	return &dto.ArticleResponse{
+	articleResponse := dto.ArticleResponse{
 		ID:          article.ID,
 		Title:       article.Title,
 		CoverImage:  article.CoverImage,
@@ -33,7 +33,9 @@ func CreateArticle(articleRequest *dto.ArticleRequest) (*dto.ArticleResponse, er
 		Content:     article.Content,
 		PublishedAt: article.PublishedAt,
 		UpdatedAt:   article.UpdatedAt,
-	}, nil
+	}
+
+	return articleResponse, nil
 }
 
 func GetArticles() ([]dto.ArticleResponse, error) {
