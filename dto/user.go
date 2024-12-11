@@ -5,6 +5,17 @@ import (
 	"regexp"
 )
 
+type UserResponseDTO struct {
+	ID        string `json:"id"`
+	Username  string `json:"username"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	RoleId    string `json:"roleId"`
+	CreatedAt string `json:"createdAt"` 
+	UpdatedAt string `json:"updatedAt"` 
+}
+
 func ValidateEmail(email string) error {
 	if email == "" {
 		return errors.New("email harus diisi")

@@ -29,38 +29,9 @@ func Register(c *fiber.Ctx) error {
 
 	err := services.RegisterUser(userInput.Username, userInput.Name, userInput.Email, userInput.Phone, userInput.Password, userInput.ConfirmPassword, userInput.RoleId)
 	if err != nil {
-		if err.Error() == "email is already registered" {
-			return c.Status(fiber.StatusConflict).JSON(utils.FormatResponse(
-				fiber.StatusConflict,
-				"Email is already registered",
-				nil,
-			))
-		}
-		if err.Error() == "username is already registered" {
-			return c.Status(fiber.StatusConflict).JSON(utils.FormatResponse(
-				fiber.StatusConflict,
-				"Username is already registered",
-				nil,
-			))
-		}
-		if err.Error() == "phone number is already registered" {
-			return c.Status(fiber.StatusConflict).JSON(utils.FormatResponse(
-				fiber.StatusConflict,
-				"Phone number is already registered",
-				nil,
-			))
-		}
-		if err.Error() == "password dan confirm password tidak cocok" {
-			return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-				fiber.StatusBadRequest,
-				"Password dan confirm password tidak cocok",
-				nil,
-			))
-		}
-
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
-			"Failed to create user",
+			err.Error(),
 			nil,
 		))
 	}
@@ -74,15 +45,15 @@ func Register(c *fiber.Ctx) error {
 		))
 	}
 
-	userResponse := map[string]interface{}{
-		"id":        user.ID,
-		"username":  user.Username,
-		"name":      user.Name,
-		"email":     user.Email,
-		"phone":     user.Phone,
-		"roleId":    user.RoleID,
-		"createdAt": user.CreatedAt,
-		"updatedAt": user.UpdatedAt,
+	userResponse := dto.UserResponseDTO{
+		ID:        user.ID,
+		Username:  user.Username,
+		Name:      user.Name,
+		Email:     user.Email,
+		Phone:     user.Phone,
+		RoleId:    user.RoleID,
+		CreatedAt: utils.FormatDateToIndonesianFormat(user.CreatedAt),
+		UpdatedAt: utils.FormatDateToIndonesianFormat(user.UpdatedAt),
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
@@ -125,7 +96,6 @@ func Login(c *fiber.Ctx) error {
 }
 
 func GetUserInfo(c *fiber.Ctx) error {
-
 	userID := c.Locals("userID").(string)
 
 	user, err := services.GetUserByID(userID)
@@ -137,21 +107,20 @@ func GetUserInfo(c *fiber.Ctx) error {
 		))
 	}
 
-	userResponse := map[string]interface{}{
-		"id":               user.ID,
-		"username":         user.Username,
-		"nama":             user.Name,
-		"nohp":             user.Phone,
-		"email":            user.Email,
-		"statusverifikasi": user.EmailVerified,
-		"role":             user.Role.RoleName,
-		"createdAt":        user.CreatedAt,
-		"updatedAt":        user.UpdatedAt,
+	userResponse := dto.UserResponseDTO{
+		ID:        user.ID,
+		Username:  user.Username,
+		Name:      user.Name,
+		Phone:     user.Phone,
+		Email:     user.Email,
+		RoleId:    user.RoleID,
+		CreatedAt: utils.FormatDateToIndonesianFormat(user.CreatedAt),
+		UpdatedAt: utils.FormatDateToIndonesianFormat(user.UpdatedAt),
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
-		"data user berhasil ditampilkan",
+		"Data user berhasil ditampilkan",
 		userResponse,
 	))
 }
@@ -186,10 +155,30 @@ func UpdateUser(c *fiber.Ctx) error {
 		))
 	}
 
+	user, err := repositories.GetUserByID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to fetch user after update",
+			nil,
+		))
+	}
+
+	userResponse := dto.UserResponseDTO{
+		ID:        user.ID,
+		Username:  user.Username,
+		Name:      user.Name,
+		Email:     user.Email,
+		Phone:     user.Phone,
+		RoleId:    user.RoleID,
+		CreatedAt: utils.FormatDateToIndonesianFormat(user.CreatedAt),
+		UpdatedAt: utils.FormatDateToIndonesianFormat(user.UpdatedAt),
+	}
+
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"User updated successfully",
-		nil,
+		userResponse,
 	))
 }
 
@@ -223,9 +212,22 @@ func UpdatePassword(c *fiber.Ctx) error {
 		))
 	}
 
+	user, err := repositories.GetUserByID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to fetch user after password update",
+			nil,
+		))
+	}
+
+	updatedAtFormatted := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
+
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Password updated successfully",
-		nil,
+		map[string]string{
+			"updatedAt": updatedAtFormatted,
+		},
 	))
 }
