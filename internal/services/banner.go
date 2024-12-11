@@ -19,3 +19,16 @@ func GetBannerByID(id string) (domain.Banner, error) {
 	}
 	return banner, nil
 }
+
+func CreateBanner(bannerName, bannerImage string) (domain.Banner, error) {
+	newBanner := domain.Banner{
+		BannerName:  bannerName,
+		BannerImage: bannerImage,
+	}
+
+	if err := repositories.CreateBanner(&newBanner); err != nil {
+		return domain.Banner{}, err
+	}
+
+	return newBanner, nil
+}

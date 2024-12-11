@@ -81,3 +81,50 @@ func GetBannerByID(c *fiber.Ctx) error {
 		},
 	))
 }
+
+func CreateBanner(c *fiber.Ctx) error {
+	var bannerInput dto.BannerRequest
+
+	if err := c.BodyParser(&bannerInput); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	if err := bannerInput.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Validation failed: "+err.Error(),
+			nil,
+		))
+	}
+
+	newBanner, err := services.CreateBanner(bannerInput.BannerName, bannerInput.BannerImage)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to create banner",
+			nil,
+		))
+	}
+
+	bannerResponse := dto.NewBannerResponse(
+		newBanner.ID,
+		newBanner.BannerName,
+		newBanner.BannerImage,
+		utils.FormatDateToIndonesianFormat(newBanner.CreatedAt),
+		utils.FormatDateToIndonesianFormat(newBanner.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusCreated).JSON(utils.FormatResponse(
+		fiber.StatusCreated,
+		"Banner created successfully",
+		struct {
+			Banner dto.BannerResponse `json:"banner"`
+		}{
+			Banner: bannerResponse,
+		},
+	))
+}

@@ -22,3 +22,10 @@ func GetBannerByID(id string) (domain.Banner, error) {
 	}
 	return banner, nil
 }
+
+func CreateBanner(banner *domain.Banner) error {
+	if err := config.DB.Create(banner).Error; err != nil {
+		return err
+	}
+	return nil
+}

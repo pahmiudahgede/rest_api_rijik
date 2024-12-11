@@ -52,4 +52,5 @@ func AppRouter(app *fiber.App) {
 	// # banner
 	app.Get("/banners", controllers.GetBanners)
 	app.Get("/banners/:id", controllers.GetBannerByID)
+	app.Post("/addbanners", controllers.CreateBanner)
 }
