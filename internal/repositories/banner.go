@@ -29,3 +29,10 @@ func CreateBanner(banner *domain.Banner) error {
 	}
 	return nil
 }
+
+func UpdateBanner(banner *domain.Banner) error {
+	if err := config.DB.Save(banner).Error; err != nil {
+		return err
+	}
+	return nil
+}

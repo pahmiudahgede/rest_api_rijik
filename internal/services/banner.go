@@ -32,3 +32,20 @@ func CreateBanner(bannerName, bannerImage string) (domain.Banner, error) {
 
 	return newBanner, nil
 }
+
+func UpdateBanner(id, bannerName, bannerImage string) (domain.Banner, error) {
+
+	banner, err := repositories.GetBannerByID(id)
+	if err != nil {
+		return domain.Banner{}, err
+	}
+
+	banner.BannerName = bannerName
+	banner.BannerImage = bannerImage
+
+	if err := repositories.UpdateBanner(&banner); err != nil {
+		return domain.Banner{}, err
+	}
+
+	return banner, nil
+}

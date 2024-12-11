@@ -36,3 +36,13 @@ func (b *BannerRequest) Validate() error {
 	validate := validator.New()
 	return validate.Struct(b)
 }
+
+type BannerUpdateDTO struct {
+	BannerName  string `json:"bannername" validate:"required"`
+	BannerImage string `json:"bannerimage" validate:"required,url"`
+}
+
+func (b *BannerUpdateDTO) Validate() error {
+	validate := validator.New()
+	return validate.Struct(b)
+}
