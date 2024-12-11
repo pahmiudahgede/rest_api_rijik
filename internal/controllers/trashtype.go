@@ -251,3 +251,43 @@ func UpdateTrashDetail(c *fiber.Ctx) error {
 		response,
 	))
 }
+
+func DeleteTrashCategory(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	err := services.DeleteTrashCategory(id)
+	if err != nil {
+
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete trash category",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Trash category deleted successfully",
+		nil,
+	))
+}
+
+func DeleteTrashDetail(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	err := services.DeleteTrashDetail(id)
+	if err != nil {
+
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete trash detail",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Trash detail deleted successfully",
+		nil,
+	))
+}

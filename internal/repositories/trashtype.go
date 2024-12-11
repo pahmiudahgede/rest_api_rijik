@@ -57,3 +57,25 @@ func UpdateTrashDetail(detail *domain.TrashDetail) error {
 	}
 	return nil
 }
+
+func DeleteTrashCategory(id string) error {
+
+	if err := config.DB.Where("category_id = ?", id).Delete(&domain.TrashDetail{}).Error; err != nil {
+		return err
+	}
+
+	if err := config.DB.Where("id = ?", id).Delete(&domain.TrashCategory{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeleteTrashDetail(id string) error {
+
+	if err := config.DB.Where("id = ?", id).Delete(&domain.TrashDetail{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}

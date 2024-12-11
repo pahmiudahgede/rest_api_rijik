@@ -65,3 +65,21 @@ func UpdateTrashDetail(id, description string, price int) (domain.TrashDetail, e
 
 	return detail, nil
 }
+
+func DeleteTrashCategory(id string) error {
+
+	err := repositories.DeleteTrashCategory(id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DeleteTrashDetail(id string) error {
+
+	err := repositories.DeleteTrashDetail(id)
+	if err != nil {
+		return err
+	}
+	return nil
+}

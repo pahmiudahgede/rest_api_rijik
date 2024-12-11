@@ -17,12 +17,12 @@ func AppRouter(app *fiber.App) {
 
 	// # userinfo
 	app.Get("/user", middleware.AuthMiddleware, controllers.GetUserInfo)
-	app.Put("/update-user", middleware.AuthMiddleware, controllers.UpdateUser)
 	app.Post("/user/update-password", middleware.AuthMiddleware, controllers.UpdatePassword)
+	app.Put("/update-user", middleware.AuthMiddleware, controllers.UpdateUser)
 
 	// # user set pin
-	app.Post("/user/set-pin", middleware.AuthMiddleware, controllers.CreatePin)
 	app.Get("/user/get-pin", middleware.AuthMiddleware, controllers.GetPin)
+	app.Post("/user/set-pin", middleware.AuthMiddleware, controllers.CreatePin)
 	app.Put("/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
 
 	// # address routing
@@ -33,9 +33,9 @@ func AppRouter(app *fiber.App) {
 	app.Delete("/address/:id", middleware.AuthMiddleware, controllers.DeleteAddress)
 
 	// # article
-	app.Post("/articles", middleware.AuthMiddleware, controllers.CreateArticle)
 	app.Get("/articles", middleware.AuthMiddleware, controllers.GetArticles)
 	app.Get("/articles/:id", middleware.AuthMiddleware, controllers.GetArticleByID)
+	app.Post("/articles", middleware.AuthMiddleware, controllers.CreateArticle)
 	app.Put("/articles/:id", middleware.AuthMiddleware, controllers.UpdateArticle)
 	app.Delete("/articles/:id", middleware.AuthMiddleware, controllers.DeleteArticle)
 
@@ -46,4 +46,6 @@ func AppRouter(app *fiber.App) {
 	app.Post("/addtrash-categorydetail", controllers.CreateTrashDetail)
 	app.Put("/updatetrash-category/:id", controllers.UpdateTrashCategory)
 	app.Put("/updatetrash-detail/:id", controllers.UpdateTrashDetail)
+	app.Delete("/deletetrash-category/:id", controllers.DeleteTrashCategory)
+	app.Delete("/deletetrash-detail/:id", controllers.DeleteTrashDetail)
 }
