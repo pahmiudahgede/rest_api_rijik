@@ -24,8 +24,10 @@ func AppRouter(app *fiber.App) {
 	app.Put("/apirijikid/user/update-user", middleware.AuthMiddleware, controllers.UpdateUser)
 
 	// # user set pin
-	app.Get("/apirijikid/user/get-pin", middleware.AuthMiddleware, controllers.GetPin)
+	app.Get("/apirijikid/user/verif-pin", middleware.AuthMiddleware, controllers.GetPin)
+	app.Get("/apirijikid/user/cek-pin-status", middleware.AuthMiddleware, controllers.GetPinStatus)
 	app.Post("/apirijikid/user/set-pin", middleware.AuthMiddleware, controllers.CreatePin)
+	app.Put("/apirijikid/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
 	app.Put("/apirijikid/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
 
 	// # address routing

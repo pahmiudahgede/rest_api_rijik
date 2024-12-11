@@ -59,6 +59,32 @@ func CreatePin(c *fiber.Ctx) error {
 	))
 }
 
+func GetPinStatus(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+
+	pin, err := services.GetPinByUserID(userID)
+	if err != nil {
+
+		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+			fiber.StatusNotFound,
+			"Anda belum membuat PIN",
+			nil,
+		))
+	}
+
+	formattedCreatedAt := utils.FormatDateToIndonesianFormat(pin.CreatedAt)
+	formattedUpdatedAt := utils.FormatDateToIndonesianFormat(pin.UpdatedAt)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"PIN sudah dibuat",
+		map[string]interface{}{
+			"createdAt": formattedCreatedAt,
+			"updatedAt": formattedUpdatedAt,
+		},
+	))
+}
+
 func GetPin(c *fiber.Ctx) error {
 	var input dto.PinInput
 	if err := c.BodyParser(&input); err != nil {
@@ -74,7 +100,7 @@ func GetPin(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
 			fiber.StatusNotFound,
-			"PIN tidak ditemukan",
+			"Sepertinya anda belum membuat pin",
 			nil,
 		))
 	}
@@ -83,16 +109,10 @@ func GetPin(c *fiber.Ctx) error {
 
 	if isPinValid {
 
-		formattedCreatedAt := utils.FormatDateToIndonesianFormat(pin.CreatedAt)
-		formattedUpdatedAt := utils.FormatDateToIndonesianFormat(pin.UpdatedAt)
-
 		return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 			fiber.StatusOK,
 			"PIN benar",
-			map[string]interface{}{
-				"createdAt": formattedCreatedAt,
-				"updatedAt": formattedUpdatedAt,
-			},
+			true,
 		))
 	}
 
