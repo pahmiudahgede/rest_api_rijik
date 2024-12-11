@@ -44,4 +44,6 @@ func AppRouter(app *fiber.App) {
 	app.Get("/trash-categorydetail/:id", controllers.GetTrashCategoryDetail)
 	app.Post("/addtrash-category", controllers.CreateTrashCategory)
 	app.Post("/addtrash-categorydetail", controllers.CreateTrashDetail)
+	app.Put("/updatetrash-category/:id", controllers.UpdateTrashCategory)
+	app.Put("/updatetrash-detail/:id", controllers.UpdateTrashDetail)
 }

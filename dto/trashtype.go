@@ -55,3 +55,22 @@ func NewTrashDetailResponse(id, description string, price int, createdAt, update
 		UpdatedAt:   updatedAt,
 	}
 }
+
+type UpdateTrashCategoryDTO struct {
+	Name string `json:"name" validate:"required,min=3,max=100"`
+}
+
+func (t *UpdateTrashCategoryDTO) Validate() error {
+	validate := validator.New()
+	return validate.Struct(t)
+}
+
+type UpdateTrashDetailDTO struct {
+	Description string `json:"description" validate:"required,min=3,max=255"`
+	Price       int    `json:"price" validate:"required,min=0"`
+}
+
+func (t *UpdateTrashDetailDTO) Validate() error {
+	validate := validator.New()
+	return validate.Struct(t)
+}

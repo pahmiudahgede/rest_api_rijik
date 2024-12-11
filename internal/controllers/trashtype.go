@@ -164,3 +164,90 @@ func CreateTrashDetail(c *fiber.Ctx) error {
 		detailResponse,
 	))
 }
+
+func UpdateTrashCategory(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var categoryInput dto.UpdateTrashCategoryDTO
+	if err := c.BodyParser(&categoryInput); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	if err := categoryInput.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Validation failed: "+err.Error(),
+			nil,
+		))
+	}
+
+	updatedCategory, err := services.UpdateTrashCategory(id, categoryInput.Name)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to update trash category",
+			nil,
+		))
+	}
+
+	response := dto.NewTrashCategoryResponse(
+		updatedCategory.ID,
+		updatedCategory.Name,
+		utils.FormatDateToIndonesianFormat(updatedCategory.CreatedAt),
+		utils.FormatDateToIndonesianFormat(updatedCategory.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Trash category updated successfully",
+		response,
+	))
+}
+
+func UpdateTrashDetail(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var detailInput dto.UpdateTrashDetailDTO
+	if err := c.BodyParser(&detailInput); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	if err := detailInput.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Validation failed: "+err.Error(),
+			nil,
+		))
+	}
+
+	updatedDetail, err := services.UpdateTrashDetail(id, detailInput.Description, detailInput.Price)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to update trash detail",
+			nil,
+		))
+	}
+
+	response := dto.NewTrashDetailResponse(
+		updatedDetail.ID,
+		updatedDetail.Description,
+		updatedDetail.Price,
+		utils.FormatDateToIndonesianFormat(updatedDetail.CreatedAt),
+		utils.FormatDateToIndonesianFormat(updatedDetail.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Trash detail updated successfully",
+		response,
+	))
+}

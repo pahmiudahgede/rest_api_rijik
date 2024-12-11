@@ -7,7 +7,6 @@ import (
 
 func GetTrashCategories() ([]domain.TrashCategory, error) {
 	var categories []domain.TrashCategory
-
 	if err := config.DB.Find(&categories).Error; err != nil {
 		return nil, err
 	}
@@ -22,6 +21,15 @@ func GetTrashCategoryDetail(id string) (domain.TrashCategory, error) {
 	return category, nil
 }
 
+func GetTrashDetailByID(id string) (domain.TrashDetail, error) {
+	var detail domain.TrashDetail
+
+	if err := config.DB.Where("id = ?", id).First(&detail).Error; err != nil {
+		return detail, err
+	}
+	return detail, nil
+}
+
 func CreateTrashCategory(category *domain.TrashCategory) error {
 	if err := config.DB.Create(category).Error; err != nil {
 		return err
@@ -31,6 +39,20 @@ func CreateTrashCategory(category *domain.TrashCategory) error {
 
 func CreateTrashDetail(detail *domain.TrashDetail) error {
 	if err := config.DB.Create(detail).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateTrashCategory(category *domain.TrashCategory) error {
+	if err := config.DB.Save(category).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateTrashDetail(detail *domain.TrashDetail) error {
+	if err := config.DB.Save(detail).Error; err != nil {
 		return err
 	}
 	return nil
