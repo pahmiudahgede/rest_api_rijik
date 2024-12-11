@@ -49,3 +49,16 @@ func UpdateBanner(id, bannerName, bannerImage string) (domain.Banner, error) {
 
 	return banner, nil
 }
+
+func DeleteBanner(id string) error {
+
+	_, err := repositories.GetBannerByID(id)
+	if err != nil {
+		return errors.New("banner not found")
+	}
+
+	if err := repositories.DeleteBanner(id); err != nil {
+		return err
+	}
+	return nil
+}

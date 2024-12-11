@@ -7,6 +7,9 @@ import (
 )
 
 func AppRouter(app *fiber.App) {
+	// # API Secure
+	app.Use(middleware.APIKeyMiddleware)
+
 	// # role
 	app.Get("/listrole", controllers.GetAllUserRoles)
 	app.Get("/listrole/:id", controllers.GetUserRoleByID)
@@ -51,7 +54,8 @@ func AppRouter(app *fiber.App) {
 
 	// # banner
 	app.Get("/banners", controllers.GetBanners)
-	app.Get("/banners/:id", controllers.GetBannerByID)
-	app.Post("/addbanners", controllers.CreateBanner)
-	app.Put("/updatebanners/:id", controllers.UpdateBanner)
+	app.Get("/banner/:id", controllers.GetBannerByID)
+	app.Post("/addbanner", controllers.CreateBanner)
+	app.Put("/updatebanner/:id", controllers.UpdateBanner)
+	app.Delete("/deletebanner/:id", controllers.DeleteBanner)
 }

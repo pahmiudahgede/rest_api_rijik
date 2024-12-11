@@ -36,3 +36,10 @@ func UpdateBanner(banner *domain.Banner) error {
 	}
 	return nil
 }
+
+func DeleteBanner(id string) error {
+	if err := config.DB.Where("id = ?", id).Delete(&domain.Banner{}).Error; err != nil {
+		return err
+	}
+	return nil
+}

@@ -176,3 +176,31 @@ func UpdateBanner(c *fiber.Ctx) error {
 		},
 	))
 }
+
+func DeleteBanner(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	err := services.DeleteBanner(id)
+	if err != nil {
+
+		if err.Error() == "banner not found" {
+			return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+				fiber.StatusNotFound,
+				"Banner not found",
+				nil,
+			))
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete banner",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Banner deleted successfully",
+		nil,
+	))
+}
