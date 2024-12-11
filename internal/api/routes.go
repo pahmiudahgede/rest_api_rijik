@@ -48,4 +48,8 @@ func AppRouter(app *fiber.App) {
 	app.Put("/updatetrash-detail/:id", controllers.UpdateTrashDetail)
 	app.Delete("/deletetrash-category/:id", controllers.DeleteTrashCategory)
 	app.Delete("/deletetrash-detail/:id", controllers.DeleteTrashDetail)
+
+	// # banner
+	app.Get("/banners", controllers.GetBanners)
+	app.Get("/banners/:id", controllers.GetBannerByID)
 }
