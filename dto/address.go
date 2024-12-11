@@ -16,6 +16,19 @@ type AddressInput struct {
 	Geography   string `json:"geography" validate:"required"`
 }
 
+type AddressResponse struct {
+	ID          string `json:"id"`
+	Province    string `json:"province"`
+	District    string `json:"district"`
+	Subdistrict string `json:"subdistrict"`
+	PostalCode  int    `json:"postalCode"`
+	Village     string `json:"village"`
+	Detail      string `json:"detail"`
+	Geography   string `json:"geography"`
+	CreatedAt   string `json:"createdAt"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+
 func (c *AddressInput) ValidatePost() error {
 	err := validate.Struct(c)
 	if err != nil {

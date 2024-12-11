@@ -18,7 +18,6 @@ func CreateAddress(c *fiber.Ctx) error {
 	}
 
 	if err := input.ValidatePost(); err != nil {
-
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
 			err.Error(),
@@ -27,7 +26,6 @@ func CreateAddress(c *fiber.Ctx) error {
 	}
 
 	userID := c.Locals("userID").(string)
-
 	address, err := services.CreateAddress(userID, input)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
@@ -37,17 +35,20 @@ func CreateAddress(c *fiber.Ctx) error {
 		))
 	}
 
-	addressResponse := map[string]interface{}{
-		"id":          address.ID,
-		"province":    address.Province,
-		"district":    address.District,
-		"subdistrict": address.Subdistrict,
-		"postalCode":  address.PostalCode,
-		"village":     address.Village,
-		"detail":      address.Detail,
-		"geography":   address.Geography,
-		"createdAt":   address.CreatedAt,
-		"updatedAt":   address.UpdatedAt,
+	createdAtFormatted := utils.FormatDateToIndonesianFormat(address.CreatedAt)
+	updatedAtFormatted := utils.FormatDateToIndonesianFormat(address.UpdatedAt)
+
+	addressResponse := dto.AddressResponse{
+		ID:          address.ID,
+		Province:    address.Province,
+		District:    address.District,
+		Subdistrict: address.Subdistrict,
+		PostalCode:  address.PostalCode,
+		Village:     address.Village,
+		Detail:      address.Detail,
+		Geography:   address.Geography,
+		CreatedAt:   createdAtFormatted,
+		UpdatedAt:   updatedAtFormatted,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
@@ -59,7 +60,6 @@ func CreateAddress(c *fiber.Ctx) error {
 
 func GetListAddress(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
-
 	addresses, err := services.GetAllAddressesByUserID(userID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
@@ -69,20 +69,23 @@ func GetListAddress(c *fiber.Ctx) error {
 		))
 	}
 
-	addressResponses := []map[string]interface{}{}
-
+	var addressResponses []dto.AddressResponse
 	for _, address := range addresses {
-		addressResponse := map[string]interface{}{
-			"id":          address.ID,
-			"province":    address.Province,
-			"district":    address.District,
-			"subdistrict": address.Subdistrict,
-			"postalCode":  address.PostalCode,
-			"village":     address.Village,
-			"detail":      address.Detail,
-			"geography":   address.Geography,
-			"createdAt":   address.CreatedAt,
-			"updatedAt":   address.UpdatedAt,
+
+		createdAtFormatted := utils.FormatDateToIndonesianFormat(address.CreatedAt)
+		updatedAtFormatted := utils.FormatDateToIndonesianFormat(address.UpdatedAt)
+
+		addressResponse := dto.AddressResponse{
+			ID:          address.ID,
+			Province:    address.Province,
+			District:    address.District,
+			Subdistrict: address.Subdistrict,
+			PostalCode:  address.PostalCode,
+			Village:     address.Village,
+			Detail:      address.Detail,
+			Geography:   address.Geography,
+			CreatedAt:   createdAtFormatted,
+			UpdatedAt:   updatedAtFormatted,
 		}
 		addressResponses = append(addressResponses, addressResponse)
 	}
@@ -95,7 +98,6 @@ func GetListAddress(c *fiber.Ctx) error {
 }
 
 func GetAddressByID(c *fiber.Ctx) error {
-
 	addressID := c.Params("id")
 
 	address, err := services.GetAddressByID(addressID)
@@ -107,17 +109,20 @@ func GetAddressByID(c *fiber.Ctx) error {
 		))
 	}
 
-	addressResponse := map[string]interface{}{
-		"id":          address.ID,
-		"province":    address.Province,
-		"district":    address.District,
-		"subdistrict": address.Subdistrict,
-		"postalCode":  address.PostalCode,
-		"village":     address.Village,
-		"detail":      address.Detail,
-		"geography":   address.Geography,
-		"createdAt":   address.CreatedAt,
-		"updatedAt":   address.UpdatedAt,
+	createdAtFormatted := utils.FormatDateToIndonesianFormat(address.CreatedAt)
+	updatedAtFormatted := utils.FormatDateToIndonesianFormat(address.UpdatedAt)
+
+	addressResponse := dto.AddressResponse{
+		ID:          address.ID,
+		Province:    address.Province,
+		District:    address.District,
+		Subdistrict: address.Subdistrict,
+		PostalCode:  address.PostalCode,
+		Village:     address.Village,
+		Detail:      address.Detail,
+		Geography:   address.Geography,
+		CreatedAt:   createdAtFormatted,
+		UpdatedAt:   updatedAtFormatted,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
@@ -128,10 +133,10 @@ func GetAddressByID(c *fiber.Ctx) error {
 }
 
 func UpdateAddress(c *fiber.Ctx) error {
-
 	addressID := c.Params("id")
 
 	var input dto.AddressInput
+
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
@@ -157,17 +162,20 @@ func UpdateAddress(c *fiber.Ctx) error {
 		))
 	}
 
-	addressResponse := map[string]interface{}{
-		"id":          address.ID,
-		"province":    address.Province,
-		"district":    address.District,
-		"subdistrict": address.Subdistrict,
-		"postalCode":  address.PostalCode,
-		"village":     address.Village,
-		"detail":      address.Detail,
-		"geography":   address.Geography,
-		"createdAt":   address.CreatedAt,
-		"updatedAt":   address.UpdatedAt,
+	createdAtFormatted := utils.FormatDateToIndonesianFormat(address.CreatedAt)
+	updatedAtFormatted := utils.FormatDateToIndonesianFormat(address.UpdatedAt)
+
+	addressResponse := dto.AddressResponse{
+		ID:          address.ID,
+		Province:    address.Province,
+		District:    address.District,
+		Subdistrict: address.Subdistrict,
+		PostalCode:  address.PostalCode,
+		Village:     address.Village,
+		Detail:      address.Detail,
+		Geography:   address.Geography,
+		CreatedAt:   createdAtFormatted,
+		UpdatedAt:   updatedAtFormatted,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
@@ -178,7 +186,6 @@ func UpdateAddress(c *fiber.Ctx) error {
 }
 
 func DeleteAddress(c *fiber.Ctx) error {
-
 	addressID := c.Params("id")
 
 	err := services.DeleteAddress(addressID)
