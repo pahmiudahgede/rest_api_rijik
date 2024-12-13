@@ -17,6 +17,11 @@ func AppRouter(app *fiber.App) {
 	app.Put("/apirijikid/user/initial-coint/:id", controllers.UpdatePoint)
 	app.Delete("/apirijikid/user/initial-coint/:id", controllers.DeletePoint)
 
+	//# coverage area
+	app.Get("/apirijikid/coverage-areas", controllers.GetCoverageAreas)
+	app.Get("/apirijikid/coverage-areas-district/:id", controllers.GetCoverageAreaByIDProvince)
+	app.Get("/apirijikid/coverage-areas-subdistrict/:id", controllers.GetCoverageAreaByIDDistrict)
+
 	// # role
 	app.Get("/apirijikid/roles", controllers.GetAllUserRoles)
 	app.Get("/apirijikid/role/:id", controllers.GetUserRoleByID)
