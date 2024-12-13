@@ -7,72 +7,75 @@ import (
 )
 
 func AppRouter(app *fiber.App) {
+	// # api group domain endpoint
+	api := app.Group("/apirijikid")
+	
 	// # API Secure
-	app.Use(middleware.APIKeyMiddleware)
+	api.Use(middleware.APIKeyMiddleware)
 
 	// # user initial coint
-	app.Get("/apirijikid/user/initial-coint", controllers.GetUserInitialCoint)
-	app.Get("/apirijikid/user/initial-coint/:id", controllers.GetUserInitialCointById)
-	app.Post("/apirijikid/user/initial-coint", controllers.CreatePoint)
-	app.Put("/apirijikid/user/initial-coint/:id", controllers.UpdatePoint)
-	app.Delete("/apirijikid/user/initial-coint/:id", controllers.DeletePoint)
+	api.Get("/user/initial-coint", controllers.GetUserInitialCoint)
+	api.Get("/user/initial-coint/:id", controllers.GetUserInitialCointById)
+	api.Post("/user/initial-coint", controllers.CreatePoint)
+	api.Put("/user/initial-coint/:id", controllers.UpdatePoint)
+	api.Delete("/user/initial-coint/:id", controllers.DeletePoint)
 
 	//# coverage area
-	app.Get("/apirijikid/coverage-areas", controllers.GetCoverageAreas)
-	app.Get("/apirijikid/coverage-areas-district/:id", controllers.GetCoverageAreaByIDProvince)
-	app.Get("/apirijikid/coverage-areas-subdistrict/:id", controllers.GetCoverageAreaByIDDistrict)
-	app.Post("/apirijikid/coverage-areas", controllers.CreateCoverageArea)
-	app.Post("/apirijikid/coverage-areas-district", controllers.CreateCoverageDetail)
-	app.Post("/apirijikid/coverage-areas-subdistrict", controllers.CreateLocationSpecific)
+	api.Get("/coverage-areas", controllers.GetCoverageAreas)
+	api.Get("/coverage-areas-district/:id", controllers.GetCoverageAreaByIDProvince)
+	api.Get("/coverage-areas-subdistrict/:id", controllers.GetCoverageAreaByIDDistrict)
+	api.Post("/coverage-areas", controllers.CreateCoverageArea)
+	api.Post("/coverage-areas-district", controllers.CreateCoverageDetail)
+	api.Post("/coverage-areas-subdistrict", controllers.CreateLocationSpecific)
 
 	// # role
-	app.Get("/apirijikid/roles", controllers.GetAllUserRoles)
-	app.Get("/apirijikid/role/:id", controllers.GetUserRoleByID)
+	api.Get("/roles", controllers.GetAllUserRoles)
+	api.Get("/role/:id", controllers.GetUserRoleByID)
 
 	// # authentication
-	app.Post("/apirijikid/register", controllers.Register)
-	app.Post("/apirijikid/login", controllers.Login)
+	api.Post("/register", controllers.Register)
+	api.Post("/login", controllers.Login)
 
 	// # userinfo
-	app.Get("/apirijikid/user", middleware.AuthMiddleware, controllers.GetUserInfo)
-	app.Post("/apirijikid/user/update-password", middleware.AuthMiddleware, controllers.UpdatePassword)
-	app.Put("/apirijikid/user/update-user", middleware.AuthMiddleware, controllers.UpdateUser)
+	api.Get("/user", middleware.AuthMiddleware, controllers.GetUserInfo)
+	api.Post("/user/update-password", middleware.AuthMiddleware, controllers.UpdatePassword)
+	api.Put("/user/update-user", middleware.AuthMiddleware, controllers.UpdateUser)
 
 	// # user set pin
-	app.Get("/apirijikid/user/verif-pin", middleware.AuthMiddleware, controllers.GetPin)
-	app.Get("/apirijikid/user/cek-pin-status", middleware.AuthMiddleware, controllers.GetPinStatus)
-	app.Post("/apirijikid/user/set-pin", middleware.AuthMiddleware, controllers.CreatePin)
-	app.Put("/apirijikid/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
-	app.Put("/apirijikid/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
+	api.Get("/user/verif-pin", middleware.AuthMiddleware, controllers.GetPin)
+	api.Get("/user/cek-pin-status", middleware.AuthMiddleware, controllers.GetPinStatus)
+	api.Post("/user/set-pin", middleware.AuthMiddleware, controllers.CreatePin)
+	api.Put("/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
+	api.Put("/user/update-pin", middleware.AuthMiddleware, controllers.UpdatePin)
 
 	// # address routing
-	app.Get("/apirijikid/addresses", middleware.AuthMiddleware, controllers.GetListAddress)
-	app.Get("/apirijikid/address/:id", middleware.AuthMiddleware, controllers.GetAddressByID)
-	app.Post("/apirijikid/address/create-address", middleware.AuthMiddleware, controllers.CreateAddress)
-	app.Put("/apirijikid/address/update-address/:id", middleware.AuthMiddleware, controllers.UpdateAddress)
-	app.Delete("/apirijikid/address/delete-address/:id", middleware.AuthMiddleware, controllers.DeleteAddress)
+	api.Get("/addresses", middleware.AuthMiddleware, controllers.GetListAddress)
+	api.Get("/address/:id", middleware.AuthMiddleware, controllers.GetAddressByID)
+	api.Post("/address/create-address", middleware.AuthMiddleware, controllers.CreateAddress)
+	api.Put("/address/update-address/:id", middleware.AuthMiddleware, controllers.UpdateAddress)
+	api.Delete("/address/delete-address/:id", middleware.AuthMiddleware, controllers.DeleteAddress)
 
 	// # article
-	app.Get("/apirijikid/articles", middleware.AuthMiddleware, controllers.GetArticles)
-	app.Get("/apirijikid/article/:id", middleware.AuthMiddleware, controllers.GetArticleByID)
-	app.Post("/apirijikid/article/create-article", middleware.AuthMiddleware, controllers.CreateArticle)
-	app.Put("/apirijikid/article/update-article/:id", middleware.AuthMiddleware, controllers.UpdateArticle)
-	app.Delete("/apirijikid/article/delete-article/:id", middleware.AuthMiddleware, controllers.DeleteArticle)
+	api.Get("/articles", middleware.AuthMiddleware, controllers.GetArticles)
+	api.Get("/article/:id", middleware.AuthMiddleware, controllers.GetArticleByID)
+	api.Post("/article/create-article", middleware.AuthMiddleware, controllers.CreateArticle)
+	api.Put("/article/update-article/:id", middleware.AuthMiddleware, controllers.UpdateArticle)
+	api.Delete("/article/delete-article/:id", middleware.AuthMiddleware, controllers.DeleteArticle)
 
 	// # trash type
-	app.Get("/apirijikid/trash-categorys", controllers.GetTrashCategories)
-	app.Get("/apirijikid/trash-category/:id", controllers.GetTrashCategoryDetail)
-	app.Post("/apirijikid/trash-category/create-trash-category", controllers.CreateTrashCategory)
-	app.Post("/apirijikid/trash-category/create-trash-categorydetail", controllers.CreateTrashDetail)
-	app.Put("/apirijikid/trash-category/update-trash-category/:id", controllers.UpdateTrashCategory)
-	app.Put("/apirijikid/trash-category/update-trash-detail/:id", controllers.UpdateTrashDetail)
-	app.Delete("/apirijikid/trash-category/delete-trash-category/:id", controllers.DeleteTrashCategory)
-	app.Delete("/apirijikid/trash-category/delete-trash-detail/:id", controllers.DeleteTrashDetail)
+	api.Get("/trash-categorys", controllers.GetTrashCategories)
+	api.Get("/trash-category/:id", controllers.GetTrashCategoryDetail)
+	api.Post("/trash-category/create-trash-category", controllers.CreateTrashCategory)
+	api.Post("/trash-category/create-trash-categorydetail", controllers.CreateTrashDetail)
+	api.Put("/trash-category/update-trash-category/:id", controllers.UpdateTrashCategory)
+	api.Put("/trash-category/update-trash-detail/:id", controllers.UpdateTrashDetail)
+	api.Delete("/trash-category/delete-trash-category/:id", controllers.DeleteTrashCategory)
+	api.Delete("/trash-category/delete-trash-detail/:id", controllers.DeleteTrashDetail)
 
 	// # banner
-	app.Get("/apirijikid/banners", controllers.GetBanners)
-	app.Get("/apirijikid/banner/:id", controllers.GetBannerByID)
-	app.Post("/apirijikid/banner/create-banner", controllers.CreateBanner)
-	app.Put("/apirijikid/banner/update-banner/:id", controllers.UpdateBanner)
-	app.Delete("/apirijikid/banner/delete-banner/:id", controllers.DeleteBanner)
+	api.Get("/banners", controllers.GetBanners)
+	api.Get("/banner/:id", controllers.GetBannerByID)
+	api.Post("/banner/create-banner", controllers.CreateBanner)
+	api.Put("/banner/update-banner/:id", controllers.UpdateBanner)
+	api.Delete("/banner/delete-banner/:id", controllers.DeleteBanner)
 }
