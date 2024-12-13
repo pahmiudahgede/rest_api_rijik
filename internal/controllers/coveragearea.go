@@ -19,7 +19,12 @@ func GetCoverageAreas(c *fiber.Ctx) error {
 
 	var coverageAreaResponses []dto.CoverageAreaResponse
 	for _, area := range coverageAreas {
-		coverageAreaResponses = append(coverageAreaResponses, dto.NewCoverageAreaResponse(area.ID, area.Province))
+		coverageAreaResponses = append(coverageAreaResponses, dto.NewCoverageAreaResponse(
+			area.ID,
+			area.Province,
+			utils.FormatDateToIndonesianFormat(area.CreatedAt),
+			utils.FormatDateToIndonesianFormat(area.UpdatedAt),
+		))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
@@ -44,10 +49,26 @@ func GetCoverageAreaByIDProvince(c *fiber.Ctx) error {
 	var coverageAreaResponse dto.CoverageAreaWithDistrictsResponse
 	coverageAreaResponse.ID = coverageArea.ID
 	coverageAreaResponse.Province = coverageArea.Province
+	coverageAreaResponse.CreatedAt = utils.FormatDateToIndonesianFormat(coverageArea.CreatedAt)
+	coverageAreaResponse.UpdatedAt = utils.FormatDateToIndonesianFormat(coverageArea.UpdatedAt)
+
+	districts, err := services.GetCoverageDistricsByCoverageAreaID(coverageArea.ID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to fetch coverage districts",
+			nil,
+		))
+	}
 
 	var coverageAreas []dto.CoverageAreaResponse
-	for _, detail := range coverageArea.Details {
-		coverageAreas = append(coverageAreas, dto.NewCoverageAreaResponse(detail.ID, detail.District))
+	for _, district := range districts {
+		coverageAreas = append(coverageAreas, dto.NewCoverageAreaResponse(
+			district.ID,
+			district.District,
+			utils.FormatDateToIndonesianFormat(district.CreatedAt),
+			utils.FormatDateToIndonesianFormat(district.UpdatedAt),
+		))
 	}
 
 	coverageAreaResponse.CoverageArea = coverageAreas
@@ -71,98 +92,46 @@ func GetCoverageAreaByIDDistrict(c *fiber.Ctx) error {
 		))
 	}
 
-	var locationSpecificResponses []dto.LocationSpecificResponse
-	for _, loc := range coverageDetail.LocationSpecific {
-		locationSpecificResponses = append(locationSpecificResponses, dto.NewLocationSpecificResponse(loc.ID, loc.Subdistrict))
+	coverageArea, err := services.GetCoverageAreaByID(coverageDetail.CoverageAreaID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to fetch coverage area details by province",
+			nil,
+		))
 	}
 
-	coverageAreaResponse := dto.CoverageAreaDetailWithLocation{
-		ID:               coverageDetail.ID,
-		District:         coverageDetail.District,
-		LocationSpecific: locationSpecificResponses,
+	subdistricts, err := services.GetSubdistrictsByCoverageDistrictID(coverageDetail.ID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to fetch subdistricts",
+			nil,
+		))
 	}
+
+	var subdistrictResponses []dto.SubdistrictResponse
+	for _, loc := range subdistricts {
+		subdistrictResponses = append(subdistrictResponses, dto.NewSubdistrictResponse(
+			loc.ID,
+			loc.Subdistrict,
+			utils.FormatDateToIndonesianFormat(loc.CreatedAt),
+			utils.FormatDateToIndonesianFormat(loc.UpdatedAt),
+		))
+	}
+
+	coverageAreaResponse := dto.NewCoverageAreaDetailWithLocation(
+		coverageDetail.ID,
+		coverageArea.Province,
+		coverageDetail.District,
+		utils.FormatDateToIndonesianFormat(coverageDetail.CreatedAt),
+		utils.FormatDateToIndonesianFormat(coverageDetail.UpdatedAt),
+		subdistrictResponses,
+	)
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Coverage areas detail by district has been fetched",
 		coverageAreaResponse,
-	))
-}
-
-func CreateCoverageArea(c *fiber.Ctx) error {
-	var request dto.CoverageAreaRequest
-	if err := c.BodyParser(&request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-			fiber.StatusBadRequest,
-			"Invalid input data",
-			nil,
-		))
-	}
-
-	coverageArea, err := services.CreateCoverageArea(request.Province)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
-			fiber.StatusInternalServerError,
-			"Failed to create coverage area",
-			nil,
-		))
-	}
-
-	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
-		fiber.StatusOK,
-		"Coverage area has been created successfully",
-		coverageArea,
-	))
-}
-
-func CreateCoverageDetail(c *fiber.Ctx) error {
-	var request dto.CoverageDetailRequest
-	if err := c.BodyParser(&request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-			fiber.StatusBadRequest,
-			"Invalid input data",
-			nil,
-		))
-	}
-
-	coverageDetail, err := services.CreateCoverageDetail(request.CoverageAreaID, request.Province, request.District)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
-			fiber.StatusInternalServerError,
-			"Failed to create coverage detail",
-			nil,
-		))
-	}
-
-	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
-		fiber.StatusOK,
-		"Coverage detail has been created successfully",
-		coverageDetail,
-	))
-}
-
-func CreateLocationSpecific(c *fiber.Ctx) error {
-	var request dto.LocationSpecificRequest
-	if err := c.BodyParser(&request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-			fiber.StatusBadRequest,
-			"Invalid input data",
-			nil,
-		))
-	}
-
-	locationSpecific, err := services.CreateLocationSpecific(request.CoverageDetailID, request.Subdistrict)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
-			fiber.StatusInternalServerError,
-			"Failed to create location specific",
-			nil,
-		))
-	}
-
-	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
-		fiber.StatusOK,
-		"Location specific has been created successfully",
-		locationSpecific,
 	))
 }

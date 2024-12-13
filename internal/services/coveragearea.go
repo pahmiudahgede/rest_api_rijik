@@ -9,22 +9,18 @@ func GetCoverageAreas() ([]domain.CoverageArea, error) {
 	return repositories.GetCoverageAreas()
 }
 
+func GetCoverageDistricsByCoverageAreaID(areaID string) ([]domain.CoverageDistric, error) {
+	return repositories.GetCoverageDistricsByCoverageAreaID(areaID)
+}
+
+func GetCoverageAreaByDistrictID(id string) (domain.CoverageDistric, error) {
+	return repositories.GetCoverageAreaByDistrictID(id)
+}
+
 func GetCoverageAreaByID(id string) (domain.CoverageArea, error) {
 	return repositories.GetCoverageAreaByID(id)
 }
 
-func GetCoverageAreaByDistrictID(id string) (domain.CoverageDetail, error) {
-	return repositories.GetCoverageAreaByDistrictID(id)
-}
-
-func CreateCoverageArea(province string) (domain.CoverageArea, error) {
-	return repositories.CreateCoverageArea(province)
-}
-
-func CreateCoverageDetail(coverageAreaID, province, district string) (domain.CoverageDetail, error) {
-	return repositories.CreateCoverageDetail(coverageAreaID, province, district)
-}
-
-func CreateLocationSpecific(coverageDetailID, subdistrict string) (domain.LocationSpecific, error) {
-	return repositories.CreateLocationSpecific(coverageDetailID, subdistrict)
+func GetSubdistrictsByCoverageDistrictID(districtID string) ([]domain.CoverageSubdistrict, error) {
+	return repositories.GetSubdistrictsByCoverageDistrictID(districtID)
 }

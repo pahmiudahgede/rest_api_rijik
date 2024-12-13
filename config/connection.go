@@ -63,8 +63,8 @@ func InitDatabase() {
 		&domain.TrashDetail{},
 		&domain.Banner{},
 		&domain.CoverageArea{},
-		&domain.CoverageDetail{},
-		&domain.LocationSpecific{},
+		&domain.CoverageDistric{},
+		&domain.CoverageSubdistrict{},
 	)
 	if err != nil {
 		log.Fatal("Error: Failed to auto migrate domain:", err)

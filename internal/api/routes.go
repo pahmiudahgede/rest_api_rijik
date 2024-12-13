@@ -24,9 +24,9 @@ func AppRouter(app *fiber.App) {
 	api.Get("/coverage-areas", controllers.GetCoverageAreas)
 	api.Get("/coverage-areas-district/:id", controllers.GetCoverageAreaByIDProvince)
 	api.Get("/coverage-areas-subdistrict/:id", controllers.GetCoverageAreaByIDDistrict)
-	api.Post("/coverage-areas", controllers.CreateCoverageArea)
-	api.Post("/coverage-areas-district", controllers.CreateCoverageDetail)
-	api.Post("/coverage-areas-subdistrict", controllers.CreateLocationSpecific)
+	// api.Post("/coverage-areas", controllers.CreateCoverageArea)
+	// api.Post("/coverage-areas-district", controllers.CreateCoverageDetail)
+	// api.Post("/coverage-areas-subdistrict", controllers.CreateLocationSpecific)
 
 	// # role
 	api.Get("/roles", controllers.GetAllUserRoles)

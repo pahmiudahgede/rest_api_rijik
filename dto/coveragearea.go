@@ -1,88 +1,71 @@
 package dto
 
 type CoverageAreaResponse struct {
-	ID       string `json:"id"`
-	Province string `json:"province"`
+	ID        string `json:"id"`
+	Province  string `json:"province"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 type CoverageAreaWithDistrictsResponse struct {
 	ID           string                 `json:"id"`
 	Province     string                 `json:"province"`
+	CreatedAt    string                 `json:"createdAt"`
+	UpdatedAt    string                 `json:"updatedAt"`
 	CoverageArea []CoverageAreaResponse `json:"coverage_area"`
 }
 
 type CoverageAreaDetailWithLocation struct {
-	ID               string                     `json:"id"`
-	Province         string                     `json:"province"`
-	District         string                     `json:"district"`
-	LocationSpecific []LocationSpecificResponse `json:"location_specific"`
+	ID          string                `json:"id"`
+	Province    string                `json:"province"`
+	District    string                `json:"district"`
+	CreatedAt   string                `json:"createdAt"`
+	UpdatedAt   string                `json:"updatedAt"`
+	Subdistrict []SubdistrictResponse `json:"subdistrict"`
 }
 
-type LocationSpecificResponse struct {
+type SubdistrictResponse struct {
 	ID          string `json:"id"`
 	Subdistrict string `json:"subdistrict"`
+	CreatedAt   string `json:"createdAt"`
+	UpdatedAt   string `json:"updatedAt"`
 }
 
-type CoverageDetailResponse struct {
-	ID        string `json:"id"`
-	Province  string `json:"province"`
-	District  string `json:"district"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
-}
-
-func NewCoverageDetailResponse(id, province, district, createdAt, updatedAt string) CoverageDetailResponse {
-	return CoverageDetailResponse{
+func NewCoverageAreaResponse(id, province, createdAt, updatedAt string) CoverageAreaResponse {
+	return CoverageAreaResponse{
 		ID:        id,
 		Province:  province,
-		District:  district,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}
 }
 
-func NewCoverageAreaResponse(id, province string) CoverageAreaResponse {
-	return CoverageAreaResponse{
-		ID:       id,
-		Province: province,
-	}
-}
-
-func NewLocationSpecificResponse(id, subdistrict string) LocationSpecificResponse {
-	return LocationSpecificResponse{
-		ID:          id,
-		Subdistrict: subdistrict,
-	}
-}
-
-func NewCoverageAreaWithDistrictsResponse(id, province string, coverageArea []CoverageAreaResponse) CoverageAreaWithDistrictsResponse {
+func NewCoverageAreaWithDistrictsResponse(id, province, createdAt, updatedAt string, coverageArea []CoverageAreaResponse) CoverageAreaWithDistrictsResponse {
 	return CoverageAreaWithDistrictsResponse{
 		ID:           id,
 		Province:     province,
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
 		CoverageArea: coverageArea,
 	}
 }
 
-func NewCoverageAreaDetailWithLocation(id, province, district string, locationSpecific []LocationSpecificResponse) CoverageAreaDetailWithLocation {
+func NewCoverageAreaDetailWithLocation(id, province, district, createdAt, updatedAt string, subdistricts []SubdistrictResponse) CoverageAreaDetailWithLocation {
 	return CoverageAreaDetailWithLocation{
-		ID:               id,
-		Province:         province,
-		District:         district,
-		LocationSpecific: locationSpecific,
+		ID:          id,
+		Province:    province,
+		District:    district,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+		Subdistrict: subdistricts,
 	}
 }
 
-type CoverageAreaRequest struct {
-	Province string `json:"province" validate:"required"`
-}
-
-type CoverageDetailRequest struct {
-	CoverageAreaID string `json:"coverage_area_id" validate:"required"`
-	Province       string `json:"province" validate:"required"`
-	District       string `json:"district" validate:"required"`
-}
-
-type LocationSpecificRequest struct {
-	CoverageDetailID string `json:"coverage_detail_id" validate:"required"`
-	Subdistrict      string `json:"subdistrict" validate:"required"`
+func NewSubdistrictResponse(id, subdistrict, createdAt, updatedAt string) SubdistrictResponse {
+	return SubdistrictResponse{
+		ID:          id,
+		Subdistrict: subdistrict,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+	}
 }
