@@ -10,6 +10,13 @@ func AppRouter(app *fiber.App) {
 	// # API Secure
 	app.Use(middleware.APIKeyMiddleware)
 
+	// # user initial coint
+	app.Get("/apirijikid/user/initial-coint", controllers.GetUserInitialCoint)
+	app.Get("/apirijikid/user/initial-coint/:id", controllers.GetUserInitialCointById)
+	app.Post("/apirijikid/user/initial-coint", controllers.CreatePoint)
+	app.Put("/apirijikid/user/initial-coint/:id", controllers.UpdatePoint)
+	app.Delete("/apirijikid/user/initial-coint/:id", controllers.DeletePoint)
+
 	// # role
 	app.Get("/apirijikid/roles", controllers.GetAllUserRoles)
 	app.Get("/apirijikid/role/:id", controllers.GetUserRoleByID)
