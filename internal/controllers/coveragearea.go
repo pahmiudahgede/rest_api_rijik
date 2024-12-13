@@ -78,7 +78,6 @@ func GetCoverageAreaByIDDistrict(c *fiber.Ctx) error {
 
 	coverageAreaResponse := dto.CoverageAreaDetailWithLocation{
 		ID:               coverageDetail.ID,
-		Province:         coverageDetail.Province,
 		District:         coverageDetail.District,
 		LocationSpecific: locationSpecificResponses,
 	}
@@ -87,5 +86,83 @@ func GetCoverageAreaByIDDistrict(c *fiber.Ctx) error {
 		fiber.StatusOK,
 		"Coverage areas detail by district has been fetched",
 		coverageAreaResponse,
+	))
+}
+
+func CreateCoverageArea(c *fiber.Ctx) error {
+	var request dto.CoverageAreaRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	coverageArea, err := services.CreateCoverageArea(request.Province)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to create coverage area",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage area has been created successfully",
+		coverageArea,
+	))
+}
+
+func CreateCoverageDetail(c *fiber.Ctx) error {
+	var request dto.CoverageDetailRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	coverageDetail, err := services.CreateCoverageDetail(request.CoverageAreaID, request.Province, request.District)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to create coverage detail",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage detail has been created successfully",
+		coverageDetail,
+	))
+}
+
+func CreateLocationSpecific(c *fiber.Ctx) error {
+	var request dto.LocationSpecificRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid input data",
+			nil,
+		))
+	}
+
+	locationSpecific, err := services.CreateLocationSpecific(request.CoverageDetailID, request.Subdistrict)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to create location specific",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Location specific has been created successfully",
+		locationSpecific,
 	))
 }
