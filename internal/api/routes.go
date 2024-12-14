@@ -84,4 +84,10 @@ func AppRouter(app *fiber.App) {
 	api.Post("/banner/create-banner", controllers.CreateBanner)
 	api.Put("/banner/update-banner/:id", controllers.UpdateBanner)
 	api.Delete("/banner/delete-banner/:id", controllers.DeleteBanner)
+
+	// # wilayah di indonesia #
+	api.Get("/wilayah-indonesia/provinces", controllers.GetProvinces)
+	api.Get("/wilayah-indonesia/regencies", controllers.GetRegencies)
+	api.Get("/wilayah-indonesia/subdistricts", controllers.GetDistricts)
+	api.Get("/wilayah-indonesia/villages", controllers.GetVillages)
 }
