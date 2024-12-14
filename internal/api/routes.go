@@ -90,4 +90,8 @@ func AppRouter(app *fiber.App) {
 	api.Get("/wilayah-indonesia/regencies", controllers.GetRegencies)
 	api.Get("/wilayah-indonesia/subdistricts", controllers.GetDistricts)
 	api.Get("/wilayah-indonesia/villages", controllers.GetVillages)
+	api.Get("/wilayah-indonesia/provinces/:id", controllers.GetProvinceByID)
+	api.Get("/wilayah-indonesia/regencies/:id", controllers.GetRegencyByID)
+	api.Get("/wilayah-indonesia/subdistricts/:id", controllers.GetDistrictByID)
+	api.Get("/wilayah-indonesia/villages/:id", controllers.GetVillageByID)
 }
