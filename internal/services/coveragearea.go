@@ -63,3 +63,27 @@ func CreateCoverageSubdistrict(coverageAreaID, coverageDistrictId, subdistrict s
 
 	return coverageSubdistrict, nil
 }
+
+func UpdateCoverageArea(id string, request domain.CoverageArea) (domain.CoverageArea, error) {
+	return repositories.UpdateCoverageArea(id, request)
+}
+
+func UpdateCoverageDistrict(id string, request domain.CoverageDistric) (domain.CoverageDistric, error) {
+	return repositories.UpdateCoverageDistrict(id, request)
+}
+
+func UpdateCoverageSubdistrict(id string, request domain.CoverageSubdistrict) (domain.CoverageSubdistrict, error) {
+	return repositories.UpdateCoverageSubdistrict(id, request)
+}
+
+func DeleteCoverageArea(id string) error {
+	return repositories.DeleteCoverageArea(id)
+}
+
+func DeleteCoverageDistrict(id string) error {
+	return repositories.DeleteCoverageDistrict(id)
+}
+
+func DeleteCoverageSubdistrict(id string) error {
+	return repositories.DeleteCoverageSubdistrict(id)
+}

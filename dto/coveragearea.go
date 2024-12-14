@@ -105,3 +105,15 @@ func NewCoverageSubdistrictCreateRequest(coverageAreaID, coverageDistrictId, sub
 		Subdistrict:        subdistrict,
 	}
 }
+
+type CoverageAreaUpdateRequest struct {
+	Province string `json:"province" validate:"required"`
+}
+
+type CoverageDistrictUpdateRequest struct {
+	District string `json:"district" validate:"required"`
+}
+
+type CoverageSubdistrictUpdateRequest struct {
+	Subdistrict string `json:"subdistrict" validate:"required"`
+}

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/pahmiudahgede/senggoldong/domain"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/services"
 	"github.com/pahmiudahgede/senggoldong/utils"
@@ -239,5 +240,170 @@ func CreateCoverageSubdistrict(c *fiber.Ctx) error {
 		fiber.StatusOK,
 		"Coverage subdistrict has been created",
 		coverageSubdistrictResponse,
+	))
+}
+
+func UpdateCoverageArea(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var request dto.CoverageAreaUpdateRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid request payload",
+			nil,
+		))
+	}
+
+	coverageArea, err := services.UpdateCoverageArea(id, domain.CoverageArea{
+		Province: request.Province,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to update coverage area",
+			nil,
+		))
+	}
+
+	coverageAreaResponse := dto.NewCoverageAreaResponse(
+		coverageArea.ID,
+		coverageArea.Province,
+		utils.FormatDateToIndonesianFormat(coverageArea.CreatedAt),
+		utils.FormatDateToIndonesianFormat(coverageArea.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage area has been updated",
+		coverageAreaResponse,
+	))
+}
+
+func UpdateCoverageDistrict(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var request dto.CoverageDistrictUpdateRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid request payload",
+			nil,
+		))
+	}
+
+	coverageDistrict, err := services.UpdateCoverageDistrict(id, domain.CoverageDistric{
+		District: request.District,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to update coverage district",
+			nil,
+		))
+	}
+
+	coverageDistrictResponse := dto.NewCoverageAreaResponse(
+		coverageDistrict.ID,
+		coverageDistrict.District,
+		utils.FormatDateToIndonesianFormat(coverageDistrict.CreatedAt),
+		utils.FormatDateToIndonesianFormat(coverageDistrict.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage district has been updated",
+		coverageDistrictResponse,
+	))
+}
+
+func UpdateCoverageSubdistrict(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var request dto.CoverageSubdistrictUpdateRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid request payload",
+			nil,
+		))
+	}
+
+	coverageSubdistrict, err := services.UpdateCoverageSubdistrict(id, domain.CoverageSubdistrict{
+		Subdistrict: request.Subdistrict,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to update coverage subdistrict",
+			nil,
+		))
+	}
+
+	coverageSubdistrictResponse := dto.NewSubdistrictResponse(
+		coverageSubdistrict.ID,
+		coverageSubdistrict.Subdistrict,
+		utils.FormatDateToIndonesianFormat(coverageSubdistrict.CreatedAt),
+		utils.FormatDateToIndonesianFormat(coverageSubdistrict.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage subdistrict has been updated",
+		coverageSubdistrictResponse,
+	))
+}
+
+func DeleteCoverageArea(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	if err := services.DeleteCoverageArea(id); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete coverage area",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage area has been deleted",
+		nil,
+	))
+}
+
+func DeleteCoverageDistrict(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	if err := services.DeleteCoverageDistrict(id); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete coverage district",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage district has been deleted",
+		nil,
+	))
+}
+
+func DeleteCoverageSubdistrict(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	if err := services.DeleteCoverageSubdistrict(id); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete coverage subdistrict",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage subdistrict has been deleted",
+		nil,
 	))
 }
