@@ -135,3 +135,109 @@ func GetCoverageAreaByIDDistrict(c *fiber.Ctx) error {
 		coverageAreaResponse,
 	))
 }
+
+func CreateCoverageArea(c *fiber.Ctx) error {
+	var request dto.CoverageAreaCreateRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid request payload",
+			nil,
+		))
+	}
+
+	coverageArea, err := services.CreateCoverageArea(request.Province)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to create coverage area",
+			nil,
+		))
+	}
+
+	coverageAreaResponse := dto.NewCoverageAreaResponse(
+		coverageArea.ID,
+		coverageArea.Province,
+		utils.FormatDateToIndonesianFormat(coverageArea.CreatedAt),
+		utils.FormatDateToIndonesianFormat(coverageArea.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage area has been created",
+		coverageAreaResponse,
+	))
+}
+
+func CreateCoverageDistrict(c *fiber.Ctx) error {
+	var request dto.CoverageDistrictCreateRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid request payload",
+			nil,
+		))
+	}
+
+	coverageDistrict, err := services.CreateCoverageDistrict(request.CoverageAreaID, request.District)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to create coverage district",
+			nil,
+		))
+	}
+
+	coverageDistrictResponse := dto.NewCoverageAreaResponse(
+		coverageDistrict.ID,
+		coverageDistrict.District,
+		utils.FormatDateToIndonesianFormat(coverageDistrict.CreatedAt),
+		utils.FormatDateToIndonesianFormat(coverageDistrict.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage district has been created",
+		coverageDistrictResponse,
+	))
+}
+
+func CreateCoverageSubdistrict(c *fiber.Ctx) error {
+
+	var request dto.CoverageSubdistrictCreateRequest
+	if err := c.BodyParser(&request); err != nil {
+
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid request payload",
+			nil,
+		))
+	}
+
+	coverageSubdistrict, err := services.CreateCoverageSubdistrict(
+		request.CoverageAreaID,
+		request.CoverageDistrictId,
+		request.Subdistrict,
+	)
+	if err != nil {
+
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to create coverage subdistrict",
+			nil,
+		))
+	}
+
+	coverageSubdistrictResponse := dto.NewCoverageAreaResponse(
+		coverageSubdistrict.ID,
+		coverageSubdistrict.Subdistrict,
+		utils.FormatDateToIndonesianFormat(coverageSubdistrict.CreatedAt),
+		utils.FormatDateToIndonesianFormat(coverageSubdistrict.UpdatedAt),
+	)
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Coverage subdistrict has been created",
+		coverageSubdistrictResponse,
+	))
+}

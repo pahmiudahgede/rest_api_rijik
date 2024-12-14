@@ -44,3 +44,24 @@ func GetSubdistrictsByCoverageDistrictID(districtID string) ([]domain.CoverageSu
 	}
 	return subdistricts, nil
 }
+
+func CreateCoverageArea(coverageArea *domain.CoverageArea) error {
+	if err := config.DB.Create(&coverageArea).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateCoverageDistrict(coverageDistrict *domain.CoverageDistric) error {
+	if err := config.DB.Create(&coverageDistrict).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateCoverageSubdistrict(coverageSubdistrict *domain.CoverageSubdistrict) error {
+	if err := config.DB.Create(&coverageSubdistrict).Error; err != nil {
+		return err
+	}
+	return nil
+}

@@ -69,3 +69,39 @@ func NewSubdistrictResponse(id, subdistrict, createdAt, updatedAt string) Subdis
 		UpdatedAt:   updatedAt,
 	}
 }
+
+type CoverageAreaCreateRequest struct {
+	Province string `json:"province" validate:"required"`
+}
+
+func NewCoverageAreaCreateRequest(province string) CoverageAreaCreateRequest {
+	return CoverageAreaCreateRequest{
+		Province: province,
+	}
+}
+
+type CoverageDistrictCreateRequest struct {
+	CoverageAreaID string `json:"coverage_area_id" validate:"required"`
+	District       string `json:"district" validate:"required"`
+}
+
+func NewCoverageDistrictCreateRequest(coverageAreaID, district string) CoverageDistrictCreateRequest {
+	return CoverageDistrictCreateRequest{
+		CoverageAreaID: coverageAreaID,
+		District:       district,
+	}
+}
+
+type CoverageSubdistrictCreateRequest struct {
+	CoverageAreaID     string `json:"coverage_area_id" validate:"required"`
+	CoverageDistrictId string `json:"coverage_district_id" validate:"required"`
+	Subdistrict        string `json:"subdistrict" validate:"required"`
+}
+
+func NewCoverageSubdistrictCreateRequest(coverageAreaID, coverageDistrictId, subdistrict string) CoverageSubdistrictCreateRequest {
+	return CoverageSubdistrictCreateRequest{
+		CoverageAreaID:     coverageAreaID,
+		CoverageDistrictId: coverageDistrictId,
+		Subdistrict:        subdistrict,
+	}
+}
