@@ -13,12 +13,12 @@ func GetCoverageAreas() ([]domain.CoverageArea, error) {
 	return coverageAreas, nil
 }
 
-func GetCoverageDistricsByCoverageAreaID(areaID string) ([]domain.CoverageDistric, error) {
-	var districts []domain.CoverageDistric
-	if err := config.DB.Where("coverage_area_id = ?", areaID).Find(&districts).Error; err != nil {
-		return nil, err
+func GetCoverageAreaByID(id string) (domain.CoverageArea, error) {
+	var coverageArea domain.CoverageArea
+	if err := config.DB.Where("id = ?", id).First(&coverageArea).Error; err != nil {
+		return coverageArea, err
 	}
-	return districts, nil
+	return coverageArea, nil
 }
 
 func GetCoverageAreaByDistrictID(id string) (domain.CoverageDistric, error) {
@@ -29,12 +29,12 @@ func GetCoverageAreaByDistrictID(id string) (domain.CoverageDistric, error) {
 	return coverageDistric, nil
 }
 
-func GetCoverageAreaByID(id string) (domain.CoverageArea, error) {
-	var coverageArea domain.CoverageArea
-	if err := config.DB.Where("id = ?", id).First(&coverageArea).Error; err != nil {
-		return coverageArea, err
+func GetCoverageDistricsByCoverageAreaID(areaID string) ([]domain.CoverageDistric, error) {
+	var districts []domain.CoverageDistric
+	if err := config.DB.Where("coverage_area_id = ?", areaID).Find(&districts).Error; err != nil {
+		return nil, err
 	}
-	return coverageArea, nil
+	return districts, nil
 }
 
 func GetSubdistrictsByCoverageDistrictID(districtID string) ([]domain.CoverageSubdistrict, error) {
