@@ -25,7 +25,6 @@ func GetProvinces() ([]domain.Province, error) {
 	return provinces, nil
 }
 
-// GetRegencies reads the regencies data from CSV and returns a slice of Regency
 func GetRegencies() ([]domain.Regency, error) {
 	records, err := utils.ReadCSV("public/document/regencies.csv")
 	if err != nil {
@@ -45,7 +44,6 @@ func GetRegencies() ([]domain.Regency, error) {
 	return regencies, nil
 }
 
-// GetDistricts reads the districts data from CSV and returns a slice of District
 func GetDistricts() ([]domain.District, error) {
 	records, err := utils.ReadCSV("public/document/districts.csv")
 	if err != nil {
@@ -65,7 +63,6 @@ func GetDistricts() ([]domain.District, error) {
 	return districts, nil
 }
 
-// GetVillages reads the villages data from CSV and returns a slice of Village
 func GetVillages() ([]domain.Village, error) {
 	records, err := utils.ReadCSV("public/document/villages.csv")
 	if err != nil {
@@ -85,8 +82,7 @@ func GetVillages() ([]domain.Village, error) {
 	return villages, nil
 }
 
-
-func FindProvinceByID(id string) (domain.Province, error) {
+func GetProvinceByID(id string) (domain.Province, error) {
 	provinces, err := GetProvinces()
 	if err != nil {
 		return domain.Province{}, err
@@ -94,13 +90,20 @@ func FindProvinceByID(id string) (domain.Province, error) {
 
 	for _, province := range provinces {
 		if province.ID == id {
+
+			regencies, err := GetRegenciesByProvinceID(id)
+			if err != nil {
+				return domain.Province{}, err
+			}
+
+			province.ListRegency = regencies
 			return province, nil
 		}
 	}
 	return domain.Province{}, errors.New("province not found")
 }
 
-func FindRegencyByID(id string) (domain.Regency, error) {
+func GetRegencyByID(id string) (domain.Regency, error) {
 	regencies, err := GetRegencies()
 	if err != nil {
 		return domain.Regency{}, err
@@ -108,13 +111,20 @@ func FindRegencyByID(id string) (domain.Regency, error) {
 
 	for _, regency := range regencies {
 		if regency.ID == id {
+
+			districts, err := GetDistrictsByRegencyID(id)
+			if err != nil {
+				return domain.Regency{}, err
+			}
+
+			regency.ListDistrict = districts
 			return regency, nil
 		}
 	}
 	return domain.Regency{}, errors.New("regency not found")
 }
 
-func FindDistrictByID(id string) (domain.District, error) {
+func GetDistrictByID(id string) (domain.District, error) {
 	districts, err := GetDistricts()
 	if err != nil {
 		return domain.District{}, err
@@ -122,13 +132,20 @@ func FindDistrictByID(id string) (domain.District, error) {
 
 	for _, district := range districts {
 		if district.ID == id {
+
+			villages, err := GetVillagesByDistrictID(id)
+			if err != nil {
+				return domain.District{}, err
+			}
+
+			district.ListVillage = villages
 			return district, nil
 		}
 	}
 	return domain.District{}, errors.New("district not found")
 }
 
-func FindVillageByID(id string) (domain.Village, error) {
+func GetVillageByID(id string) (domain.Village, error) {
 	villages, err := GetVillages()
 	if err != nil {
 		return domain.Village{}, err
@@ -140,4 +157,49 @@ func FindVillageByID(id string) (domain.Village, error) {
 		}
 	}
 	return domain.Village{}, errors.New("village not found")
+}
+
+func GetRegenciesByProvinceID(provinceID string) ([]domain.Regency, error) {
+	regencies, err := GetRegencies()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []domain.Regency
+	for _, regency := range regencies {
+		if regency.ProvinceID == provinceID {
+			result = append(result, regency)
+		}
+	}
+	return result, nil
+}
+
+func GetDistrictsByRegencyID(regencyID string) ([]domain.District, error) {
+	districts, err := GetDistricts()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []domain.District
+	for _, district := range districts {
+		if district.RegencyID == regencyID {
+			result = append(result, district)
+		}
+	}
+	return result, nil
+}
+
+func GetVillagesByDistrictID(districtID string) ([]domain.Village, error) {
+	villages, err := GetVillages()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []domain.Village
+	for _, village := range villages {
+		if village.DistrictID == districtID {
+			result = append(result, village)
+		}
+	}
+	return result, nil
 }
