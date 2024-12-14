@@ -39,11 +39,7 @@ func GetUserInitialCoint(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Points fetched successfully",
-		struct {
-			Points []dto.PointResponse `json:"points"`
-		}{
-			Points: pointResponses,
-		},
+		pointResponses,
 	))
 
 }

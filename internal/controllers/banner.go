@@ -34,11 +34,7 @@ func GetBanners(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Banners fetched successfully",
-		struct {
-			Banners []dto.BannerResponse `json:"banners"`
-		}{
-			Banners: bannerResponses,
-		},
+		bannerResponses,
 	))
 }
 
