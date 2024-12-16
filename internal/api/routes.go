@@ -94,4 +94,8 @@ func AppRouter(app *fiber.App) {
 	api.Get("/wilayah-indonesia/regencies/:id", controllers.GetRegencyByID)
 	api.Get("/wilayah-indonesia/subdistricts/:id", controllers.GetDistrictByID)
 	api.Get("/wilayah-indonesia/villages/:id", controllers.GetVillageByID)
+
+	// # request pickup by user (masyarakat) #
+	api.Get("/requestpickup", middleware.AuthMiddleware, controllers.GetRequestPickupsByUser)
+	// api.Post("/addrequestpickup", middleware.AuthMiddleware, controllers.CreateRequestPickup)
 }
