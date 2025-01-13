@@ -5,9 +5,23 @@ import (
 	"github.com/pahmiudahgede/senggoldong/domain"
 )
 
-func GetRequestPickupsByUser(userID string) ([]domain.RequestPickup, error) {
-	var requestPickups []domain.RequestPickup
+type RequestPickupRepository interface {
+	Create(request *domain.RequestPickup) error
+	GetByUserID(userID string) ([]domain.RequestPickup, error)
+}
 
+type requestPickupRepository struct {}
+
+func NewRequestPickupRepository() RequestPickupRepository {
+	return &requestPickupRepository{}
+}
+
+func (r *requestPickupRepository) Create(request *domain.RequestPickup) error {
+	return config.DB.Create(request).Error
+}
+
+func (r *requestPickupRepository) GetByUserID(userID string) ([]domain.RequestPickup, error) {
+	var requestPickups []domain.RequestPickup
 	err := config.DB.Preload("Request").
 		Preload("Request.TrashCategory").
 		Preload("UserAddress").
@@ -20,3 +34,4 @@ func GetRequestPickupsByUser(userID string) ([]domain.RequestPickup, error) {
 
 	return requestPickups, nil
 }
+

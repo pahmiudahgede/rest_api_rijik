@@ -1,5 +1,11 @@
 package dto
 
+type RequestPickupRequest struct {
+	RequestItems  []RequestItemDTO `json:"request_items"`
+	RequestTime   string           `json:"requestTime"`
+	UserAddressID string           `json:"userAddressId"`
+}
+
 type RequestPickupResponse struct {
 	ID            string           `json:"id"`
 	UserID        string           `json:"userId"`
@@ -10,8 +16,8 @@ type RequestPickupResponse struct {
 }
 
 type RequestItemDTO struct {
-	TrashCategory   string `json:"trash_category"`
-	EstimatedAmount string `json:"estimated_quantity"`
+	TrashCategory   string `json:"trashCategory"`
+	EstimatedAmount string `json:"estimatedAmount"`
 }
 
 type UserAddressDTO struct {

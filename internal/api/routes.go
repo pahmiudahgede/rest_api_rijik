@@ -97,5 +97,5 @@ func AppRouter(app *fiber.App) {
 
 	// # request pickup by user (masyarakat) #
 	api.Get("/requestpickup", middleware.AuthMiddleware, controllers.GetRequestPickupsByUser)
-	// api.Post("/addrequestpickup", middleware.AuthMiddleware, controllers.CreateRequestPickup)
+	api.Post("/addrequestpickup", middleware.AuthMiddleware, controllers.CreateRequestPickup)
 }

@@ -5,7 +5,18 @@ import (
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
 )
 
-func GetRequestPickupsByUser(userID string) ([]domain.RequestPickup, error) {
+type RequestPickupService struct {
+	repository repositories.RequestPickupRepository
+}
 
-	return repositories.GetRequestPickupsByUser(userID)
+func NewRequestPickupService(repository repositories.RequestPickupRepository) *RequestPickupService {
+	return &RequestPickupService{repository: repository}
+}
+
+func (s *RequestPickupService) CreateRequestPickup(request *domain.RequestPickup) error {
+	return s.repository.Create(request)
+}
+
+func (s *RequestPickupService) GetRequestPickupsByUser(userID string) ([]domain.RequestPickup, error) {
+	return s.repository.GetByUserID(userID)
 }
