@@ -2,10 +2,11 @@ package domain
 
 import "time"
 
+
 type RequestPickup struct {
 	ID            string        `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
 	UserID        string        `gorm:"type:uuid;not null" json:"userId"`
-	Request       []RequestItem `gorm:"foreignKey:RequestPickupID" json:"request"`
+	Request       []RequestItem `gorm:"foreignKey:RequestPickupID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"request"`
 	RequestTime   string        `gorm:"type:text;not null" json:"requestTime"`
 	UserAddressID string        `gorm:"type:uuid;not null" json:"userAddressId"`
 	UserAddress   Address       `gorm:"foreignKey:UserAddressID" json:"userAddress"`
@@ -16,7 +17,7 @@ type RequestPickup struct {
 
 type RequestItem struct {
 	ID              string        `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
-	RequestPickupID string        `gorm:"type:uuid;not null" json:"requestPickupId"`
+	RequestPickupID string        `gorm:"type:uuid;not null;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"requestPickupId"`
 	TrashCategoryID string        `gorm:"type:uuid;not null" json:"trashCategoryId"`
 	TrashCategory   TrashCategory `gorm:"foreignKey:TrashCategoryID" json:"trashCategory"`
 	EstimatedAmount string        `gorm:"type:text;not null" json:"estimatedAmount"`
