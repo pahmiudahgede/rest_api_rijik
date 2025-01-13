@@ -9,6 +9,8 @@ type RequestPickupRepository interface {
 	Create(request *domain.RequestPickup) error
 	GetByID(id string) (*domain.RequestPickup, error)
 	GetByUserID(userID string) ([]domain.RequestPickup, error)
+	DeleteByID(id string) error
+	ExistsByID(id string) (bool, error) 
 }
 
 type requestPickupRepository struct{}
@@ -46,4 +48,17 @@ func (r *requestPickupRepository) GetByUserID(userID string) ([]domain.RequestPi
 	}
 
 	return requestPickups, nil
+}
+
+func (r *requestPickupRepository) ExistsByID(id string) (bool, error) {
+	var count int64
+	if err := config.DB.Model(&domain.RequestPickup{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+
+func (r *requestPickupRepository) DeleteByID(id string) error {
+	return config.DB.Where("id = ?", id).Delete(&domain.RequestPickup{}).Error
 }

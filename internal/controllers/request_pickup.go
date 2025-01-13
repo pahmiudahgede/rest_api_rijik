@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/domain"
 	"github.com/pahmiudahgede/senggoldong/dto"
@@ -164,5 +166,38 @@ func CreateRequestPickup(c *fiber.Ctx) error {
 		fiber.StatusCreated,
 		"Request pickup created successfully",
 		response,
+	))
+}
+
+func DeleteRequestPickup(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Missing required ID",
+			nil,
+		))
+	}
+
+	service := services.NewRequestPickupService(repositories.NewRequestPickupRepository())
+	if err := service.DeleteRequestPickupByID(id); err != nil {
+		if err.Error() == fmt.Sprintf("request pickup with id %s not found", id) {
+			return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+				fiber.StatusNotFound,
+				"Request pickup not found",
+				nil,
+			))
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete request pickup",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Request pickup deleted successfully",
+		nil,
 	))
 }
