@@ -17,6 +17,10 @@ func (s *RequestPickupService) CreateRequestPickup(request *domain.RequestPickup
 	return s.repository.Create(request)
 }
 
+func (s *RequestPickupService) GetRequestPickupByID(id string) (*domain.RequestPickup, error) {
+	return s.repository.GetByID(id)
+}
+
 func (s *RequestPickupService) GetRequestPickupsByUser(userID string) ([]domain.RequestPickup, error) {
 	return s.repository.GetByUserID(userID)
 }

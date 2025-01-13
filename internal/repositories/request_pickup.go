@@ -7,10 +7,11 @@ import (
 
 type RequestPickupRepository interface {
 	Create(request *domain.RequestPickup) error
+	GetByID(id string) (*domain.RequestPickup, error)
 	GetByUserID(userID string) ([]domain.RequestPickup, error)
 }
 
-type requestPickupRepository struct {}
+type requestPickupRepository struct{}
 
 func NewRequestPickupRepository() RequestPickupRepository {
 	return &requestPickupRepository{}
@@ -18,6 +19,18 @@ func NewRequestPickupRepository() RequestPickupRepository {
 
 func (r *requestPickupRepository) Create(request *domain.RequestPickup) error {
 	return config.DB.Create(request).Error
+}
+
+func (r *requestPickupRepository) GetByID(id string) (*domain.RequestPickup, error) {
+	var requestPickup domain.RequestPickup
+	if err := config.DB.Preload("Request").
+		Preload("Request.TrashCategory").
+		Preload("UserAddress").
+		Where("id = ?", id).
+		First(&requestPickup).Error; err != nil {
+		return nil, err
+	}
+	return &requestPickup, nil
 }
 
 func (r *requestPickupRepository) GetByUserID(userID string) ([]domain.RequestPickup, error) {
@@ -34,4 +47,3 @@ func (r *requestPickupRepository) GetByUserID(userID string) ([]domain.RequestPi
 
 	return requestPickups, nil
 }
-

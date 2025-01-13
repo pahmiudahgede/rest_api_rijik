@@ -13,6 +13,8 @@ type RequestPickupResponse struct {
 	RequestTime   string           `json:"requestTimePickup"`
 	UserAddress   UserAddressDTO   `json:"userAddress"`
 	StatusRequest string           `json:"status"`
+	CreatedAt     string           `json:"createdAt"`
+	UpdatedAt     string           `json:"updatedAt"`
 }
 
 type RequestItemDTO struct {
@@ -30,7 +32,7 @@ type UserAddressDTO struct {
 	Geography   string `json:"geography"`
 }
 
-func NewRequestPickupResponse(id, userID, requestTime, statusRequest string, request []RequestItemDTO, userAddress UserAddressDTO) RequestPickupResponse {
+func NewRequestPickupResponse(id, userID, requestTime, statusRequest string, request []RequestItemDTO, userAddress UserAddressDTO, createdAt, updatedAt string) RequestPickupResponse {
 	return RequestPickupResponse{
 		ID:            id,
 		UserID:        userID,
@@ -38,5 +40,7 @@ func NewRequestPickupResponse(id, userID, requestTime, statusRequest string, req
 		RequestTime:   requestTime,
 		UserAddress:   userAddress,
 		StatusRequest: statusRequest,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
 	}
 }
