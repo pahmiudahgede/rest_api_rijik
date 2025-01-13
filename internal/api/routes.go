@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/internal/controllers"
 	"github.com/pahmiudahgede/senggoldong/internal/middleware"
+	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 func AppRouter(app *fiber.App) {
@@ -35,8 +36,8 @@ func AppRouter(app *fiber.App) {
 	api.Delete("/coverage-areas-subdistrict/:id", controllers.DeleteCoverageSubdistrict)
 
 	// # role #
-	api.Get("/roles", controllers.GetAllUserRoles)
-	api.Get("/role/:id", controllers.GetUserRoleByID)
+	api.Get("/roles", middleware.RoleRequired(utils.RoleAdministrator), controllers.GetAllUserRoles)
+	api.Get("/role/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.GetUserRoleByID)
 
 	// # authentication #
 	api.Post("/register", controllers.Register)

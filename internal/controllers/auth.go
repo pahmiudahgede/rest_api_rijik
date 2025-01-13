@@ -70,7 +70,6 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&credentials); err != nil {
-
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
 			"Invalid input data",
@@ -78,9 +77,17 @@ func Login(c *fiber.Ctx) error {
 		))
 	}
 
+	user, err := repositories.GetUserByEmailOrUsername(credentials.EmailOrUsername)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			err.Error(),
+			nil,
+		))
+	}
+
 	token, err := services.LoginUser(credentials.EmailOrUsername, credentials.Password)
 	if err != nil {
-
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 			fiber.StatusUnauthorized,
 			err.Error(),
@@ -91,7 +98,10 @@ func Login(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Login successful",
-		map[string]string{"token": token},
+		map[string]interface{}{
+			"token": token,
+			"role":  user.RoleID,
+		},
 	))
 }
 
