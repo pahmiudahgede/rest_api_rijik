@@ -8,44 +8,37 @@ import (
 	"github.com/pahmiudahgede/senggoldong/domain"
 )
 
-func IsEmailExist(email string) bool {
+func IsEmailExist(email, roleId string) bool {
 	var user domain.User
 	if err := config.DB.Where("email = ?", email).First(&user).Error; err == nil {
-		return true
+		if user.RoleID == roleId {
+			return true
+		}
 	}
 	return false
 }
 
-func IsUsernameExist(username string) bool {
+func IsUsernameExist(username, roleId string) bool {
 	var user domain.User
 	if err := config.DB.Where("username = ?", username).First(&user).Error; err == nil {
-		return true
+		if user.RoleID == roleId {
+			return true
+		}
 	}
 	return false
 }
 
-func IsPhoneExist(phone string) bool {
+func IsPhoneExist(phone, roleId string) bool {
 	var user domain.User
 	if err := config.DB.Where("phone = ?", phone).First(&user).Error; err == nil {
-		return true
+		if user.RoleID == roleId {
+			return true
+		}
 	}
 	return false
 }
 
 func CreateUser(username, name, email, phone, password, roleId string) error {
-
-	if IsEmailExist(email) {
-		return errors.New("email is already registered")
-	}
-
-	if IsUsernameExist(username) {
-		return errors.New("username is already registered")
-	}
-
-	if IsPhoneExist(phone) {
-		return errors.New("phone number is already registered")
-	}
-
 	user := domain.User{
 		Username: username,
 		Name:     name,
@@ -62,11 +55,17 @@ func CreateUser(username, name, email, phone, password, roleId string) error {
 	return nil
 }
 
-func GetUserByEmailOrUsername(emailOrUsername string) (domain.User, error) {
+func GetUserByEmailUsernameOrPhone(identifier, roleId string) (domain.User, error) {
 	var user domain.User
-	if err := config.DB.Where("email = ? OR username = ?", emailOrUsername, emailOrUsername).First(&user).Error; err != nil {
+	err := config.DB.Where("email = ? OR username = ? OR phone = ?", identifier, identifier, identifier).First(&user).Error
+	if err != nil {
 		return user, errors.New("user not found")
 	}
+
+	if roleId != "" && user.RoleID != roleId {
+		return user, errors.New("identifier found but role does not match")
+	}
+
 	return user, nil
 }
 
@@ -85,8 +84,9 @@ func GetUserByID(userID string) (domain.User, error) {
 }
 
 func UpdateUser(user *domain.User) error {
+
 	if err := config.DB.Save(user).Error; err != nil {
-		return errors.New("failed to save user")
+		return errors.New("failed to update user")
 	}
 	return nil
 }

@@ -29,14 +29,14 @@ func Register(c *fiber.Ctx) error {
 
 	err := services.RegisterUser(userInput.Username, userInput.Name, userInput.Email, userInput.Phone, userInput.Password, userInput.ConfirmPassword, userInput.RoleId)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
-			fiber.StatusInternalServerError,
+		return c.Status(fiber.StatusConflict).JSON(utils.FormatResponse(
+			fiber.StatusConflict,
 			err.Error(),
 			nil,
 		))
 	}
 
-	user, err := repositories.GetUserByEmailOrUsername(userInput.Email)
+	user, err := repositories.GetUserByEmailUsernameOrPhone(userInput.Email, userInput.RoleId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
@@ -65,8 +65,8 @@ func Register(c *fiber.Ctx) error {
 
 func Login(c *fiber.Ctx) error {
 	var credentials struct {
-		EmailOrUsername string `json:"email_or_username"`
-		Password        string `json:"password"`
+		Identifier string `json:"identifier"`
+		Password   string `json:"password"`
 	}
 
 	if err := c.BodyParser(&credentials); err != nil {
@@ -77,7 +77,7 @@ func Login(c *fiber.Ctx) error {
 		))
 	}
 
-	user, err := repositories.GetUserByEmailOrUsername(credentials.EmailOrUsername)
+	token, err := services.LoginUser(credentials.Identifier, credentials.Password)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 			fiber.StatusUnauthorized,
@@ -86,7 +86,7 @@ func Login(c *fiber.Ctx) error {
 		))
 	}
 
-	token, err := services.LoginUser(credentials.EmailOrUsername, credentials.Password)
+	user, err := repositories.GetUserByEmailUsernameOrPhone(credentials.Identifier, "")
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 			fiber.StatusUnauthorized,
@@ -154,12 +154,19 @@ func UpdateUser(c *fiber.Ctx) error {
 		))
 	}
 
-	userID := c.Locals("userID").(string)
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Unauthorized access",
+			nil,
+		))
+	}
 
 	err := services.UpdateUser(userID, userInput.Email, userInput.Username, userInput.Name, userInput.Phone)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
-			fiber.StatusInternalServerError,
+		return c.Status(fiber.StatusConflict).JSON(utils.FormatResponse(
+			fiber.StatusConflict,
 			err.Error(),
 			nil,
 		))

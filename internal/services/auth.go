@@ -12,18 +12,21 @@ import (
 )
 
 func RegisterUser(username, name, email, phone, password, confirmPassword, roleId string) error {
+
 	if password != confirmPassword {
 		return errors.New("password dan confirm password tidak cocok")
 	}
 
-	if repositories.IsEmailExist(email) {
-		return errors.New("email is already registered")
+	if repositories.IsEmailExist(email, roleId) {
+		return errors.New("email is already registered with the same role")
 	}
-	if repositories.IsUsernameExist(username) {
-		return errors.New("username is already registered")
+
+	if repositories.IsUsernameExist(username, roleId) {
+		return errors.New("username is already registered with the same role")
 	}
-	if repositories.IsPhoneExist(phone) {
-		return errors.New("phone number is already registered")
+
+	if repositories.IsPhoneExist(phone, roleId) {
+		return errors.New("phone number is already registered with the same role")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -39,19 +42,21 @@ func RegisterUser(username, name, email, phone, password, confirmPassword, roleI
 	return nil
 }
 
-func LoginUser(emailOrUsername, password string) (string, error) {
-	if emailOrUsername == "" || password == "" {
-		return "", errors.New("email/username and password must be provided")
+func LoginUser(identifier, password string) (string, error) {
+	if identifier == "" || password == "" {
+		return "", errors.New("email/username/phone and password must be provided")
 	}
 
-	user, err := repositories.GetUserByEmailOrUsername(emailOrUsername)
+	const roleId = ""
+
+	user, err := repositories.GetUserByEmailUsernameOrPhone(identifier, roleId)
 	if err != nil {
-		return "", errors.New("invalid email/username or password")
+		return "", errors.New("invalid email/username/phone or password")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return "", errors.New("invalid email/username or password")
+		return "", errors.New("invalid email/username/phone or password")
 	}
 
 	token := generateJWT(user.ID, user.RoleID)
@@ -90,29 +95,29 @@ func UpdateUser(userID, email, username, name, phone string) error {
 		return errors.New("user not found")
 	}
 
-	if email != "" && email != user.Email && repositories.IsEmailExist(email) {
-		return errors.New("email is already registered")
-	}
-
-	if username != "" && username != user.Username && repositories.IsUsernameExist(username) {
-		return errors.New("username is already registered")
-	}
-
-	if phone != "" && phone != user.Phone && repositories.IsPhoneExist(phone) {
-		return errors.New("phone number is already registered")
-	}
-
-	if email != "" {
+	if email != "" && email != user.Email {
+		if repositories.IsEmailExist(email, user.RoleID) {
+			return errors.New("email is already registered with the same role")
+		}
 		user.Email = email
 	}
-	if username != "" {
+
+	if username != "" && username != user.Username {
+		if repositories.IsUsernameExist(username, user.RoleID) {
+			return errors.New("username is already registered with the same role")
+		}
 		user.Username = username
 	}
+
+	if phone != "" && phone != user.Phone {
+		if repositories.IsPhoneExist(phone, user.RoleID) {
+			return errors.New("phone number is already registered with the same role")
+		}
+		user.Phone = phone
+	}
+
 	if name != "" {
 		user.Name = name
-	}
-	if phone != "" {
-		user.Phone = phone
 	}
 
 	err = repositories.UpdateUser(&user)
@@ -133,6 +138,11 @@ func UpdatePassword(userID, oldPassword, newPassword string) error {
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword))
 	if err != nil {
 		return errors.New("old password is incorrect")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(newPassword))
+	if err == nil {
+		return errors.New("new password cannot be the same as the old password")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
