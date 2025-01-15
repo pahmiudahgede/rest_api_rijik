@@ -110,4 +110,6 @@ func AppRouter(app *fiber.App) {
 	api.Get("/post/products", middleware.RoleRequired(utils.RolePengepul), controllers.GetAllProducts)
 	api.Get("/post/product/:productid", middleware.RoleRequired(utils.RolePengepul), controllers.GetProductByID)
 	api.Post("/post/addproduct", middleware.RoleRequired(utils.RolePengepul), controllers.CreateProduct)
+	api.Put("/post/product/:productid", middleware.RoleRequired(utils.RolePengepul), controllers.UpdateProduct)
+	api.Delete("/delete/product/:productid", middleware.RoleRequired(utils.RolePengepul), controllers.DeleteProduct)
 }
