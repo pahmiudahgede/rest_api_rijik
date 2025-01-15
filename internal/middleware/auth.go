@@ -12,7 +12,6 @@ import (
 
 func RoleRequired(roles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-
 		tokenString := c.Get("Authorization")
 		if tokenString == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
@@ -47,7 +46,26 @@ func RoleRequired(roles ...string) fiber.Handler {
 			))
 		}
 
-		role := claims["role"].(string)
+		userID, ok := claims["sub"].(string)
+		if !ok || userID == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+				fiber.StatusUnauthorized,
+				"Invalid or missing user ID in token",
+				nil,
+			))
+		}
+
+		role, ok := claims["role"].(string)
+		if !ok || role == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+				fiber.StatusUnauthorized,
+				"Invalid or missing role in token",
+				nil,
+			))
+		}
+
+		c.Locals("userID", userID)
+		c.Locals("role", role)
 
 		for _, r := range roles {
 			if r == role {

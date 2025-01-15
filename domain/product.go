@@ -6,7 +6,7 @@ type Product struct {
 	ID              string         `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
 	UserID          string         `gorm:"type:uuid;not null" json:"user_id"`
 	ProductTitle    string         `gorm:"not null" json:"product_title"`
-	ProductImages   []ProductImage `gorm:"foreignKey:ProductID" json:"product_images"`
+	ProductImages   []ProductImage `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE;" json:"product_images"`
 	TrashDetailID   string         `gorm:"type:uuid;not null" json:"trash_detail_id"`
 	TrashDetail     TrashDetail    `gorm:"foreignKey:TrashDetailID" json:"trash_detail"`
 	SalePrice       int64          `gorm:"not null" json:"sale_price"`

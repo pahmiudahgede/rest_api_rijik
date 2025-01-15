@@ -8,6 +8,15 @@ import (
 )
 
 func GetAllProducts(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Unauthorized: user ID is missing",
+			nil,
+		))
+	}
+
 	limit := c.QueryInt("limit", 0)
 	page := c.QueryInt("page", 1)
 
@@ -19,15 +28,7 @@ func GetAllProducts(c *fiber.Ctx) error {
 		))
 	}
 
-	var products []dto.ProductResponseDTO
-	var err error
-
-	if limit == 0 {
-		products, err = services.GetProducts(0, 0)
-	} else {
-		products, err = services.GetProducts(limit, page)
-	}
-
+	products, err := services.GetProductsByUserID(userID, limit, page)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
@@ -44,6 +45,15 @@ func GetAllProducts(c *fiber.Ctx) error {
 }
 
 func GetProductByID(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Unauthorized: user ID is missing",
+			nil,
+		))
+	}
+
 	productID := c.Params("productid")
 	if productID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
@@ -53,7 +63,7 @@ func GetProductByID(c *fiber.Ctx) error {
 		))
 	}
 
-	product, err := services.GetProductByID(productID)
+	product, err := services.GetProductByIDAndUserID(productID, userID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
 			fiber.StatusNotFound,
@@ -65,6 +75,41 @@ func GetProductByID(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Product fetched successfully",
+		product,
+	))
+}
+
+func CreateProduct(c *fiber.Ctx) error {
+	var input dto.CreateProductRequestDTO
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"lengkapi data dengan benar",
+			nil,
+		))
+	}
+
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Unauthorized: user ID is missing",
+			nil,
+		))
+	}
+
+	product, err := services.CreateProduct(input, userID)
+	if err != nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(utils.FormatResponse(
+			fiber.StatusUnprocessableEntity,
+			err.Error(),
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(utils.FormatResponse(
+		fiber.StatusCreated,
+		"Product created successfully",
 		product,
 	))
 }

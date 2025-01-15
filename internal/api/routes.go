@@ -102,11 +102,12 @@ func AppRouter(app *fiber.App) {
 	api.Get("/wilayah-indonesia/villages/:id", controllers.GetVillageByID)
 
 	// # request pickup by user (masyarakat) #
-	api.Get("/requestpickup", middleware.RoleRequired(utils.RoleMasyarakat), controllers.GetRequestPickupsByUser)
+	api.Get("/requestpickup", middleware.RoleRequired(utils.RoleMasyarakat, utils.RolePengepul), controllers.GetRequestPickupsByUser)
 	api.Post("/addrequestpickup", middleware.RoleRequired(utils.RoleMasyarakat), controllers.CreateRequestPickup)
 	api.Delete("/deleterequestpickup/:id", middleware.RoleRequired(utils.RoleMasyarakat), controllers.DeleteRequestPickup)
 
 	// # product post by pengepul
 	api.Get("/post/products", middleware.RoleRequired(utils.RolePengepul), controllers.GetAllProducts)
 	api.Get("/post/product/:productid", middleware.RoleRequired(utils.RolePengepul), controllers.GetProductByID)
+	api.Post("/post/addproduct", middleware.RoleRequired(utils.RolePengepul), controllers.CreateProduct)
 }
