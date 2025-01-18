@@ -5,6 +5,8 @@ import "time"
 type Product struct {
 	ID              string         `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
 	UserID          string         `gorm:"type:uuid;not null" json:"user_id"`
+	StoreID         string         `gorm:"type:uuid;not null" json:"store_id"`
+	Store           Store          `gorm:"foreignKey:StoreID" json:"store"`
 	ProductTitle    string         `gorm:"not null" json:"product_title"`
 	ProductImages   []ProductImage `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE;" json:"product_images"`
 	TrashDetailID   string         `gorm:"type:uuid;not null" json:"trash_detail_id"`

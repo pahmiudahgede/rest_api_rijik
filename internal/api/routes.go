@@ -109,7 +109,12 @@ func AppRouter(app *fiber.App) {
 	// # product post by pengepul
 	api.Get("/post/products", middleware.RoleRequired(utils.RolePengepul), controllers.GetAllProducts)
 	api.Get("/post/product/:productid", middleware.RoleRequired(utils.RolePengepul), controllers.GetProductByID)
+	api.Get("/view/product/:storeid", middleware.RoleRequired(utils.RolePengepul), controllers.GetProductsByStore)
 	api.Post("/post/addproduct", middleware.RoleRequired(utils.RolePengepul), controllers.CreateProduct)
 	api.Put("/post/product/:productid", middleware.RoleRequired(utils.RolePengepul), controllers.UpdateProduct)
 	api.Delete("/delete/product/:productid", middleware.RoleRequired(utils.RolePengepul), controllers.DeleteProduct)
+
+	// # marketplace
+	api.Get("/store/marketplace", middleware.RoleRequired(utils.RolePengepul), controllers.GetStoresByUserID)
+	api.Get("/store/marketplace/:storeid", middleware.RoleRequired(utils.RolePengepul), controllers.GetStoreByID)
 }

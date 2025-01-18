@@ -6,6 +6,18 @@ import (
 	"gorm.io/gorm"
 )
 
+func GetProductsByStoreID(storeID string, limit, offset int) ([]domain.Product, error) {
+	var products []domain.Product
+	query := config.DB.Preload("ProductImages").Preload("TrashDetail").Where("store_id = ?", storeID)
+
+	if limit > 0 {
+		query = query.Limit(limit).Offset(offset)
+	}
+
+	err := query.Find(&products).Error
+	return products, err
+}
+
 func GetProductsByUserID(userID string, limit, offset int) ([]domain.Product, error) {
 	var products []domain.Product
 	query := config.DB.Preload("ProductImages").Preload("TrashDetail").Where("user_id = ?", userID)
@@ -18,10 +30,10 @@ func GetProductsByUserID(userID string, limit, offset int) ([]domain.Product, er
 	return products, err
 }
 
-func GetProductByIDAndUserID(productID, userID string) (domain.Product, error) {
+func GetProductByIDAndStoreID(productID, storeID string) (domain.Product, error) {
 	var product domain.Product
 	err := config.DB.Preload("ProductImages").Preload("TrashDetail").
-		Where("id = ? AND user_id = ?", productID, userID).
+		Where("id = ? AND store_id = ?", productID, storeID).
 		First(&product).Error
 
 	return product, err
@@ -34,8 +46,18 @@ func GetProductByID(productID string) (domain.Product, error) {
 	return product, err
 }
 
+func IsValidStoreID(storeID string) bool {
+	var count int64
+	err := config.DB.Model(&domain.Store{}).Where("id = ?", storeID).Count(&count).Error
+	if err != nil || count == 0 {
+		return false
+	}
+	return true
+}
+
 func CreateProduct(product *domain.Product, images []domain.ProductImage) error {
-	err := config.DB.Transaction(func(tx *gorm.DB) error {
+
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 
 		if err := tx.Create(product).Error; err != nil {
 			return err
@@ -45,23 +67,20 @@ func CreateProduct(product *domain.Product, images []domain.ProductImage) error 
 			for i := range images {
 				images[i].ProductID = product.ID
 			}
+
 			if err := tx.Create(&images).Error; err != nil {
 				return err
 			}
 		}
+
 		return nil
 	})
-	return err
 }
 
 func UpdateProduct(product *domain.Product, images []domain.ProductImage) error {
 	return config.DB.Transaction(func(tx *gorm.DB) error {
 
-		if err := tx.Model(&domain.Product{}).Where("id = ?", product.ID).Updates(product).Error; err != nil {
-			return err
-		}
-
-		if err := tx.Where("product_id = ?", product.ID).Delete(&domain.ProductImage{}).Error; err != nil {
+		if err := tx.Save(product).Error; err != nil {
 			return err
 		}
 
@@ -69,6 +88,11 @@ func UpdateProduct(product *domain.Product, images []domain.ProductImage) error 
 			for i := range images {
 				images[i].ProductID = product.ID
 			}
+
+			if err := tx.Where("product_id = ?", product.ID).Delete(&domain.ProductImage{}).Error; err != nil {
+				return err
+			}
+
 			if err := tx.Create(&images).Error; err != nil {
 				return err
 			}
@@ -78,7 +102,7 @@ func UpdateProduct(product *domain.Product, images []domain.ProductImage) error 
 	})
 }
 
-func DeleteProduct(productID, userID string) (int64, error) {
-	result := config.DB.Where("id = ? AND user_id = ?", productID, userID).Delete(&domain.Product{})
-	return result.RowsAffected, result.Error
+func DeleteProduct(productID string) error {
+
+	return config.DB.Where("id = ?", productID).Delete(&domain.Product{}).Error
 }

@@ -9,6 +9,18 @@ import (
 	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
+func GetProductsByStoreID(storeID string, limit, page int) ([]dto.ProductResponseWithSoldDTO, error) {
+
+	offset := (page - 1) * limit
+
+	products, err := repositories.GetProductsByStoreID(storeID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapProductsToDTO(products), nil
+}
+
 func GetProductsByUserID(userID string, limit, page int) ([]dto.ProductResponseWithSoldDTO, error) {
 	offset := (page - 1) * limit
 	products, err := repositories.GetProductsByUserID(userID, limit, offset)
@@ -16,6 +28,10 @@ func GetProductsByUserID(userID string, limit, page int) ([]dto.ProductResponseW
 		return nil, err
 	}
 
+	return mapProductsToDTO(products), nil
+}
+
+func mapProductsToDTO(products []domain.Product) []dto.ProductResponseWithSoldDTO {
 	var productResponses []dto.ProductResponseWithSoldDTO
 	for _, product := range products {
 		var images []dto.ProductImageDTO
@@ -25,7 +41,7 @@ func GetProductsByUserID(userID string, limit, page int) ([]dto.ProductResponseW
 
 		productResponses = append(productResponses, dto.ProductResponseWithSoldDTO{
 			ID:            product.ID,
-			UserID:        product.UserID,
+			StoreID:       product.StoreID,
 			ProductTitle:  product.ProductTitle,
 			ProductImages: images,
 			TrashDetail: dto.TrashDetailResponseDTO{
@@ -41,12 +57,11 @@ func GetProductsByUserID(userID string, limit, page int) ([]dto.ProductResponseW
 			UpdatedAt:       utils.FormatDateToIndonesianFormat(product.UpdatedAt),
 		})
 	}
-
-	return productResponses, nil
+	return productResponses
 }
 
-func GetProductByIDAndUserID(productID, userID string) (dto.ProductResponseWithSoldDTO, error) {
-	product, err := repositories.GetProductByIDAndUserID(productID, userID)
+func GetProductByIDAndStoreID(productID, storeID string) (dto.ProductResponseWithSoldDTO, error) {
+	product, err := repositories.GetProductByIDAndStoreID(productID, storeID)
 	if err != nil {
 		return dto.ProductResponseWithSoldDTO{}, err
 	}
@@ -58,7 +73,7 @@ func GetProductByIDAndUserID(productID, userID string) (dto.ProductResponseWithS
 
 	return dto.ProductResponseWithSoldDTO{
 		ID:            product.ID,
-		UserID:        product.UserID,
+		StoreID:       product.StoreID,
 		ProductTitle:  product.ProductTitle,
 		ProductImages: images,
 		TrashDetail: dto.TrashDetailResponseDTO{
@@ -80,8 +95,20 @@ func CreateProduct(input dto.CreateProductRequestDTO, userID string) (dto.Create
 		return dto.CreateProductResponseDTO{}, err
 	}
 
+	trashDetail, err := repositories.GetTrashDetailByID(input.TrashDetailID)
+	if err != nil {
+		return dto.CreateProductResponseDTO{}, err
+	}
+
+	marketPrice := int64(trashDetail.Price)
+
+	if err := dto.ValidateSalePrice(marketPrice, input.SalePrice); err != nil {
+		return dto.CreateProductResponseDTO{}, err
+	}
+
 	product := &domain.Product{
 		UserID:          userID,
+		StoreID:         input.StoreID,
 		ProductTitle:    input.ProductTitle,
 		TrashDetailID:   input.TrashDetailID,
 		SalePrice:       input.SalePrice,
@@ -98,14 +125,14 @@ func CreateProduct(input dto.CreateProductRequestDTO, userID string) (dto.Create
 		return dto.CreateProductResponseDTO{}, err
 	}
 
-	trashDetail, err := repositories.GetTrashDetailByID(product.TrashDetailID)
+	trashDetail, err = repositories.GetTrashDetailByID(product.TrashDetailID)
 	if err != nil {
 		return dto.CreateProductResponseDTO{}, err
 	}
 
 	return dto.CreateProductResponseDTO{
 		ID:            product.ID,
-		UserID:        product.UserID,
+		StoreID:       product.StoreID,
 		ProductTitle:  product.ProductTitle,
 		ProductImages: input.ProductImages,
 		TrashDetail: dto.TrashDetailResponseDTO{
@@ -121,65 +148,61 @@ func CreateProduct(input dto.CreateProductRequestDTO, userID string) (dto.Create
 	}, nil
 }
 
-func UpdateProduct(productID, userID string, input dto.UpdateProductRequestDTO) (dto.ProductResponseDTO, error) {
-	if err := dto.GetValidator().Struct(input); err != nil {
-		return dto.ProductResponseDTO{}, err
+func UpdateProduct(productID string, input dto.UpdateProductRequestDTO) (dto.CreateProductResponseDTO, error) {
+
+	product, err := repositories.GetProductByID(productID)
+	if err != nil {
+		return dto.CreateProductResponseDTO{}, errors.New("product not found")
 	}
 
-	product := &domain.Product{
-		ID:              productID,
-		UserID:          userID,
-		ProductTitle:    input.ProductTitle,
-		TrashDetailID:   input.TrashDetailID,
-		SalePrice:       input.SalePrice,
-		Quantity:        input.Quantity,
-		ProductDescribe: input.ProductDescribe,
-	}
+	product.ProductTitle = input.ProductTitle
+	product.TrashDetailID = input.TrashDetailID
+	product.SalePrice = input.SalePrice
+	product.Quantity = input.Quantity
+	product.ProductDescribe = input.ProductDescribe
 
 	var images []domain.ProductImage
 	for _, imageURL := range input.ProductImages {
 		images = append(images, domain.ProductImage{ImageURL: imageURL})
 	}
 
-	if err := repositories.UpdateProduct(product, images); err != nil {
-		return dto.ProductResponseDTO{}, err
+	if err := repositories.UpdateProduct(&product, images); err != nil {
+		return dto.CreateProductResponseDTO{}, err
 	}
 
-	updatedProduct, err := repositories.GetProductByID(productID)
+	trashDetail, err := repositories.GetTrashDetailByID(product.TrashDetailID)
 	if err != nil {
-		return dto.ProductResponseDTO{}, err
+		return dto.CreateProductResponseDTO{}, err
 	}
 
-	var productImages []dto.ProductImageDTO
-	for _, img := range updatedProduct.ProductImages {
-		productImages = append(productImages, dto.ProductImageDTO{ImageURL: img.ImageURL})
-	}
-
-	return dto.ProductResponseDTO{
-		ID:            updatedProduct.ID,
-		UserID:        updatedProduct.UserID,
-		ProductTitle:  updatedProduct.ProductTitle,
-		ProductImages: productImages,
+	return dto.CreateProductResponseDTO{
+		ID:            product.ID,
+		StoreID:       product.StoreID,
+		ProductTitle:  product.ProductTitle,
+		ProductImages: input.ProductImages,
 		TrashDetail: dto.TrashDetailResponseDTO{
-			ID:          updatedProduct.TrashDetail.ID,
-			Description: updatedProduct.TrashDetail.Description,
-			Price:       updatedProduct.TrashDetail.Price,
+			ID:          trashDetail.ID,
+			Description: trashDetail.Description,
+			Price:       trashDetail.Price,
 		},
-		SalePrice:       updatedProduct.SalePrice,
-		Quantity:        updatedProduct.Quantity,
-		ProductDescribe: updatedProduct.ProductDescribe,
-		CreatedAt:       utils.FormatDateToIndonesianFormat(updatedProduct.CreatedAt),
-		UpdatedAt:       utils.FormatDateToIndonesianFormat(updatedProduct.UpdatedAt),
+		SalePrice:       product.SalePrice,
+		Quantity:        product.Quantity,
+		ProductDescribe: product.ProductDescribe,
+		CreatedAt:       utils.FormatDateToIndonesianFormat(product.CreatedAt),
+		UpdatedAt:       utils.FormatDateToIndonesianFormat(product.UpdatedAt),
 	}, nil
 }
 
-func DeleteProduct(productID, userID string) error {
-	rowsAffected, err := repositories.DeleteProduct(productID, userID)
+func DeleteProduct(productID string) error {
+
+	_, err := repositories.GetProductByID(productID)
 	if err != nil {
+		return errors.New("product not found")
+	}
+
+	if err := repositories.DeleteProduct(productID); err != nil {
 		return err
 	}
-	if rowsAffected == 0 {
-		return errors.New("product not found or not authorized to delete")
-	}
+
 	return nil
 }

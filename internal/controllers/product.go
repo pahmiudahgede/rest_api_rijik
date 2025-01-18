@@ -17,10 +17,12 @@ func GetAllProducts(c *fiber.Ctx) error {
 		))
 	}
 
-	limit := c.QueryInt("limit", 0)
+	storeID := c.Query("storeID", "")
+
+	limit := c.QueryInt("limit", 10)
 	page := c.QueryInt("page", 1)
 
-	if limit < 0 || page <= 0 {
+	if limit <= 0 || page <= 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
 			"Invalid pagination parameters",
@@ -28,7 +30,17 @@ func GetAllProducts(c *fiber.Ctx) error {
 		))
 	}
 
-	products, err := services.GetProductsByUserID(userID, limit, page)
+	var products []dto.ProductResponseWithSoldDTO
+	var err error
+
+	if storeID != "" {
+
+		products, err = services.GetProductsByStoreID(storeID, limit, page)
+	} else {
+
+		products, err = services.GetProductsByUserID(userID, limit, page)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
@@ -45,11 +57,11 @@ func GetAllProducts(c *fiber.Ctx) error {
 }
 
 func GetProductByID(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
+	storeID, ok := c.Locals("userID").(string)
+	if !ok || storeID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 			fiber.StatusUnauthorized,
-			"Unauthorized: user ID is missing",
+			"Unauthorized: store ID is missing",
 			nil,
 		))
 	}
@@ -63,7 +75,7 @@ func GetProductByID(c *fiber.Ctx) error {
 		))
 	}
 
-	product, err := services.GetProductByIDAndUserID(productID, userID)
+	product, err := services.GetProductByIDAndStoreID(productID, storeID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
 			fiber.StatusNotFound,
@@ -79,8 +91,46 @@ func GetProductByID(c *fiber.Ctx) error {
 	))
 }
 
+func GetProductsByStore(c *fiber.Ctx) error {
+	storeID := c.Params("storeid")
+	if storeID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Store ID is required",
+			nil,
+		))
+	}
+
+	limit := c.QueryInt("limit", 10)
+	page := c.QueryInt("page", 1)
+
+	if limit <= 0 || page <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid pagination parameters",
+			nil,
+		))
+	}
+
+	products, err := services.GetProductsByStoreID(storeID, limit, page)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+			fiber.StatusNotFound,
+			"Store not found",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Products fetched successfully",
+		products,
+	))
+}
+
 func CreateProduct(c *fiber.Ctx) error {
 	var input dto.CreateProductRequestDTO
+
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
@@ -94,6 +144,14 @@ func CreateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 			fiber.StatusUnauthorized,
 			"Unauthorized: user ID is missing",
+			nil,
+		))
+	}
+
+	if input.StoreID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Store ID is required in the body",
 			nil,
 		))
 	}
@@ -115,14 +173,7 @@ func CreateProduct(c *fiber.Ctx) error {
 }
 
 func UpdateProduct(c *fiber.Ctx) error {
-	var input dto.UpdateProductRequestDTO
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-			fiber.StatusBadRequest,
-			"Invalid request payload",
-			nil,
-		))
-	}
+	productID := c.Params("productid")
 
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
@@ -133,7 +184,6 @@ func UpdateProduct(c *fiber.Ctx) error {
 		))
 	}
 
-	productID := c.Params("productid")
 	if productID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
@@ -142,7 +192,24 @@ func UpdateProduct(c *fiber.Ctx) error {
 		))
 	}
 
-	product, err := services.UpdateProduct(productID, userID, input)
+	var input dto.UpdateProductRequestDTO
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid request payload",
+			nil,
+		))
+	}
+
+	if err := dto.GetValidator().Struct(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Invalid product data",
+			nil,
+		))
+	}
+
+	updatedProduct, err := services.UpdateProduct(productID, input)
 	if err != nil {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(utils.FormatResponse(
 			fiber.StatusUnprocessableEntity,
@@ -154,19 +221,12 @@ func UpdateProduct(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Product updated successfully",
-		product,
+		updatedProduct,
 	))
 }
 
 func DeleteProduct(c *fiber.Ctx) error {
 	productID := c.Params("productid")
-	if productID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-			fiber.StatusBadRequest,
-			"Product ID is required",
-			nil,
-		))
-	}
 
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
@@ -177,18 +237,19 @@ func DeleteProduct(c *fiber.Ctx) error {
 		))
 	}
 
-	err := services.DeleteProduct(productID, userID)
+	if productID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+			fiber.StatusBadRequest,
+			"Product ID is required",
+			nil,
+		))
+	}
+
+	err := services.DeleteProduct(productID)
 	if err != nil {
-		if err.Error() == "product not found or not authorized to delete" {
-			return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
-				fiber.StatusNotFound,
-				"Product not found: mungkin idnya salah",
-				nil,
-			))
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
-			fiber.StatusInternalServerError,
-			"Failed to delete product: "+err.Error(),
+		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+			fiber.StatusNotFound,
+			"Product not found or unable to delete",
 			nil,
 		))
 	}

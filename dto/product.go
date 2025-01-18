@@ -4,7 +4,7 @@ import "errors"
 
 type ProductResponseWithSoldDTO struct {
 	ID              string                 `json:"id"`
-	UserID          string                 `json:"user_id"`
+	StoreID         string                 `json:"store_id"`
 	ProductTitle    string                 `json:"product_title"`
 	ProductImages   []ProductImageDTO      `json:"product_images"`
 	TrashDetail     TrashDetailResponseDTO `json:"trash_detail"`
@@ -18,7 +18,7 @@ type ProductResponseWithSoldDTO struct {
 
 type ProductResponseWithoutSoldDTO struct {
 	ID              string                 `json:"id"`
-	UserID          string                 `json:"user_id"`
+	StoreID         string                 `json:"store_id"`
 	ProductTitle    string                 `json:"product_title"`
 	ProductImages   []ProductImageDTO      `json:"product_images"`
 	TrashDetail     TrashDetailResponseDTO `json:"trash_detail"`
@@ -31,7 +31,7 @@ type ProductResponseWithoutSoldDTO struct {
 
 type ProductResponseDTO struct {
 	ID              string                 `json:"id"`
-	UserID          string                 `json:"user_id"`
+	StoreID         string                 `json:"store_id"`
 	ProductTitle    string                 `json:"product_title"`
 	ProductImages   []ProductImageDTO      `json:"product_images"`
 	TrashDetail     TrashDetailResponseDTO `json:"trash_detail"`
@@ -53,6 +53,7 @@ type TrashDetailResponseDTO struct {
 }
 
 type CreateProductRequestDTO struct {
+	StoreID         string   `json:"storeid" validate:"required,uuid"`
 	ProductTitle    string   `json:"product_title" validate:"required,min=3,max=255"`
 	ProductImages   []string `json:"product_images" validate:"required,min=1,dive,url"`
 	TrashDetailID   string   `json:"trash_detail_id" validate:"required,uuid"`
@@ -63,7 +64,7 @@ type CreateProductRequestDTO struct {
 
 type CreateProductResponseDTO struct {
 	ID              string                 `json:"id"`
-	UserID          string                 `json:"user_id"`
+	StoreID         string                 `json:"store_id"`
 	ProductTitle    string                 `json:"product_title"`
 	ProductImages   []string               `json:"product_images"`
 	TrashDetail     TrashDetailResponseDTO `json:"trash_detail"`
@@ -84,8 +85,9 @@ type UpdateProductRequestDTO struct {
 }
 
 func ValidateSalePrice(marketPrice, salePrice int64) error {
-	if salePrice > marketPrice {
-		return errors.New("sale price cannot be greater than market price")
+
+	if salePrice > marketPrice*2 {
+		return errors.New("sale price cannot be more than twice the market price")
 	}
 	return nil
 }
