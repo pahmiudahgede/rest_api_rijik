@@ -31,6 +31,10 @@ var (
 	RedisDB       int
 )
 
+func Context() context.Context {
+	return context.Background()
+}
+
 func InitConfig() {
 	ServerHost = os.Getenv("SERVER_HOST")
 	ServerPort = os.Getenv("SERVER_PORT")
