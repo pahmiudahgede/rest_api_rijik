@@ -1,7 +1,12 @@
 package controllers
 
 import (
+	"context"
+	"strings"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
 	"github.com/pahmiudahgede/senggoldong/internal/services"
@@ -82,6 +87,16 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 			fiber.StatusUnauthorized,
 			err.Error(),
+			nil,
+		))
+	}
+
+	ctx := context.Background()
+	err = config.RedisClient.Set(ctx, "auth_token:"+token, credentials.Identifier, time.Hour*24).Err()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to store session",
 			nil,
 		))
 	}
@@ -246,5 +261,34 @@ func UpdatePassword(c *fiber.Ctx) error {
 		map[string]string{
 			"updatedAt": updatedAtFormatted,
 		},
+	))
+}
+
+func Logout(c *fiber.Ctx) error {
+	tokenString := c.Get("Authorization")
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+
+	if tokenString == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Token is required",
+			nil,
+		))
+	}
+
+	ctx := context.Background()
+	err := config.RedisClient.Del(ctx, "auth_token:"+tokenString).Err()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+			fiber.StatusInternalServerError,
+			"Failed to delete session",
+			nil,
+		))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
+		fiber.StatusOK,
+		"Logout successful",
+		nil,
 	))
 }

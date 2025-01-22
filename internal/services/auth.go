@@ -12,7 +12,6 @@ import (
 )
 
 func RegisterUser(username, name, email, phone, password, confirmPassword, roleId string) error {
-
 	if password != confirmPassword {
 		return errors.New("password dan confirm password tidak cocok")
 	}
@@ -48,7 +47,6 @@ func LoginUser(identifier, password string) (string, error) {
 	}
 
 	const roleId = ""
-
 	user, err := repositories.GetUserByEmailUsernameOrPhone(identifier, roleId)
 	if err != nil {
 		return "", errors.New("invalid email/username/phone or password")
@@ -71,7 +69,6 @@ func generateJWT(userID, role string) string {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	t, err := token.SignedString([]byte(os.Getenv("API_KEY")))
 	if err != nil {
 		return ""
@@ -89,7 +86,6 @@ func GetUserByID(userID string) (domain.User, error) {
 }
 
 func UpdateUser(userID, email, username, name, phone string) error {
-
 	user, err := repositories.GetUserByID(userID)
 	if err != nil {
 		return errors.New("user not found")
@@ -129,7 +125,6 @@ func UpdateUser(userID, email, username, name, phone string) error {
 }
 
 func UpdatePassword(userID, oldPassword, newPassword string) error {
-
 	user, err := repositories.GetUserByID(userID)
 	if err != nil {
 		return errors.New("user not found")

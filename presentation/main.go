@@ -18,6 +18,7 @@ func init() {
 
 	config.InitConfig()
 	config.InitDatabase()
+	config.InitRedis()
 
 }
 

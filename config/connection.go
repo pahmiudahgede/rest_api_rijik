@@ -1,10 +1,12 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/pahmiudahgede/senggoldong/domain"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -21,6 +23,12 @@ var (
 	APIKey     string
 	ServerHost string
 	ServerPort string
+
+	RedisClient   *redis.Client
+	RedisHost     string
+	RedisPort     string
+	RedisPassword string
+	RedisDB       int
 )
 
 func InitConfig() {
@@ -32,6 +40,10 @@ func InitConfig() {
 	DBUser = os.Getenv("DB_USER")
 	DBPassword = os.Getenv("DB_PASSWORD")
 	APIKey = os.Getenv("API_KEY")
+	RedisHost = os.Getenv("REDIS_HOST")
+	RedisPort = os.Getenv("REDIS_PORT")
+	RedisPassword = os.Getenv("REDIS_PASSWORD")
+	RedisDB = 0
 
 	if ServerHost == "" || ServerPort == "" || DBHost == "" || DBPort == "" || DBName == "" || DBUser == "" || DBPassword == "" || APIKey == "" {
 		log.Fatal("Error: environment variables yang dibutuhkan tidak ada")
@@ -76,4 +88,21 @@ func InitDatabase() {
 	}
 
 	fmt.Println("Koneksi ke database berhasil dan migrasi dilakukan")
+}
+
+func InitRedis() {
+	InitConfig()
+
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", RedisHost, RedisPort),
+		Password: RedisPassword,
+		DB:       RedisDB,
+	})
+
+	_, err := RedisClient.Ping(context.Background()).Result()
+	if err != nil {
+		log.Fatal("Gagal terhubung ke Redis:", err)
+	}
+
+	fmt.Println("Koneksi ke Redis berhasil")
 }

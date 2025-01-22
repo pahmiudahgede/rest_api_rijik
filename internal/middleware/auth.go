@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
@@ -22,6 +25,16 @@ func RoleRequired(roles ...string) fiber.Handler {
 		}
 
 		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+
+		ctx := context.Background()
+		cachedToken, err := config.RedisClient.Get(ctx, "auth_token:"+tokenString).Result()
+		if err != nil || cachedToken == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+				fiber.StatusUnauthorized,
+				"Invalid or expired token",
+				nil,
+			))
+		}
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -91,6 +104,14 @@ func AuthMiddleware(c *fiber.Ctx) error {
 		})
 	}
 
+	ctx := context.Background()
+	cachedToken, err := config.RedisClient.Get(ctx, "auth_token:"+tokenString).Result()
+	if err != nil || cachedToken == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Invalid or expired token",
+		})
+	}
+
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("API_KEY")), nil
 	})
@@ -109,8 +130,9 @@ func AuthMiddleware(c *fiber.Ctx) error {
 	}
 
 	userID := claims["sub"].(string)
-
 	c.Locals("userID", userID)
+
+	config.RedisClient.Expire(ctx, "auth_token:"+tokenString, time.Hour*24).Err()
 
 	return c.Next()
 }

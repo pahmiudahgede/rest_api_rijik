@@ -42,6 +42,7 @@ func AppRouter(app *fiber.App) {
 	// # authentication #
 	api.Post("/register", controllers.Register)
 	api.Post("/login", controllers.Login)
+	api.Post("/logout", controllers.Logout)
 
 	// # userinfo #
 	api.Get("/user", middleware.AuthMiddleware, controllers.GetUserInfo)

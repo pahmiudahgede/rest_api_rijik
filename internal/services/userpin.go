@@ -9,14 +9,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func GetPinByUserID(userID string) (domain.UserPin, error) {
-	pin, err := repositories.GetPinByUserID(userID)
-	if err != nil {
-		return pin, errors.New("PIN tidak ditemukan")
-	}
-	return pin, nil
-}
-
 func CreatePin(userID string, input dto.PinInput) (domain.UserPin, error) {
 
 	hashedPin, err := bcrypt.GenerateFromPassword([]byte(input.Pin), bcrypt.DefaultCost)
@@ -37,7 +29,17 @@ func CreatePin(userID string, input dto.PinInput) (domain.UserPin, error) {
 	return pin, nil
 }
 
+func GetPinByUserID(userID string) (domain.UserPin, error) {
+
+	pin, err := repositories.GetPinByUserID(userID)
+	if err != nil {
+		return pin, errors.New("PIN tidak ditemukan")
+	}
+	return pin, nil
+}
+
 func UpdatePin(userID string, oldPin string, newPin string) (domain.UserPin, error) {
+
 	pin, err := repositories.GetPinByUserID(userID)
 	if err != nil {
 		return pin, errors.New("PIN tidak ditemukan")
