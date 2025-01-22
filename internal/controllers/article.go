@@ -13,13 +13,12 @@ func CreateArticle(c *fiber.Ctx) error {
 	if err := c.BodyParser(&articleRequest); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
-			"Invalid input",
+			"Input tidak valid",
 			nil,
 		))
 	}
 
 	if err := articleRequest.ValidatePostArticle(); err != nil {
-
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
 			err.Error(),
@@ -31,7 +30,7 @@ func CreateArticle(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
-			"Failed to create article",
+			"Gagal membuat artikel",
 			nil,
 		))
 	}
@@ -52,7 +51,7 @@ func CreateArticle(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusCreated).JSON(utils.FormatResponse(
 		fiber.StatusCreated,
-		"Article created successfully",
+		"Artikel berhasil dibuat",
 		response,
 	))
 }
@@ -63,7 +62,7 @@ func GetArticles(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
-			"Failed to fetch articles",
+			"Gagal mengambil artikel",
 			nil,
 		))
 	}
@@ -71,14 +70,13 @@ func GetArticles(c *fiber.Ctx) error {
 	if len(articles) == 0 {
 		return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 			fiber.StatusOK,
-			"Articles fetched successfully but data is empty",
+			"Artikel berhasil diambil tetapi data kosong",
 			[]dto.FormattedResponse{},
 		))
 	}
 
 	var formattedArticles []dto.FormattedResponse
 	for _, article := range articles {
-
 		article.PublishedAtFormatted = utils.FormatDateToIndonesianFormat(article.PublishedAt)
 		article.UpdatedAtFormatted = utils.FormatDateToIndonesianFormat(article.UpdatedAt)
 
@@ -96,19 +94,20 @@ func GetArticles(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
-		"Articles fetched successfully",
+		"Artikel berhasil diambil",
 		formattedArticles,
 	))
 }
 
 func GetArticleByID(c *fiber.Ctx) error {
+
 	id := c.Params("id")
 
 	article, err := services.GetArticleByID(id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
 			fiber.StatusNotFound,
-			"Article not found",
+			"Artikel tidak ditemukan",
 			nil,
 		))
 	}
@@ -129,7 +128,7 @@ func GetArticleByID(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
-		"Article fetched successfully",
+		"Artikel berhasil diambil",
 		response,
 	))
 }
@@ -142,13 +141,12 @@ func UpdateArticle(c *fiber.Ctx) error {
 	if err := c.BodyParser(&articleUpdateRequest); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
-			"Invalid input",
+			"Input tidak valid",
 			nil,
 		))
 	}
 
 	if err := articleUpdateRequest.ValidateUpdateArticle(); err != nil {
-
 		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
 			fiber.StatusBadRequest,
 			err.Error(),
@@ -158,9 +156,17 @@ func UpdateArticle(c *fiber.Ctx) error {
 
 	updatedArticle, err := services.UpdateArticle(id, &articleUpdateRequest)
 	if err != nil {
+
+		if err.Error() == "record not found" {
+			return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+				fiber.StatusNotFound,
+				"id article tidak diketahui",
+				nil,
+			))
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
-			"Failed to update article",
+			"Gagal memperbarui artikel",
 			nil,
 		))
 	}
@@ -181,7 +187,7 @@ func UpdateArticle(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
-		"Article updated successfully",
+		"Artikel berhasil diperbarui",
 		response,
 	))
 }
@@ -191,16 +197,24 @@ func DeleteArticle(c *fiber.Ctx) error {
 
 	err := services.DeleteArticle(id)
 	if err != nil {
+
+		if err.Error() == "record not found" {
+			return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+				fiber.StatusNotFound,
+				"id article tidak diketahui",
+				nil,
+			))
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
 			fiber.StatusInternalServerError,
-			"Failed to delete article",
+			"Gagal menghapus artikel",
 			nil,
 		))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
-		"Article deleted successfully",
+		"Artikel berhasil dihapus",
 		nil,
 	))
 }
