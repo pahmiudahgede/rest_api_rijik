@@ -7,190 +7,116 @@ import (
 	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
-func GetBanners(c *fiber.Ctx) error {
+type BannerController struct {
+	service *services.BannerService
+}
 
-	banners, err := services.GetBanners()
+func NewBannerController(service *services.BannerService) *BannerController {
+	return &BannerController{service: service}
+}
+
+func (bc *BannerController) GetAllBanners(c *fiber.Ctx) error {
+	banners, err := bc.service.GetAllBanners()
 	if err != nil {
-
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
 			fiber.StatusInternalServerError,
 			"Failed to fetch banners",
-			nil,
 		))
 	}
-
-	var bannerResponses []dto.BannerResponse
-	for _, banner := range banners {
-
-		bannerResponses = append(bannerResponses, dto.BannerResponse{
-			ID:          banner.ID,
-			BannerName:  banner.BannerName,
-			BannerImage: banner.BannerImage,
-			CreatedAt:   utils.FormatDateToIndonesianFormat(banner.CreatedAt),
-			UpdatedAt:   utils.FormatDateToIndonesianFormat(banner.UpdatedAt),
-		})
-	}
-
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Banners fetched successfully",
-		bannerResponses,
+		banners,
 	))
 }
 
-func GetBannerByID(c *fiber.Ctx) error {
+func (bc *BannerController) GetBannerByID(c *fiber.Ctx) error {
 	id := c.Params("id")
-
-	banner, err := services.GetBannerByID(id)
+	banner, err := bc.service.GetBannerByID(id)
 	if err != nil {
-
-		if err.Error() == "banner not found" {
-			return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
-				fiber.StatusNotFound,
-				"Banner not found",
-				nil,
-			))
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
-			fiber.StatusInternalServerError,
-			"Failed to fetch banner",
-			nil,
+		return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse(
+			fiber.StatusNotFound,
+			"Banner not found",
 		))
 	}
-
-	bannerResponse := dto.BannerResponse{
-		ID:          banner.ID,
-		BannerName:  banner.BannerName,
-		BannerImage: banner.BannerImage,
-		CreatedAt:   utils.FormatDateToIndonesianFormat(banner.CreatedAt),
-		UpdatedAt:   utils.FormatDateToIndonesianFormat(banner.UpdatedAt),
-	}
-
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Banner fetched successfully",
-		struct {
-			Banner dto.BannerResponse `json:"banner"`
-		}{
-			Banner: bannerResponse,
-		},
+		banner,
 	))
 }
 
-func CreateBanner(c *fiber.Ctx) error {
-	var bannerInput dto.BannerRequest
+func (bc *BannerController) CreateBanner(c *fiber.Ctx) error {
+	var request dto.BannerCreateRequest
 
-	if err := c.BodyParser(&bannerInput); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(
 			fiber.StatusBadRequest,
-			"Invalid input data",
-			nil,
+			"Invalid request body",
 		))
 	}
 
-	if err := bannerInput.Validate(); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-			fiber.StatusBadRequest,
-			"Validation failed: "+err.Error(),
-			nil,
-		))
-	}
-
-	newBanner, err := services.CreateBanner(bannerInput.BannerName, bannerInput.BannerImage)
+	banner, err := bc.service.CreateBanner(&request)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
 			fiber.StatusInternalServerError,
-			"Failed to create banner",
-			nil,
+			err.Error(),
 		))
 	}
-
-	bannerResponse := dto.NewBannerResponse(
-		newBanner.ID,
-		newBanner.BannerName,
-		newBanner.BannerImage,
-		utils.FormatDateToIndonesianFormat(newBanner.CreatedAt),
-		utils.FormatDateToIndonesianFormat(newBanner.UpdatedAt),
-	)
 
 	return c.Status(fiber.StatusCreated).JSON(utils.FormatResponse(
 		fiber.StatusCreated,
 		"Banner created successfully",
-		struct {
-			Banner dto.BannerResponse `json:"banner"`
-		}{
-			Banner: bannerResponse,
-		},
+		banner,
 	))
 }
 
-func UpdateBanner(c *fiber.Ctx) error {
+func (bc *BannerController) UpdateBanner(c *fiber.Ctx) error {
 	id := c.Params("id")
+	var request dto.BannerUpdateRequest
 
-	var bannerInput dto.BannerUpdateDTO
-	if err := c.BodyParser(&bannerInput); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(
 			fiber.StatusBadRequest,
-			"Invalid input data",
-			nil,
+			"Invalid request body",
 		))
 	}
 
-	if err := bannerInput.Validate(); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.FormatResponse(
-			fiber.StatusBadRequest,
-			"Validation failed: "+err.Error(),
-			nil,
-		))
-	}
-
-	updatedBanner, err := services.UpdateBanner(id, bannerInput.BannerName, bannerInput.BannerImage)
+	banner, err := bc.service.UpdateBanner(id, &request)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+		if err.Error() == "banner not found" {
+			return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse(
+				fiber.StatusNotFound,
+				"Banner not found",
+			))
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
 			fiber.StatusInternalServerError,
-			"Failed to update banner",
-			nil,
+			err.Error(),
 		))
 	}
-
-	bannerResponse := dto.NewBannerResponse(
-		updatedBanner.ID,
-		updatedBanner.BannerName,
-		updatedBanner.BannerImage,
-		utils.FormatDateToIndonesianFormat(updatedBanner.CreatedAt),
-		utils.FormatDateToIndonesianFormat(updatedBanner.UpdatedAt),
-	)
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
 		"Banner updated successfully",
-		struct {
-			Banner dto.BannerResponse `json:"banner"`
-		}{
-			Banner: bannerResponse,
-		},
+		banner,
 	))
 }
 
-func DeleteBanner(c *fiber.Ctx) error {
+func (bc *BannerController) DeleteBanner(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	err := services.DeleteBanner(id)
+	err := bc.service.DeleteBanner(id)
 	if err != nil {
-
 		if err.Error() == "banner not found" {
-			return c.Status(fiber.StatusNotFound).JSON(utils.FormatResponse(
+			return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse(
 				fiber.StatusNotFound,
 				"Banner not found",
-				nil,
 			))
 		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.FormatResponse(
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
 			fiber.StatusInternalServerError,
-			"Failed to delete banner",
-			nil,
+			err.Error(),
 		))
 	}
 

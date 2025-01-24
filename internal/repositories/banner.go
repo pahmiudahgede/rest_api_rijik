@@ -1,90 +1,44 @@
 package repositories
 
 import (
-	"encoding/json"
-	"time"
+	"errors"
 
 	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/domain"
 )
 
-func GetBanners() ([]domain.Banner, error) {
+type BannerRepository struct{}
+
+func NewBannerRepository() *BannerRepository {
+	return &BannerRepository{}
+}
+
+func (r *BannerRepository) GetAll() ([]domain.Banner, error) {
 	var banners []domain.Banner
-
-	ctx := config.Context()
-	cachedBanners, err := config.RedisClient.Get(ctx, "banners").Result()
-	if err == nil && cachedBanners != "" {
-
-		if err := json.Unmarshal([]byte(cachedBanners), &banners); err != nil {
-			return nil, err
-		}
-		return banners, nil
-	}
-
-	if err := config.DB.Find(&banners).Error; err != nil {
-		return nil, err
-	}
-
-	bannersJSON, err := json.Marshal(banners)
+	err := config.DB.Find(&banners).Error
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed to fetch banners from database")
 	}
-	config.RedisClient.Set(ctx, "banners", bannersJSON, time.Hour).Err()
-
 	return banners, nil
 }
 
-func GetBannerByID(id string) (domain.Banner, error) {
+func (r *BannerRepository) GetByID(id string) (*domain.Banner, error) {
 	var banner domain.Banner
-
-	ctx := config.Context()
-	cachedBanner, err := config.RedisClient.Get(ctx, "banner:"+id).Result()
-	if err == nil && cachedBanner != "" {
-
-		if err := json.Unmarshal([]byte(cachedBanner), &banner); err != nil {
-			return banner, err
-		}
-		return banner, nil
-	}
-
-	if err := config.DB.Where("id = ?", id).First(&banner).Error; err != nil {
-		return banner, err
-	}
-
-	bannerJSON, err := json.Marshal(banner)
+	err := config.DB.First(&banner, "id = ?", id).Error
 	if err != nil {
-		return banner, err
+		return nil, errors.New("banner not found")
 	}
-	config.RedisClient.Set(ctx, "banner:"+id, bannerJSON, time.Hour*24).Err()
-
-	return banner, nil
+	return &banner, nil
 }
 
-func CreateBanner(banner *domain.Banner) error {
-	if err := config.DB.Create(banner).Error; err != nil {
-		return err
-	}
-
-	config.RedisClient.Del(config.Context(), "banners")
-	return nil
+func (r *BannerRepository) Create(banner *domain.Banner) error {
+	return config.DB.Create(banner).Error
 }
 
-func UpdateBanner(banner *domain.Banner) error {
-	if err := config.DB.Save(banner).Error; err != nil {
-		return err
-	}
-
-	config.RedisClient.Del(config.Context(), "banners")
-	config.RedisClient.Del(config.Context(), "banner:"+banner.ID)
-	return nil
+func (r *BannerRepository) Update(banner *domain.Banner) error {
+	return config.DB.Save(banner).Error
 }
 
-func DeleteBanner(id string) error {
-	if err := config.DB.Where("id = ?", id).Delete(&domain.Banner{}).Error; err != nil {
-		return err
-	}
-
-	config.RedisClient.Del(config.Context(), "banners")
-	config.RedisClient.Del(config.Context(), "banner:"+id)
-	return nil
+func (r *BannerRepository) Delete(banner *domain.Banner) error {
+	return config.DB.Delete(banner).Error
 }

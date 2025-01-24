@@ -15,6 +15,10 @@ func AppRouter(app *fiber.App) {
 	pointService := services.NewPointService(pointRepo)
 	pointController := controllers.NewPointController(pointService)
 
+	bannerRepo := repositories.NewBannerRepository()
+	bannerService := services.NewBannerService(bannerRepo)
+	bannerController := controllers.NewBannerController(bannerService)
+
 	// # api group domain endpoint #
 	api := app.Group("/apirijikid")
 
@@ -94,11 +98,11 @@ func AppRouter(app *fiber.App) {
 	api.Delete("/trash-category/delete-trash-detail/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.DeleteTrashDetail)
 
 	// # banner #
-	api.Get("/banners", controllers.GetBanners)
-	api.Get("/banner/:id", controllers.GetBannerByID)
-	api.Post("/banner/create-banner", middleware.RoleRequired(utils.RoleAdministrator), controllers.CreateBanner)
-	api.Put("/banner/update-banner/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.UpdateBanner)
-	api.Delete("/banner/delete-banner/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.DeleteBanner)
+	api.Get("/banners", bannerController.GetAllBanners)
+	api.Get("/banner/:id", bannerController.GetBannerByID)
+	api.Post("/banner/create-banner", middleware.RoleRequired(utils.RoleAdministrator), bannerController.CreateBanner)
+	api.Put("/banner/update-banner/:id", middleware.RoleRequired(utils.RoleAdministrator), bannerController.UpdateBanner)
+	api.Delete("/banner/delete-banner/:id", middleware.RoleRequired(utils.RoleAdministrator), bannerController.DeleteBanner)
 
 	// # wilayah di indonesia #
 	api.Get("/wilayah-indonesia/provinces", controllers.GetProvinces)
