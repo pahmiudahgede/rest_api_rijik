@@ -4,22 +4,30 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/internal/controllers"
 	"github.com/pahmiudahgede/senggoldong/internal/middleware"
+	"github.com/pahmiudahgede/senggoldong/internal/repositories"
+	"github.com/pahmiudahgede/senggoldong/internal/services"
 	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 func AppRouter(app *fiber.App) {
+	// # init
+	pointRepo := repositories.NewPointRepository()
+	pointService := services.NewPointService(pointRepo)
+	pointController := controllers.NewPointController(pointService)
+
 	// # api group domain endpoint #
 	api := app.Group("/apirijikid")
 
 	// # API Secure #
 	api.Use(middleware.APIKeyMiddleware)
+	api.Use(middleware.RateLimitMiddleware)
 
 	// # user initial coint #
-	api.Get("/user/initial-coint", controllers.GetUserInitialCoint)
-	api.Get("/user/initial-coint/:id", controllers.GetUserInitialCointById)
-	api.Post("/user/initial-coint", middleware.RoleRequired(utils.RoleAdministrator), controllers.CreatePoint)
-	api.Put("/user/initial-coint/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.UpdatePoint)
-	api.Delete("/user/initial-coint/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.DeletePoint)
+	api.Get("/user/initial-coint", pointController.GetAllPoints)
+	api.Get("/user/initial-coint/:id", pointController.GetPointByID)
+	api.Post("/user/initial-coint", middleware.RoleRequired(utils.RoleAdministrator), pointController.CreatePoint)
+	api.Put("/user/initial-coint/:id", middleware.RoleRequired(utils.RoleAdministrator), pointController.UpdatePoint)
+	api.Delete("/user/initial-coint/:id", middleware.RoleRequired(utils.RoleAdministrator), pointController.DeletePoint)
 
 	//# coverage area #
 	api.Get("/coverage-areas", controllers.GetCoverageAreas)

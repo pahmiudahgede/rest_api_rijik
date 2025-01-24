@@ -13,9 +13,18 @@ import (
 	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
+func containsRole(roles []string, role string) bool {
+	for _, r := range roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
 func RoleRequired(roles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		tokenString := c.Get("Authorization")
+		tokenString := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
 		if tokenString == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 				fiber.StatusUnauthorized,
@@ -23,8 +32,6 @@ func RoleRequired(roles ...string) fiber.Handler {
 				nil,
 			))
 		}
-
-		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
 		ctx := context.Background()
 		cachedToken, err := config.RedisClient.Get(ctx, "auth_token:"+tokenString).Result()
@@ -63,7 +70,7 @@ func RoleRequired(roles ...string) fiber.Handler {
 		if !ok || userID == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 				fiber.StatusUnauthorized,
-				"Invalid or missing user ID in token",
+				"Missing or invalid user ID in token",
 				nil,
 			))
 		}
@@ -72,7 +79,7 @@ func RoleRequired(roles ...string) fiber.Handler {
 		if !ok || role == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
 				fiber.StatusUnauthorized,
-				"Invalid or missing role in token",
+				"Missing or invalid role in token",
 				nil,
 			))
 		}
@@ -80,59 +87,62 @@ func RoleRequired(roles ...string) fiber.Handler {
 		c.Locals("userID", userID)
 		c.Locals("role", role)
 
-		for _, r := range roles {
-			if r == role {
-				return c.Next()
-			}
+		if !containsRole(roles, role) {
+			return c.Status(fiber.StatusForbidden).JSON(utils.FormatResponse(
+				fiber.StatusForbidden,
+				"You do not have permission to access this resource",
+				nil,
+			))
 		}
 
-		return c.Status(fiber.StatusForbidden).JSON(utils.FormatResponse(
-			fiber.StatusForbidden,
-			"You do not have permission to access this resource",
-			nil,
-		))
+		return c.Next()
 	}
 }
 
 func AuthMiddleware(c *fiber.Ctx) error {
-	tokenString := c.Get("Authorization")
-	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-
+	tokenString := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
 	if tokenString == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Missing or invalid token",
-		})
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Missing or invalid token",
+			nil,
+		))
 	}
 
 	ctx := context.Background()
 	cachedToken, err := config.RedisClient.Get(ctx, "auth_token:"+tokenString).Result()
 	if err != nil || cachedToken == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Invalid or expired token",
-		})
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Invalid or expired token",
+			nil,
+		))
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("API_KEY")), nil
 	})
-
 	if err != nil || !token.Valid {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Invalid or expired token",
-		})
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Invalid or expired token",
+			nil,
+		))
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Invalid token claims",
-		})
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.FormatResponse(
+			fiber.StatusUnauthorized,
+			"Invalid token claims",
+			nil,
+		))
 	}
 
 	userID := claims["sub"].(string)
 	c.Locals("userID", userID)
 
-	config.RedisClient.Expire(ctx, "auth_token:"+tokenString, time.Hour*24).Err()
+	config.RedisClient.Expire(ctx, "auth_token:"+tokenString, time.Hour*24)
 
 	return c.Next()
 }

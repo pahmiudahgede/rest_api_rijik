@@ -7,7 +7,7 @@ type Meta struct {
 
 type ApiResponse struct {
 	Meta Meta        `json:"meta"`
-	Data interface{} `json:"data"`
+	Data interface{} `json:"data,omitempty"`
 }
 
 func FormatResponse(statusCode int, message string, data interface{}) ApiResponse {
@@ -17,5 +17,14 @@ func FormatResponse(statusCode int, message string, data interface{}) ApiRespons
 			Message:    message,
 		},
 		Data: data,
+	}
+}
+
+func ErrorResponse(statusCode int, message string) ApiResponse {
+	return ApiResponse{
+		Meta: Meta{
+			StatusCode: statusCode,
+			Message:    message,
+		},
 	}
 }

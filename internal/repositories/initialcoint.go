@@ -1,44 +1,44 @@
 package repositories
 
 import (
+	"errors"
+
 	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/domain"
 )
 
-func GetPoints() ([]domain.Point, error) {
+type PointRepository struct{}
+
+func NewPointRepository() *PointRepository {
+	return &PointRepository{}
+}
+
+func (r *PointRepository) GetAll() ([]domain.Point, error) {
 	var points []domain.Point
-	if err := config.DB.Find(&points).Error; err != nil {
-		return nil, err
+	err := config.DB.Find(&points).Error
+	if err != nil {
+		return nil, errors.New("failed to fetch points from database")
 	}
 	return points, nil
 }
 
-func GetPointByID(id string) (domain.Point, error) {
+func (r *PointRepository) GetByID(id string) (*domain.Point, error) {
 	var point domain.Point
-	if err := config.DB.Where("id = ?", id).First(&point).Error; err != nil {
-		return point, err
+	err := config.DB.First(&point, "id = ?", id).Error
+	if err != nil {
+		return nil, errors.New("point not found")
 	}
-	return point, nil
+	return &point, nil
 }
 
-func CreatePoint(point *domain.Point) error {
-
-	if err := config.DB.Create(point).Error; err != nil {
-		return err
-	}
-	return nil
+func (r *PointRepository) Create(point *domain.Point) error {
+	return config.DB.Create(point).Error
 }
 
-func UpdatePoint(point *domain.Point) error {
-	if err := config.DB.Save(point).Error; err != nil {
-		return err
-	}
-	return nil
+func (r *PointRepository) Update(point *domain.Point) error {
+	return config.DB.Save(point).Error
 }
 
-func DeletePoint(id string) error {
-	if err := config.DB.Where("id = ?", id).Delete(&domain.Point{}).Error; err != nil {
-		return err
-	}
-	return nil
+func (r *PointRepository) Delete(point *domain.Point) error {
+	return config.DB.Delete(point).Error
 }

@@ -1,65 +1,170 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
+	"time"
 
+	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/domain"
+	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
+	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
-func GetPoints() ([]domain.Point, error) {
-	return repositories.GetPoints()
+type PointService struct {
+	repo *repositories.PointRepository
 }
 
-func GetPointByID(id string) (domain.Point, error) {
-	point, err := repositories.GetPointByID(id)
+func NewPointService(repo *repositories.PointRepository) *PointService {
+	return &PointService{repo: repo}
+}
+
+func (s *PointService) GetAllPoints() ([]dto.PointResponse, error) {
+	ctx := config.Context()
+
+	cacheKey := "points:all"
+	cachedData, err := config.RedisClient.Get(ctx, cacheKey).Result()
+	if err == nil && cachedData != "" {
+		var cachedPoints []dto.PointResponse
+		if err := json.Unmarshal([]byte(cachedData), &cachedPoints); err == nil {
+			return cachedPoints, nil
+		}
+	}
+
+	points, err := s.repo.GetAll()
 	if err != nil {
-		return domain.Point{}, errors.New("point not found")
+		return nil, err
 	}
-	return point, nil
+
+	var result []dto.PointResponse
+	for _, point := range points {
+		result = append(result, dto.PointResponse{
+			ID:           point.ID,
+			CoinName:     point.CoinName,
+			ValuePerUnit: point.ValuePerUnit,
+			CreatedAt:    utils.FormatDateToIndonesianFormat(point.CreatedAt),
+			UpdatedAt:    utils.FormatDateToIndonesianFormat(point.UpdatedAt),
+		})
+	}
+
+	cacheData, _ := json.Marshal(result)
+	config.RedisClient.Set(ctx, cacheKey, cacheData, time.Minute*5)
+
+	return result, nil
 }
 
-func CreatePoint(coinName string, valuePerUnit float64) (domain.Point, error) {
+func (s *PointService) GetPointByID(id string) (*dto.PointResponse, error) {
+	ctx := config.Context()
 
-	newPoint := domain.Point{
-		CoinName:     coinName,
-		ValuePerUnit: valuePerUnit,
+	cacheKey := "points:" + id
+	cachedData, err := config.RedisClient.Get(ctx, cacheKey).Result()
+	if err == nil && cachedData != "" {
+		var cachedPoint dto.PointResponse
+		if err := json.Unmarshal([]byte(cachedData), &cachedPoint); err == nil {
+			return &cachedPoint, nil
+		}
 	}
 
-	if err := repositories.CreatePoint(&newPoint); err != nil {
-		return domain.Point{}, err
-	}
-
-	return newPoint, nil
-}
-
-func UpdatePoint(id, coinName string, valuePerUnit float64) (domain.Point, error) {
-
-	point, err := repositories.GetPointByID(id)
+	point, err := s.repo.GetByID(id)
 	if err != nil {
-		return domain.Point{}, errors.New("point not found")
+		return nil, err
 	}
 
-	point.CoinName = coinName
-	point.ValuePerUnit = valuePerUnit
-
-	if err := repositories.UpdatePoint(&point); err != nil {
-		return domain.Point{}, err
+	result := &dto.PointResponse{
+		ID:           point.ID,
+		CoinName:     point.CoinName,
+		ValuePerUnit: point.ValuePerUnit,
+		CreatedAt:    utils.FormatDateToIndonesianFormat(point.CreatedAt),
+		UpdatedAt:    utils.FormatDateToIndonesianFormat(point.UpdatedAt),
 	}
 
-	return point, nil
+	cacheData, _ := json.Marshal(result)
+	config.RedisClient.Set(ctx, cacheKey, cacheData, time.Minute*5)
+
+	return result, nil
 }
 
-func DeletePoint(id string) error {
+func (s *PointService) CreatePoint(request *dto.PointCreateRequest) (*dto.PointResponse, error) {
 
-	_, err := repositories.GetPointByID(id)
+	if request.CoinName == "" || request.ValuePerUnit <= 0 {
+		return nil, errors.New("invalid input data")
+	}
+
+	newPoint := &domain.Point{
+		CoinName:     request.CoinName,
+		ValuePerUnit: request.ValuePerUnit,
+	}
+
+	err := s.repo.Create(newPoint)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := config.Context()
+	config.RedisClient.Del(ctx, "points:all")
+
+	response := &dto.PointResponse{
+		ID:           newPoint.ID,
+		CoinName:     newPoint.CoinName,
+		ValuePerUnit: newPoint.ValuePerUnit,
+		CreatedAt:    utils.FormatDateToIndonesianFormat(newPoint.CreatedAt),
+		UpdatedAt:    utils.FormatDateToIndonesianFormat(newPoint.UpdatedAt),
+	}
+
+	return response, nil
+}
+
+func (s *PointService) UpdatePoint(id string, request *dto.PointUpdateRequest) (*dto.PointResponse, error) {
+
+	point, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, errors.New("point not found")
+	}
+
+	if request.CoinName != "" {
+		point.CoinName = request.CoinName
+	}
+	if request.ValuePerUnit > 0 {
+		point.ValuePerUnit = request.ValuePerUnit
+	}
+	point.UpdatedAt = time.Now()
+
+	err = s.repo.Update(point)
+	if err != nil {
+		return nil, errors.New("failed to update point")
+	}
+
+	ctx := config.Context()
+	config.RedisClient.Del(ctx, "points:all")
+	config.RedisClient.Del(ctx, "points:"+id)
+
+	response := &dto.PointResponse{
+		ID:           point.ID,
+		CoinName:     point.CoinName,
+		ValuePerUnit: point.ValuePerUnit,
+		CreatedAt:    utils.FormatDateToIndonesianFormat(point.CreatedAt),
+		UpdatedAt:    utils.FormatDateToIndonesianFormat(point.UpdatedAt),
+	}
+
+	return response, nil
+}
+
+func (s *PointService) DeletePoint(id string) error {
+
+	point, err := s.repo.GetByID(id)
 	if err != nil {
 		return errors.New("point not found")
 	}
 
-	if err := repositories.DeletePoint(id); err != nil {
-		return err
+	err = s.repo.Delete(point)
+	if err != nil {
+		return errors.New("failed to delete point")
 	}
+
+	ctx := config.Context()
+	config.RedisClient.Del(ctx, "points:all")
+	config.RedisClient.Del(ctx, "points:"+id)
 
 	return nil
 }
