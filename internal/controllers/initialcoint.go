@@ -58,8 +58,9 @@ func (pc *PointController) CreatePoint(c *fiber.Ctx) error {
 
 	point, err := pc.service.CreatePoint(&request)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
-			fiber.StatusInternalServerError,
+
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(
+			fiber.StatusBadRequest,
 			err.Error(),
 		))
 	}
@@ -84,14 +85,8 @@ func (pc *PointController) UpdatePoint(c *fiber.Ctx) error {
 
 	point, err := pc.service.UpdatePoint(id, &request)
 	if err != nil {
-		if err.Error() == "point not found" {
-			return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse(
-				fiber.StatusNotFound,
-				"Point not found",
-			))
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
-			fiber.StatusInternalServerError,
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(
+			fiber.StatusBadRequest,
 			err.Error(),
 		))
 	}

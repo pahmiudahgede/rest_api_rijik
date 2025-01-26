@@ -14,6 +14,6 @@ type BannerCreateRequest struct {
 }
 
 type BannerUpdateRequest struct {
-	BannerName  string `json:"bannername,omitempty"`
-	BannerImage string `json:"bannerimage,omitempty"`
+	BannerName  *string `json:"bannername,omitempty"`
+	BannerImage *string `json:"bannerimage,omitempty"`
 }

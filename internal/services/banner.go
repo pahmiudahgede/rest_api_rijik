@@ -122,11 +122,11 @@ func (s *BannerService) UpdateBanner(id string, request *dto.BannerUpdateRequest
 		return nil, errors.New("banner not found")
 	}
 
-	if request.BannerName != "" {
-		banner.BannerName = request.BannerName
+	if request.BannerName != nil && *request.BannerName != "" {
+		banner.BannerName = *request.BannerName
 	}
-	if request.BannerImage != "" {
-		banner.BannerImage = request.BannerImage
+	if request.BannerImage != nil && *request.BannerImage != "" {
+		banner.BannerImage = *request.BannerImage
 	}
 	banner.UpdatedAt = time.Now()
 

@@ -1,162 +1,199 @@
 package services
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/domain"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
+	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
-var ctx = context.Background()
-
-func CreateArticle(articleRequest *dto.ArticleRequest) (dto.ArticleResponse, error) {
-	article := domain.Article{
-		Title:      articleRequest.Title,
-		CoverImage: articleRequest.CoverImage,
-		Author:     articleRequest.Author,
-		Heading:    articleRequest.Heading,
-		Content:    articleRequest.Content,
-	}
-
-	err := repositories.CreateArticle(&article)
-	if err != nil {
-		return dto.ArticleResponse{}, err
-	}
-
-	config.RedisClient.Del(ctx, "articles")
-
-	articleResponse := dto.ArticleResponse{
-		ID:          article.ID,
-		Title:       article.Title,
-		CoverImage:  article.CoverImage,
-		Author:      article.Author,
-		Heading:     article.Heading,
-		Content:     article.Content,
-		PublishedAt: article.PublishedAt,
-		UpdatedAt:   article.UpdatedAt,
-	}
-
-	return articleResponse, nil
+type ArticleService struct {
+	repo *repositories.ArticleRepository
 }
 
-func GetArticles() ([]dto.ArticleResponse, error) {
-	var response []dto.ArticleResponse
+func NewArticleService(repo *repositories.ArticleRepository) *ArticleService {
+	return &ArticleService{repo: repo}
+}
 
-	cachedArticles, err := config.RedisClient.Get(ctx, "articles").Result()
-	if err == nil {
-		err := json.Unmarshal([]byte(cachedArticles), &response)
-		if err != nil {
-			return nil, err
+func (s *ArticleService) GetAllArticles() ([]dto.ArticleResponse, error) {
+	ctx := config.Context()
+	cacheKey := "articles:all"
+
+	cachedData, err := config.RedisClient.Get(ctx, cacheKey).Result()
+	if err == nil && cachedData != "" {
+		var cachedArticles []dto.ArticleResponse
+		if err := json.Unmarshal([]byte(cachedData), &cachedArticles); err == nil {
+			return cachedArticles, nil
 		}
-		return response, nil
 	}
 
-	articles, err := repositories.GetArticles()
+	articles, err := s.repo.GetAll()
 	if err != nil {
 		return nil, err
 	}
 
+	var result []dto.ArticleResponse
 	for _, article := range articles {
-		response = append(response, dto.ArticleResponse{
+		result = append(result, dto.ArticleResponse{
 			ID:          article.ID,
 			Title:       article.Title,
 			CoverImage:  article.CoverImage,
 			Author:      article.Author,
 			Heading:     article.Heading,
 			Content:     article.Content,
-			PublishedAt: article.PublishedAt,
-			UpdatedAt:   article.UpdatedAt,
+			PublishedAt: utils.FormatDateToIndonesianFormat(article.PublishedAt),
+			UpdatedAt:   utils.FormatDateToIndonesianFormat(article.UpdatedAt),
 		})
 	}
 
-	articlesJSON, _ := json.Marshal(response)
-	config.RedisClient.Set(ctx, "articles", articlesJSON, 10*time.Minute)
+	cacheData, _ := json.Marshal(result)
+	config.RedisClient.Set(ctx, cacheKey, cacheData, time.Minute*5)
+
+	return result, nil
+}
+
+func (s *ArticleService) GetArticleByID(id string) (*dto.ArticleResponse, error) {
+	ctx := config.Context()
+	cacheKey := "articles:" + id
+
+	cachedData, err := config.RedisClient.Get(ctx, cacheKey).Result()
+	if err == nil && cachedData != "" {
+		var cachedArticle dto.ArticleResponse
+		if err := json.Unmarshal([]byte(cachedData), &cachedArticle); err == nil {
+			return &cachedArticle, nil
+		}
+	}
+
+	article, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &dto.ArticleResponse{
+		ID:          article.ID,
+		Title:       article.Title,
+		CoverImage:  article.CoverImage,
+		Author:      article.Author,
+		Heading:     article.Heading,
+		Content:     article.Content,
+		PublishedAt: utils.FormatDateToIndonesianFormat(article.PublishedAt),
+		UpdatedAt:   utils.FormatDateToIndonesianFormat(article.UpdatedAt),
+	}
+
+	cacheData, _ := json.Marshal(result)
+	config.RedisClient.Set(ctx, cacheKey, cacheData, time.Minute*5)
+
+	return result, nil
+}
+
+func (s *ArticleService) CreateArticle(request *dto.ArticleCreateRequest) (*dto.ArticleResponse, error) {
+
+	if request.Title == "" || request.CoverImage == "" || request.Author == "" ||
+		request.Heading == "" || request.Content == "" {
+		return nil, errors.New("invalid input data")
+	}
+
+	newArticle := &domain.Article{
+		Title:      request.Title,
+		CoverImage: request.CoverImage,
+		Author:     request.Author,
+		Heading:    request.Heading,
+		Content:    request.Content,
+	}
+
+	err := s.repo.Create(newArticle)
+	if err != nil {
+		return nil, errors.New("failed to create article")
+	}
+
+	ctx := config.Context()
+	config.RedisClient.Del(ctx, "articles:all")
+
+	response := &dto.ArticleResponse{
+		ID:          newArticle.ID,
+		Title:       newArticle.Title,
+		CoverImage:  newArticle.CoverImage,
+		Author:      newArticle.Author,
+		Heading:     newArticle.Heading,
+		Content:     newArticle.Content,
+		PublishedAt: utils.FormatDateToIndonesianFormat(newArticle.PublishedAt),
+		UpdatedAt:   utils.FormatDateToIndonesianFormat(newArticle.UpdatedAt),
+	}
 
 	return response, nil
 }
 
-func GetArticleByID(id string) (dto.ArticleResponse, error) {
-	cachedArticle, err := config.RedisClient.Get(ctx, "article:"+id).Result()
-	if err == nil {
-		var article dto.ArticleResponse
-		err := json.Unmarshal([]byte(cachedArticle), &article)
-		if err != nil {
-			return article, err
-		}
-		return article, nil
+func (s *ArticleService) UpdateArticle(id string, request *dto.ArticleUpdateRequest) (*dto.ArticleResponse, error) {
+
+	if err := dto.GetValidator().Struct(request); err != nil {
+		return nil, errors.New("invalid input data")
 	}
 
-	article, err := repositories.GetArticleByID(id)
+	article, err := s.repo.GetByID(id)
 	if err != nil {
-		return dto.ArticleResponse{}, err
+		return nil, errors.New("article not found")
 	}
 
-	articleResponse := dto.ArticleResponse{
-		ID:          article.ID,
-		Title:       article.Title,
-		CoverImage:  article.CoverImage,
-		Author:      article.Author,
-		Heading:     article.Heading,
-		Content:     article.Content,
-		PublishedAt: article.PublishedAt,
-		UpdatedAt:   article.UpdatedAt,
+	if request.Title != nil {
+		article.Title = *request.Title
 	}
-
-	articleJSON, _ := json.Marshal(articleResponse)
-	config.RedisClient.Set(ctx, "article:"+id, articleJSON, 10*time.Minute)
-
-	return articleResponse, nil
-}
-
-func UpdateArticle(id string, articleUpdateRequest *dto.ArticleUpdateRequest) (*dto.ArticleResponse, error) {
-
-	article, err := repositories.GetArticleByID(id)
-	if err != nil {
-		return nil, err
+	if request.CoverImage != nil {
+		article.CoverImage = *request.CoverImage
 	}
-
-	article.Title = articleUpdateRequest.Title
-	article.CoverImage = articleUpdateRequest.CoverImage
-	article.Author = articleUpdateRequest.Author
-	article.Heading = articleUpdateRequest.Heading
-	article.Content = articleUpdateRequest.Content
+	if request.Author != nil {
+		article.Author = *request.Author
+	}
+	if request.Heading != nil {
+		article.Heading = *request.Heading
+	}
+	if request.Content != nil {
+		article.Content = *request.Content
+	}
 	article.UpdatedAt = time.Now()
 
-	err = repositories.UpdateArticle(&article)
+	err = s.repo.Update(article)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed to update article")
 	}
 
-	config.RedisClient.Del(ctx, "article:"+id)
-	config.RedisClient.Del(ctx, "articles")
+	ctx := config.Context()
+	config.RedisClient.Del(ctx, "articles:all")
+	config.RedisClient.Del(ctx, "articles:"+id)
 
-	updatedArticleResponse := dto.ArticleResponse{
+	response := &dto.ArticleResponse{
 		ID:          article.ID,
 		Title:       article.Title,
 		CoverImage:  article.CoverImage,
 		Author:      article.Author,
 		Heading:     article.Heading,
 		Content:     article.Content,
-		PublishedAt: article.PublishedAt,
-		UpdatedAt:   article.UpdatedAt,
+		PublishedAt: utils.FormatDateToIndonesianFormat(article.PublishedAt),
+		UpdatedAt:   utils.FormatDateToIndonesianFormat(article.UpdatedAt),
 	}
 
-	return &updatedArticleResponse, nil
+	return response, nil
 }
 
-func DeleteArticle(id string) error {
+func (s *ArticleService) DeleteArticle(id string) error {
 
-	err := repositories.DeleteArticle(id)
+	article, err := s.repo.GetByID(id)
 	if err != nil {
-		return err
+		return errors.New("article not found")
 	}
 
-	config.RedisClient.Del(ctx, "article:"+id)
-	config.RedisClient.Del(ctx, "articles")
+	err = s.repo.Delete(article)
+	if err != nil {
+		return errors.New("failed to delete article")
+	}
+
+	ctx := config.Context()
+	config.RedisClient.Del(ctx, "articles:all")
+	config.RedisClient.Del(ctx, "articles:"+id)
 
 	return nil
 }

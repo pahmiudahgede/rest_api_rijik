@@ -19,6 +19,10 @@ func AppRouter(app *fiber.App) {
 	bannerService := services.NewBannerService(bannerRepo)
 	bannerController := controllers.NewBannerController(bannerService)
 
+	articleRepo := repositories.NewArticleRepository()
+	articleService := services.NewArticleService(articleRepo)
+	articleController := controllers.NewArticleController(articleService)
+
 	// # api group domain endpoint #
 	api := app.Group("/apirijikid")
 
@@ -81,11 +85,11 @@ func AppRouter(app *fiber.App) {
 	api.Delete("/address/delete-address/:id", middleware.AuthMiddleware, controllers.DeleteAddress)
 
 	// # article #
-	api.Get("/articles", controllers.GetArticles)
-	api.Get("/article/:id", controllers.GetArticleByID)
-	api.Post("/article/create-article", middleware.RoleRequired(utils.RoleAdministrator), controllers.CreateArticle)
-	api.Put("/article/update-article/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.UpdateArticle)
-	api.Delete("/article/delete-article/:id", middleware.RoleRequired(utils.RoleAdministrator), controllers.DeleteArticle)
+	api.Get("/articles", articleController.GetAllArticles)
+	api.Get("/article/:id", articleController.GetArticleByID)
+	api.Post("/article/create-article", middleware.RoleRequired(utils.RoleAdministrator), articleController.CreateArticle)
+	api.Put("/article/update-article/:id", middleware.RoleRequired(utils.RoleAdministrator), articleController.UpdateArticle)
+	api.Delete("/article/delete-article/:id", middleware.RoleRequired(utils.RoleAdministrator), articleController.DeleteArticle)
 
 	// # trash type #
 	api.Get("/trash-categorys", controllers.GetTrashCategories)

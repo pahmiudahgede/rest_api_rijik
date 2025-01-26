@@ -87,8 +87,8 @@ func (s *PointService) GetPointByID(id string) (*dto.PointResponse, error) {
 
 func (s *PointService) CreatePoint(request *dto.PointCreateRequest) (*dto.PointResponse, error) {
 
-	if request.CoinName == "" || request.ValuePerUnit <= 0 {
-		return nil, errors.New("invalid input data")
+	if err := request.Validate(); err != nil {
+		return nil, err
 	}
 
 	newPoint := &domain.Point{
@@ -117,17 +117,17 @@ func (s *PointService) CreatePoint(request *dto.PointCreateRequest) (*dto.PointR
 
 func (s *PointService) UpdatePoint(id string, request *dto.PointUpdateRequest) (*dto.PointResponse, error) {
 
+	if err := request.Validate(); err != nil {
+		return nil, err
+	}
+
 	point, err := s.repo.GetByID(id)
 	if err != nil {
 		return nil, errors.New("point not found")
 	}
 
-	if request.CoinName != "" {
-		point.CoinName = request.CoinName
-	}
-	if request.ValuePerUnit > 0 {
-		point.ValuePerUnit = request.ValuePerUnit
-	}
+	point.CoinName = request.CoinName
+	point.ValuePerUnit = request.ValuePerUnit
 	point.UpdatedAt = time.Now()
 
 	err = s.repo.Update(point)

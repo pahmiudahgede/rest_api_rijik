@@ -14,6 +14,16 @@ type PointCreateRequest struct {
 }
 
 type PointUpdateRequest struct {
-	CoinName     string  `json:"coin_name,omitempty"`
-	ValuePerUnit float64 `json:"value_perunit,omitempty"`
+	CoinName     string  `json:"coin_name" validate:"required"`
+	ValuePerUnit float64 `json:"value_perunit" validate:"required,gt=0"`
+}
+
+func (p *PointCreateRequest) Validate() error {
+	validate := GetValidator()
+	return validate.Struct(p)
+}
+
+func (p *PointUpdateRequest) Validate() error {
+	validate := GetValidator()
+	return validate.Struct(p)
 }
