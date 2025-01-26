@@ -58,8 +58,8 @@ func (ac *ArticleController) CreateArticle(c *fiber.Ctx) error {
 
 	article, err := ac.service.CreateArticle(&request)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
-			fiber.StatusInternalServerError,
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(
+			fiber.StatusBadRequest,
 			err.Error(),
 		))
 	}
@@ -84,21 +84,15 @@ func (ac *ArticleController) UpdateArticle(c *fiber.Ctx) error {
 
 	article, err := ac.service.UpdateArticle(id, &request)
 	if err != nil {
-		if err.Error() == "article not found" {
-			return c.Status(fiber.StatusNotFound).JSON(utils.ErrorResponse(
-				fiber.StatusNotFound,
-				"Article not found",
-			))
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(
-			fiber.StatusInternalServerError,
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(
+			fiber.StatusBadRequest,
 			err.Error(),
 		))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.FormatResponse(
 		fiber.StatusOK,
-		"Article updated successfully",
+		"Point updated successfully",
 		article,
 	))
 }

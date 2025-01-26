@@ -93,9 +93,8 @@ func (s *ArticleService) GetArticleByID(id string) (*dto.ArticleResponse, error)
 
 func (s *ArticleService) CreateArticle(request *dto.ArticleCreateRequest) (*dto.ArticleResponse, error) {
 
-	if request.Title == "" || request.CoverImage == "" || request.Author == "" ||
-		request.Heading == "" || request.Content == "" {
-		return nil, errors.New("invalid input data")
+	if err := request.Validate(); err != nil {
+		return nil, err
 	}
 
 	newArticle := &domain.Article{
@@ -130,8 +129,12 @@ func (s *ArticleService) CreateArticle(request *dto.ArticleCreateRequest) (*dto.
 
 func (s *ArticleService) UpdateArticle(id string, request *dto.ArticleUpdateRequest) (*dto.ArticleResponse, error) {
 
-	if err := dto.GetValidator().Struct(request); err != nil {
-		return nil, errors.New("invalid input data")
+	// if err := dto.GetValidator().Struct(request); err != nil {
+	// 	return nil, errors.New("invalid input data")
+	// }
+
+	if err := request.Validate(); err != nil {
+		return nil, err
 	}
 
 	article, err := s.repo.GetByID(id)
@@ -139,21 +142,11 @@ func (s *ArticleService) UpdateArticle(id string, request *dto.ArticleUpdateRequ
 		return nil, errors.New("article not found")
 	}
 
-	if request.Title != nil {
-		article.Title = *request.Title
-	}
-	if request.CoverImage != nil {
-		article.CoverImage = *request.CoverImage
-	}
-	if request.Author != nil {
-		article.Author = *request.Author
-	}
-	if request.Heading != nil {
-		article.Heading = *request.Heading
-	}
-	if request.Content != nil {
-		article.Content = *request.Content
-	}
+	article.Title = request.Title
+	article.CoverImage = request.CoverImage
+	article.Author = request.Author
+	article.Heading = request.Heading
+	article.Content = request.Content
 	article.UpdatedAt = time.Now()
 
 	err = s.repo.Update(article)
