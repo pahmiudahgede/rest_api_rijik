@@ -7,6 +7,7 @@ import (
 
 type UserRepository interface {
 	FindByEmailOrUsernameOrPhone(identifier string) (*model.User, error)
+	Create(user *model.User) error
 }
 
 type userRepository struct {
@@ -24,4 +25,12 @@ func (r *userRepository) FindByEmailOrUsernameOrPhone(identifier string) (*model
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) Create(user *model.User) error {
+	err := r.DB.Create(user).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }

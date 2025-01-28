@@ -23,5 +23,6 @@ func AuthRouter(app *fiber.App) {
 	userHandler := handler.NewUserHandler(userService)
 
 	api.Post("/login", userHandler.Login)
+	api.Post("/register", userHandler.Register)
 	api.Post("/logout", userHandler.Logout)
 }
