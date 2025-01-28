@@ -4,58 +4,24 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
+	"os"
 
 	"github.com/go-redis/redis/v8"
 )
 
 var RedisClient *redis.Client
+var Ctx = context.Background()
 
-func Context() context.Context {
-	return context.Background()
-}
-
-func InitRedis() {
-
-	InitConfig()
-
+func ConnectRedis() {
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", RedisHost, RedisPort),
-		Password: RedisPassword,
-		DB:       RedisDB,
+		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       0,
 	})
 
-	_, err := RedisClient.Ping(context.Background()).Result()
+	_, err := RedisClient.Ping(Ctx).Result()
 	if err != nil {
-		log.Fatalf("Error: Gagal terhubung ke Redis: %v", err)
+		log.Fatalf("Error connecting to Redis: %v", err)
 	}
-
-	log.Println("Koneksi ke Redis berhasil.")
-}
-
-func GetFromCache(key string) (string, error) {
-	val, err := RedisClient.Get(Context(), key).Result()
-	if err == redis.Nil {
-
-		return "", nil
-	} else if err != nil {
-		return "", err
-	}
-	return val, nil
-}
-
-func SetToCache(key string, value string, ttl time.Duration) error {
-	err := RedisClient.Set(Context(), key, value, ttl).Err()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteFromCache(key string) error {
-	err := RedisClient.Del(Context(), key).Err()
-	if err != nil {
-		return err
-	}
-	return nil
+	log.Println("Redis connected successfully!")
 }
