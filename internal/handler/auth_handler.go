@@ -38,3 +38,19 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 
 	return utils.LogResponse(c, user, "Login successful")
 }
+
+func (h *UserHandler) Logout(c *fiber.Ctx) error {
+
+	token := c.Get("Authorization")
+	if token == "" {
+
+		return utils.ErrorResponse(c, "No token provided")
+	}
+
+	err := utils.DeleteData(token)
+	if err != nil {
+		return utils.InternalServerErrorResponse(c, "Error logging out")
+	}
+
+	return utils.NonPaginatedResponse(c, nil, 0, "Logout successful")
+}
