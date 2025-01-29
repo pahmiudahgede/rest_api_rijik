@@ -1,8 +1,8 @@
 package utils
 
 const (
-	RoleMasyarakat    = "63191315-c59f-4af9-91a7-367c698cc486"
-	RolePengepul      = "bda3827a-3c61-459a-9a95-42e2bb88d737"
-	RolePengelola     = "fc75351d-eded-4314-a41b-e4a901e6540c"
-	RoleAdministrator = "fe4a15ce-5a0c-40d0-9be0-a7d4b6d05480"
+	RoleAdministrator = "46f75bb9-7f64-44b7-b378-091a67b3e229"
+	RoleMasyarakat    = "6cfa867b-536c-448d-ba11-fe060b5af971"
+	RolePengepul      = "8171883c-ea9e-4d17-9f28-a7896d88380f"
+	RolePengelola     = "84d72ddb-68a8-430c-9b79-5d71f90cb1be"
 )

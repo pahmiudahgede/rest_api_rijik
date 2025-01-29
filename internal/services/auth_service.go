@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -19,23 +20,26 @@ type UserService interface {
 
 type userService struct {
 	UserRepo  repositories.UserRepository
+	RoleRepo  repositories.RoleRepository
 	SecretKey string
 }
 
-func NewUserService(userRepo repositories.UserRepository, secretKey string) UserService {
-	return &userService{UserRepo: userRepo, SecretKey: secretKey}
+func NewUserService(userRepo repositories.UserRepository, roleRepo repositories.RoleRepository, secretKey string) UserService {
+	return &userService{UserRepo: userRepo, RoleRepo: roleRepo, SecretKey: secretKey}
 }
 
 func (s *userService) Login(credentials dto.LoginDTO) (*dto.UserResponseWithToken, error) {
+	if credentials.RoleID == "" {
+		return nil, errors.New("roleId is required")
+	}
 
-	user, err := s.UserRepo.FindByEmailOrUsernameOrPhone(credentials.Identifier)
+	user, err := s.UserRepo.FindByIdentifierAndRole(credentials.Identifier, credentials.RoleID)
 	if err != nil {
-
-		return nil, fmt.Errorf("user not found")
+		return nil, errors.New("akun dengan role tersebut belum terdaftar")
 	}
 
 	if !CheckPasswordHash(credentials.Password, user.Password) {
-		return nil, bcrypt.ErrMismatchedHashAndPassword
+		return nil, errors.New("password yang anda masukkan salah")
 	}
 
 	token, err := s.generateJWT(user)
@@ -49,8 +53,9 @@ func (s *userService) Login(credentials dto.LoginDTO) (*dto.UserResponseWithToke
 	}
 
 	return &dto.UserResponseWithToken{
-		UserID: user.ID,
-		Token:  token,
+		RoleName: user.Role.RoleName,
+		UserID:   user.ID,
+		Token:    token,
 	}, nil
 }
 
@@ -77,9 +82,32 @@ func CheckPasswordHash(password, hashedPassword string) bool {
 }
 
 func (s *userService) Register(user dto.RegisterDTO) (*model.User, error) {
-
 	if user.Password != user.ConfirmPassword {
 		return nil, fmt.Errorf("password and confirm password do not match")
+	}
+
+	if user.RoleID == "" {
+		return nil, fmt.Errorf("roleId is required")
+	}
+
+	role, err := s.RoleRepo.FindByID(user.RoleID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid roleId")
+	}
+
+	existingUser, _ := s.UserRepo.FindByUsername(user.Username)
+	if existingUser != nil {
+		return nil, fmt.Errorf("username is already taken")
+	}
+
+	existingPhone, _ := s.UserRepo.FindByPhoneAndRole(user.Phone, user.RoleID)
+	if existingPhone != nil {
+		return nil, fmt.Errorf("phone number is already used for this role")
+	}
+
+	existingEmail, _ := s.UserRepo.FindByEmailAndRole(user.Email, user.RoleID)
+	if existingEmail != nil {
+		return nil, fmt.Errorf("email is already used for this role")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
@@ -93,12 +121,15 @@ func (s *userService) Register(user dto.RegisterDTO) (*model.User, error) {
 		Phone:    user.Phone,
 		Email:    user.Email,
 		Password: string(hashedPassword),
+		RoleID:   user.RoleID,
 	}
 
 	err = s.UserRepo.Create(&newUser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %v", err)
 	}
+
+	newUser.Role = *role
 
 	return &newUser, nil
 }

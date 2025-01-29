@@ -11,6 +11,8 @@ type User struct {
 	Email         string    `gorm:"not null" json:"email"`
 	EmailVerified bool      `gorm:"default:false" json:"emailVerified"`
 	Password      string    `gorm:"not null" json:"password"`
+	RoleID        string    `gorm:"not null" json:"roleId"`
+	Role          Role      `gorm:"foreignKey:RoleID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"role"`
 	CreatedAt     time.Time `gorm:"default:current_timestamp" json:"createdAt"`
 	UpdatedAt     time.Time `gorm:"default:current_timestamp" json:"updatedAt"`
 }

@@ -6,13 +6,15 @@ import (
 )
 
 type LoginDTO struct {
-	Identifier string `json:"identifier" validate:"required"`
-	Password   string `json:"password" validate:"required,min=6"`
+	RoleID     string `json:"roleid"`
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
 }
 
 type UserResponseWithToken struct {
-	UserID string `json:"user_id"`
-	Token  string `json:"token"`
+	UserID   string `json:"user_id"`
+	RoleName string `json:"loginas"`
+	Token    string `json:"token"`
 }
 
 type RegisterDTO struct {
@@ -22,6 +24,7 @@ type RegisterDTO struct {
 	Email           string `json:"email"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirm_password"`
+	RoleID          string `json:"roleId,omitempty"`
 }
 
 type UserResponseDTO struct {
@@ -31,8 +34,28 @@ type UserResponseDTO struct {
 	Phone         string `json:"phone"`
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"emailVerified"`
+	RoleName      string `json:"role"`
 	CreatedAt     string `json:"createdAt"`
 	UpdatedAt     string `json:"updatedAt"`
+}
+
+func (l *LoginDTO) Validate() (map[string][]string, bool) {
+	errors := make(map[string][]string)
+
+	if strings.TrimSpace(l.RoleID) == "" {
+		errors["roleid"] = append(errors["roleid"], "Role ID is required")
+	}
+	if strings.TrimSpace(l.Identifier) == "" {
+		errors["identifier"] = append(errors["identifier"], "Identifier (username, email, or phone) is required")
+	}
+	if strings.TrimSpace(l.Password) == "" {
+		errors["password"] = append(errors["password"], "Password is required")
+	}
+
+	if len(errors) > 0 {
+		return errors, false
+	}
+	return nil, true
 }
 
 func (r *RegisterDTO) Validate() (map[string][]string, bool) {
@@ -67,6 +90,9 @@ func (r *RegisterDTO) Validate() (map[string][]string, bool) {
 		errors["confirm_password"] = append(errors["confirm_password"], "Confirm password is required")
 	} else if r.Password != r.ConfirmPassword {
 		errors["confirm_password"] = append(errors["confirm_password"], "Password and confirm password do not match")
+	}
+	if strings.TrimSpace(r.RoleID) == "" {
+		errors["roleId"] = append(errors["roleId"], "RoleID is required")
 	}
 
 	if len(errors) > 0 {

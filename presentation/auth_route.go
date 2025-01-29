@@ -19,9 +19,10 @@ func AuthRouter(app *fiber.App) {
 	}
 
 	userRepo := repositories.NewUserRepository(config.DB)
-	userService := services.NewUserService(userRepo, secretKey)
+	roleRepo := repositories.NewRoleRepository(config.DB)
+	userService := services.NewUserService(userRepo, roleRepo, secretKey)
 	userHandler := handler.NewUserHandler(userService)
-
+	
 	api.Post("/login", userHandler.Login)
 	api.Post("/register", userHandler.Register)
 	api.Post("/logout", userHandler.Logout)

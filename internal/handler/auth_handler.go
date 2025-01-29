@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/services"
@@ -22,18 +24,23 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
 
+	validationErrors, valid := loginDTO.Validate()
+	if !valid {
+		return utils.ValidationErrorResponse(c, validationErrors)
+	}
+
 	user, err := h.UserService.Login(loginDTO)
 	if err != nil {
-		if err.Error() == "user not found" {
-
-			return utils.ErrorResponse(c, "User not found")
+		if err.Error() == "akun dengan role tersebut belum terdaftar" {
+			return utils.GenericErrorResponse(c, fiber.StatusNotFound, "akun dengan role tersebut belum terdaftar")
 		}
-		if err == bcrypt.ErrMismatchedHashAndPassword {
-
-			return utils.ErrorResponse(c, "Invalid password")
+		if err.Error() == "password yang anda masukkan salah" {
+			return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "password yang anda masukkan salah")
 		}
-
-		return utils.InternalServerErrorResponse(c, "Error logging in")
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "password yang anda masukkan salah")
+		}
+		return utils.GenericErrorResponse(c, fiber.StatusNotFound, "akun tidak ditemukan")
 	}
 
 	return utils.LogResponse(c, user, "Login successful")
@@ -46,9 +53,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 	}
 
 	errors, valid := registerDTO.Validate()
-
 	if !valid {
-
 		return utils.ValidationErrorResponse(c, errors)
 	}
 
@@ -57,15 +62,8 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 		return utils.ErrorResponse(c, err.Error())
 	}
 
-	createdAt, err := utils.FormatDateToIndonesianFormat(user.CreatedAt)
-	if err != nil {
-		return utils.InternalServerErrorResponse(c, "Error formatting created date")
-	}
-
-	updatedAt, err := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
-	if err != nil {
-		return utils.InternalServerErrorResponse(c, "Error formatting updated date")
-	}
+	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
 
 	userResponse := dto.UserResponseDTO{
 		ID:            user.ID,
@@ -74,6 +72,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 		Phone:         user.Phone,
 		Email:         user.Email,
 		EmailVerified: user.EmailVerified,
+		RoleName:      user.Role.RoleName,
 		CreatedAt:     createdAt,
 		UpdatedAt:     updatedAt,
 	}

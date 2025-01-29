@@ -30,7 +30,10 @@ func ConnectDatabase() {
 	}
 	log.Println("Database connected successfully!")
 
-	err = DB.AutoMigrate(&model.User{})
+	err = DB.AutoMigrate(
+		&model.User{},
+		&model.Role{},
+	)
 	if err != nil {
 		log.Fatalf("Error performing auto-migration: %v", err)
 	}
