@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/dto"
@@ -46,6 +47,21 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 	return utils.LogResponse(c, user, "Login successful")
 }
 
+func (h *UserHandler) GetUserProfile(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		log.Println("Unauthorized access: User ID not found in session")
+		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+	}
+
+	user, err := h.UserService.GetUserProfile(userID)
+	if err != nil {
+		return utils.ErrorResponse(c, "User not found")
+	}
+
+	return utils.LogResponse(c, user, "User profile retrieved successfully")
+}
+
 func (h *UserHandler) Register(c *fiber.Ctx) error {
 	var registerDTO dto.RegisterDTO
 	if err := c.BodyParser(&registerDTO); err != nil {
@@ -81,14 +97,13 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) Logout(c *fiber.Ctx) error {
-
-	token := c.Get("Authorization")
-	if token == "" {
-
-		return utils.ErrorResponse(c, "No token provided")
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		log.Println("Unauthorized access: User ID not found in session")
+		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
-	err := utils.DeleteData(token)
+	err := utils.DeleteSessionData(userID)
 	if err != nil {
 		return utils.InternalServerErrorResponse(c, "Error logging out")
 	}

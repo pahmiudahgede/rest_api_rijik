@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/middleware"
-	"github.com/pahmiudahgede/senggoldong/presentation"
+	"github.com/pahmiudahgede/senggoldong/router"
 )
 
 func main() {
@@ -12,6 +12,8 @@ func main() {
 
 	app := fiber.New()
 	app.Use(middleware.APIKeyMiddleware)
-	presentation.AuthRouter(app)
+
+	router.SetupRoutes(app)
+
 	config.StartServer(app)
 }
