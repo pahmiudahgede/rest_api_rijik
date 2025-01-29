@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 )
 
 func SetData(key string, value interface{}, expiration time.Duration) error {
-
 	err := config.RedisClient.Set(context.Background(), key, value, expiration).Err()
 	if err != nil {
 		log.Printf("Error setting data to Redis: %v", err)
@@ -21,7 +21,6 @@ func SetData(key string, value interface{}, expiration time.Duration) error {
 }
 
 func GetData(key string) (string, error) {
-
 	val, err := config.RedisClient.Get(context.Background(), key).Result()
 	if err == redis.Nil {
 		log.Printf("No data found for key: %s", key)
@@ -35,7 +34,6 @@ func GetData(key string) (string, error) {
 }
 
 func DeleteData(key string) error {
-
 	err := config.RedisClient.Del(context.Background(), key).Err()
 	if err != nil {
 		log.Printf("Error deleting data from Redis: %v", err)
@@ -46,7 +44,6 @@ func DeleteData(key string) error {
 }
 
 func SetDataWithExpire(key string, value interface{}, expiration time.Duration) error {
-
 	err := config.RedisClient.Set(context.Background(), key, value, expiration).Err()
 	if err != nil {
 		log.Printf("Error setting data with expiration to Redis: %v", err)
@@ -57,11 +54,35 @@ func SetDataWithExpire(key string, value interface{}, expiration time.Duration) 
 }
 
 func CheckKeyExists(key string) (bool, error) {
-
 	val, err := config.RedisClient.Exists(context.Background(), key).Result()
 	if err != nil {
 		log.Printf("Error checking if key exists in Redis: %v", err)
 		return false, err
 	}
 	return val > 0, nil
+}
+
+func SetJSONData(key string, value interface{}, expiration time.Duration) error {
+	jsonData, err := json.Marshal(value)
+	if err != nil {
+		log.Printf("Error marshaling JSON data: %v", err)
+		return err
+	}
+	return SetData(key, jsonData, expiration)
+}
+
+func GetJSONData(key string) (map[string]interface{}, error) {
+	val, err := GetData(key)
+	if err != nil || val == "" {
+		return nil, err
+	}
+
+	var data map[string]interface{}
+	err = json.Unmarshal([]byte(val), &data)
+	if err != nil {
+		log.Printf("Error unmarshaling JSON data from Redis: %v", err)
+		return nil, err
+	}
+
+	return data, nil
 }

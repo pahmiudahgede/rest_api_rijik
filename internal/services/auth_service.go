@@ -47,7 +47,14 @@ func (s *userService) Login(credentials dto.LoginDTO) (*dto.UserResponseWithToke
 		return nil, err
 	}
 
-	err = utils.SetData(credentials.Identifier, token, time.Hour*24)
+	sessionKey := fmt.Sprintf("session:%s", user.ID)
+	sessionData := map[string]interface{}{
+		"userID":   user.ID,
+		"roleID":   user.RoleID,
+		"roleName": user.Role.RoleName,
+	}
+
+	err = utils.SetJSONData(sessionKey, sessionData, time.Hour*24)
 	if err != nil {
 		return nil, err
 	}
