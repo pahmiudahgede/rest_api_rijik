@@ -1,14 +1,12 @@
 package handler
 
 import (
-	"errors"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/services"
 	"github.com/pahmiudahgede/senggoldong/utils"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct {
@@ -32,34 +30,10 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 
 	user, err := h.UserService.Login(loginDTO)
 	if err != nil {
-		if err.Error() == "akun dengan role tersebut belum terdaftar" {
-			return utils.GenericErrorResponse(c, fiber.StatusNotFound, "akun dengan role tersebut belum terdaftar")
-		}
-		if err.Error() == "password yang anda masukkan salah" {
-			return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "password yang anda masukkan salah")
-		}
-		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "password yang anda masukkan salah")
-		}
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, "akun tidak ditemukan")
+		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, err.Error())
 	}
 
 	return utils.LogResponse(c, user, "Login successful")
-}
-
-func (h *UserHandler) GetUserProfile(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		log.Println("Unauthorized access: User ID not found in session")
-		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-	}
-
-	user, err := h.UserService.GetUserProfile(userID)
-	if err != nil {
-		return utils.ErrorResponse(c, "User not found")
-	}
-
-	return utils.LogResponse(c, user, "User profile retrieved successfully")
 }
 
 func (h *UserHandler) Register(c *fiber.Ctx) error {

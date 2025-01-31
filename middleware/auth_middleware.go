@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"context"
-	"log"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,7 +21,6 @@ func AuthMiddleware(c *fiber.Ctx) error {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("SECRET_KEY")), nil
 	})
-
 	if err != nil || !token.Valid {
 		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: Invalid token")
 	}
@@ -33,25 +30,20 @@ func AuthMiddleware(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: Invalid token claims")
 	}
 
-	userID, ok := claims["sub"].(string)
-	if !ok || userID == "" {
-		log.Println("Invalid userID format in token")
+	userID := claims["sub"].(string)
+	if userID == "" {
 		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: Invalid user session")
 	}
 
-	ctx := context.Background()
 	sessionKey := "session:" + userID
-	sessionData, err := utils.GetJSONData(ctx, sessionKey)
+	sessionData, err := utils.GetJSONData(sessionKey)
 	if err != nil || sessionData == nil {
-		log.Println("Session expired or invalid for userID:", userID)
 		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Session expired or invalid")
 	}
 
 	roleID, roleOK := sessionData["roleID"].(string)
 	roleName, roleNameOK := sessionData["roleName"].(string)
-
 	if !roleOK || !roleNameOK {
-		log.Println("Invalid session data for userID:", userID)
 		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: Invalid session data")
 	}
 

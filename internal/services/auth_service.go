@@ -1,7 +1,6 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -17,7 +16,6 @@ import (
 type UserService interface {
 	Login(credentials dto.LoginDTO) (*dto.UserResponseWithToken, error)
 	Register(user dto.RegisterDTO) (*model.User, error)
-	GetUserProfile(userID string) (*dto.UserResponseDTO, error)
 }
 
 type userService struct {
@@ -31,6 +29,7 @@ func NewUserService(userRepo repositories.UserRepository, roleRepo repositories.
 }
 
 func (s *userService) Login(credentials dto.LoginDTO) (*dto.UserResponseWithToken, error) {
+
 	if credentials.RoleID == "" {
 		return nil, errors.New("roleId is required")
 	}
@@ -49,7 +48,6 @@ func (s *userService) Login(credentials dto.LoginDTO) (*dto.UserResponseWithToke
 		return nil, err
 	}
 
-	ctx := context.Background()
 	sessionKey := fmt.Sprintf("session:%s", user.ID)
 	sessionData := map[string]interface{}{
 		"userID":   user.ID,
@@ -57,7 +55,7 @@ func (s *userService) Login(credentials dto.LoginDTO) (*dto.UserResponseWithToke
 		"roleName": user.Role.RoleName,
 	}
 
-	err = utils.SetJSONData(ctx, sessionKey, sessionData, time.Hour*24)
+	err = utils.SetJSONData(sessionKey, sessionData, time.Hour*24)
 	if err != nil {
 		return nil, err
 	}
@@ -91,76 +89,8 @@ func CheckPasswordHash(password, hashedPassword string) bool {
 	return err == nil
 }
 
-func (s *userService) GetUserProfile(userID string) (*dto.UserResponseDTO, error) {
-	ctx := context.Background()
-	cacheKey := "user:profile:" + userID
-
-	if exists, _ := utils.CheckKeyExists(ctx, cacheKey); exists {
-		cachedUser, _ := utils.GetJSONData(ctx, cacheKey)
-		if cachedUser != nil {
-			if userDTO, ok := mapToUserResponseDTO(cachedUser); ok {
-				return userDTO, nil
-			}
-		}
-	}
-
-	user, err := s.UserRepo.FindByID(userID)
-	if err != nil {
-		return nil, errors.New("user not found")
-	}
-
-	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
-	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
-
-	userResponse := &dto.UserResponseDTO{
-		ID:            user.ID,
-		Username:      user.Username,
-		Name:          user.Name,
-		Phone:         user.Phone,
-		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
-		RoleName:      user.Role.RoleName,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-	}
-
-	err = utils.SetJSONData(ctx, cacheKey, userResponse, 5*time.Minute)
-	if err != nil {
-		return nil, errors.New("failed to cache user data")
-	}
-
-	return userResponse, nil
-}
-
-func mapToUserResponseDTO(data map[string]interface{}) (*dto.UserResponseDTO, bool) {
-	id, idOk := data["id"].(string)
-	username, usernameOk := data["username"].(string)
-	name, nameOk := data["name"].(string)
-	phone, phoneOk := data["phone"].(string)
-	email, emailOk := data["email"].(string)
-	emailVerified, emailVerifiedOk := data["emailVerified"].(bool)
-	roleName, roleNameOk := data["roleName"].(string)
-	createdAt, createdAtOk := data["createdAt"].(string)
-	updatedAt, updatedAtOk := data["updatedAt"].(string)
-
-	if !(idOk && usernameOk && nameOk && phoneOk && emailOk && emailVerifiedOk && roleNameOk && createdAtOk && updatedAtOk) {
-		return nil, false
-	}
-
-	return &dto.UserResponseDTO{
-		ID:            id,
-		Username:      username,
-		Name:          name,
-		Phone:         phone,
-		Email:         email,
-		EmailVerified: emailVerified,
-		RoleName:      roleName,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-	}, true
-}
-
 func (s *userService) Register(user dto.RegisterDTO) (*model.User, error) {
+
 	if user.Password != user.ConfirmPassword {
 		return nil, fmt.Errorf("password and confirm password do not match")
 	}
