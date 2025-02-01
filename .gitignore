@@ -26,5 +26,5 @@ go.work.sum
 .env.prod
 .env.dev
 
-# u cant see
-* public/uploads/avatars/
+# Ignore avatar images
+/public/uploads/avatars/
