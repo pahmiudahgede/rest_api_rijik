@@ -77,3 +77,22 @@ func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
 
 	return utils.LogResponse(c, userResponse, "Password updated successfully")
 }
+
+func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+	}
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "No avatar file uploaded")
+	}
+
+	userResponse, err := h.UserProfileService.UpdateUserAvatar(userID, file)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.LogResponse(c, userResponse, "Avatar updated successfully")
+}

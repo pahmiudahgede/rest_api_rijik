@@ -8,6 +8,7 @@ import (
 type UserProfileRepository interface {
 	FindByID(userID string) (*model.User, error)
 	Update(user *model.User) error
+	UpdateAvatar(userID, avatarURL string) error
 }
 
 type userProfileRepository struct {
@@ -29,6 +30,15 @@ func (r *userProfileRepository) FindByID(userID string) (*model.User, error) {
 
 func (r *userProfileRepository) Update(user *model.User) error {
 	err := r.DB.Save(user).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *userProfileRepository) UpdateAvatar(userID, avatarURL string) error {
+	var user model.User
+	err := r.DB.Model(&user).Where("id = ?", userID).Update("avatar", avatarURL).Error
 	if err != nil {
 		return err
 	}

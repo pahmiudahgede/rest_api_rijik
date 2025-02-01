@@ -8,6 +8,7 @@ import (
 type UserResponseDTO struct {
 	ID            string `json:"id"`
 	Username      string `json:"username"`
+	Avatar        *string `json:"photoprofile,omitempty"`
 	Name          string `json:"name"`
 	Phone         string `json:"phone"`
 	Email         string `json:"email"`
