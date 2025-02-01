@@ -49,7 +49,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 
 	user, err := h.UserService.Register(registerDTO)
 	if err != nil {
-		return utils.ErrorResponse(c, err.Error())
+		return utils.GenericErrorResponse(c, fiber.StatusConflict, err.Error())
 	}
 
 	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)

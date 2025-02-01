@@ -15,4 +15,6 @@ func UserProfileRouter(api fiber.Router) {
 	userProfileHandler := handler.NewUserProfileHandler(userProfileService)
 
 	api.Get("/user", middleware.AuthMiddleware, userProfileHandler.GetUserProfile)
+	api.Put("/user/update-user", middleware.AuthMiddleware, userProfileHandler.UpdateUserProfile)
+	api.Post("/user/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPassword)
 }
