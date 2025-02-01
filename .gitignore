@@ -25,3 +25,6 @@ go.work.sum
 .env
 .env.prod
 .env.dev
+
+# u cant see
+* public/uploads/avatars/
