@@ -33,6 +33,7 @@ func ConnectDatabase() {
 	err = DB.AutoMigrate(
 		&model.User{},
 		&model.Role{},
+		&model.UserPin{},
 	)
 	if err != nil {
 		log.Fatalf("Error performing auto-migration: %v", err)
