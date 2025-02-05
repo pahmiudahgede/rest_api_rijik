@@ -9,6 +9,7 @@ type UserPinRepository interface {
 	FindByUserID(userID string) (*model.UserPin, error)
 	FindByPin(userPin string) (*model.UserPin, error)
 	Create(userPin *model.UserPin) error
+	Update(userPin *model.UserPin) error
 }
 
 type userPinRepository struct {
@@ -39,6 +40,14 @@ func (r *userPinRepository) FindByPin(pin string) (*model.UserPin, error) {
 
 func (r *userPinRepository) Create(userPin *model.UserPin) error {
 	err := r.DB.Create(userPin).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *userPinRepository) Update(userPin *model.UserPin) error {
+	err := r.DB.Save(userPin).Error
 	if err != nil {
 		return err
 	}

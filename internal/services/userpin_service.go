@@ -15,6 +15,7 @@ type UserPinService interface {
 	CreateUserPin(userID, pin string) (*dto.UserPinResponseDTO, error)
 	VerifyUserPin(userID, pin string) (*dto.UserPinResponseDTO, error)
 	CheckPinStatus(userID string) (string, *dto.UserPinResponseDTO, error)
+	UpdateUserPin(userID, oldPin, newPin string) (*dto.UserPinResponseDTO, error)
 }
 
 type userPinService struct {
@@ -111,6 +112,52 @@ func (s *userPinService) CreateUserPin(userID, pin string) (*dto.UserPinResponse
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
 		fmt.Printf("Error caching new user pin to Redis: %v\n", err)
+	}
+
+	return userPinResponse, nil
+}
+
+func (s *userPinService) UpdateUserPin(userID, oldPin, newPin string) (*dto.UserPinResponseDTO, error) {
+
+	userPin, err := s.UserPinRepo.FindByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("user pin not found")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(userPin.Pin), []byte(oldPin))
+	if err != nil {
+		return nil, fmt.Errorf("incorrect old pin")
+	}
+
+	hashedPin, err := bcrypt.GenerateFromPassword([]byte(newPin), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("error hashing the new pin: %v", err)
+	}
+
+	userPin.Pin = string(hashedPin)
+	err = s.UserPinRepo.Update(userPin)
+	if err != nil {
+		return nil, fmt.Errorf("error updating user pin: %v", err)
+	}
+
+	createdAt, _ := utils.FormatDateToIndonesianFormat(userPin.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(userPin.UpdatedAt)
+
+	userPinResponse := &dto.UserPinResponseDTO{
+		ID:        userPin.ID,
+		UserID:    userPin.UserID,
+		Pin:       userPin.Pin,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}
+
+	cacheKey := fmt.Sprintf("userpin:%s", userID)
+	cacheData := map[string]interface{}{
+		"data": userPinResponse,
+	}
+	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
+	if err != nil {
+		fmt.Printf("Error caching updated user pin to Redis: %v\n", err)
 	}
 
 	return userPinResponse, nil

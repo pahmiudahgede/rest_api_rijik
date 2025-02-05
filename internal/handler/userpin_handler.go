@@ -77,3 +77,24 @@ func (h *UserPinHandler) CreateUserPin(c *fiber.Ctx) error {
 
 	return utils.LogResponse(c, userPinResponse, "User pin created successfully")
 }
+
+func (h *UserPinHandler) UpdateUserPin(c *fiber.Ctx) error {
+	var requestUserPinDTO dto.UpdateUserPinDTO
+	if err := c.BodyParser(&requestUserPinDTO); err != nil {
+		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
+	}
+
+	errors, valid := requestUserPinDTO.Validate()
+	if !valid {
+		return utils.ValidationErrorResponse(c, errors)
+	}
+
+	userID := c.Locals("userID").(string)
+
+	userPinResponse, err := h.UserPinService.UpdateUserPin(userID, requestUserPinDTO.OldPin, requestUserPinDTO.NewPin)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, err.Error())
+	}
+
+	return utils.LogResponse(c, userPinResponse, "User pin updated successfully")
+}

@@ -16,6 +16,6 @@ func UserProfileRouter(api fiber.Router) {
 
 	api.Get("/user", middleware.AuthMiddleware, userProfileHandler.GetUserProfile)
 	api.Put("/user/update-user", middleware.AuthMiddleware, userProfileHandler.UpdateUserProfile)
-	api.Post("/user/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPassword)
-	api.Put("/user/upload-photoprofile", middleware.AuthMiddleware, userProfileHandler.UpdateUserAvatar)
+	api.Patch("/user/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPassword)
+	api.Patch("/user/upload-photoprofile", middleware.AuthMiddleware, userProfileHandler.UpdateUserAvatar)
 }

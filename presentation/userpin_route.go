@@ -20,5 +20,5 @@ func UserPinRouter(api fiber.Router) {
 	api.Post("/user/set-pin", middleware.AuthMiddleware, userPinHandler.CreateUserPin)
 	api.Post("/user/verif-pin", middleware.AuthMiddleware, userPinHandler.VerifyUserPin)
 	api.Get("/user/cek-pin-status", middleware.AuthMiddleware, userPinHandler.CheckPinStatus)
-
+	api.Patch("/user/update-pin", middleware.AuthMiddleware, userPinHandler.UpdateUserPin)
 }

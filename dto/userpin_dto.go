@@ -37,6 +37,31 @@ func (r *RequestUserPinDTO) Validate() (map[string][]string, bool) {
 	return nil, true
 }
 
+type UpdateUserPinDTO struct {
+	OldPin string `json:"old_pin"`
+	NewPin string `json:"new_pin"`
+}
+
+func (r *UpdateUserPinDTO) Validate() (map[string][]string, bool) {
+	errors := make(map[string][]string)
+
+	if strings.TrimSpace(r.OldPin) == "" {
+		errors["old_pin"] = append(errors["old_pin"], "Old pin is required")
+	}
+
+	if strings.TrimSpace(r.NewPin) == "" {
+		errors["new_pin"] = append(errors["new_pin"], "New pin is required")
+	} else if len(r.NewPin) < 6 {
+		errors["new_pin"] = append(errors["new_pin"], "New pin must be at least 6 digits")
+	}
+
+	if len(errors) > 0 {
+		return errors, false
+	}
+
+	return nil, true
+}
+
 func isNumeric(s string) bool {
 	re := regexp.MustCompile(`^[0-9]+$`)
 	return re.MatchString(s)
