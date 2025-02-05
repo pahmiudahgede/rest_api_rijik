@@ -7,6 +7,7 @@ import (
 
 type RoleRepository interface {
 	FindByID(id string) (*model.Role, error)
+	FindAll() ([]model.Role, error)
 }
 
 type roleRepository struct {
@@ -24,4 +25,13 @@ func (r *roleRepository) FindByID(id string) (*model.Role, error) {
 		return nil, err
 	}
 	return &role, nil
+}
+
+func (r *roleRepository) FindAll() ([]model.Role, error) {
+	var roles []model.Role
+	err := r.DB.Find(&roles).Error
+	if err != nil {
+		return nil, err
+	}
+	return roles, nil
 }

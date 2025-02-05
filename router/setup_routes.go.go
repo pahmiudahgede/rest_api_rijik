@@ -12,4 +12,5 @@ func SetupRoutes(app *fiber.App) {
 	presentation.AuthRouter(api)
 	presentation.UserProfileRouter(api)
 	presentation.UserPinRouter(api)
+	presentation.RoleRouter(api)
 }
