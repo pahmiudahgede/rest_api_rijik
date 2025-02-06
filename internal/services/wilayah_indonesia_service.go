@@ -25,6 +25,7 @@ type WilayahIndonesiaService interface {
 	GetDistrictByID(id string, page, limit int) (*dto.DistrictResponseDTO, int, error)
 
 	GetAllVillages(page, limit int) ([]dto.VillageResponseDTO, int, error)
+	GetVillageByID(id string) (*dto.VillageResponseDTO, error)
 }
 
 type wilayahIndonesiaService struct {
@@ -412,22 +413,22 @@ func (s *wilayahIndonesiaService) GetDistrictByID(id string, page, limit int) (*
 func (s *wilayahIndonesiaService) GetAllVillages(page, limit int) ([]dto.VillageResponseDTO, int, error) {
 
 	cacheKey := fmt.Sprintf("villages_page:%d_limit:%d", page, limit)
+
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
 		var villages []dto.VillageResponseDTO
 		if data, ok := cachedData["data"].([]interface{}); ok {
 			for _, item := range data {
-				village, ok := item.(map[string]interface{})
+				villageData, ok := item.(map[string]interface{})
 				if ok {
 					villages = append(villages, dto.VillageResponseDTO{
-						ID:         village["id"].(string),
-						DistrictID: village["district_id"].(string),
-						Name:       village["name"].(string),
+						ID:         villageData["id"].(string),
+						DistrictID: villageData["district_id"].(string),
+						Name:       villageData["name"].(string),
 					})
 				}
 			}
-			total := int(cachedData["total"].(float64))
-			return villages, total, nil
+			return villages, int(cachedData["total"].(float64)), nil
 		}
 	}
 
@@ -451,8 +452,43 @@ func (s *wilayahIndonesiaService) GetAllVillages(page, limit int) ([]dto.Village
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching villages data: %v\n", err)
+		fmt.Printf("Error caching villages data to Redis: %v\n", err)
 	}
 
 	return villageDTOs, total, nil
+}
+
+func (s *wilayahIndonesiaService) GetVillageByID(id string) (*dto.VillageResponseDTO, error) {
+
+	cacheKey := fmt.Sprintf("village:%s", id)
+	cachedData, err := utils.GetJSONData(cacheKey)
+	if err == nil && cachedData != nil {
+		villageResponse := &dto.VillageResponseDTO{}
+		if data, ok := cachedData["data"].(string); ok {
+			if err := json.Unmarshal([]byte(data), villageResponse); err == nil {
+				return villageResponse, nil
+			}
+		}
+	}
+
+	village, err := s.WilayahRepo.FindVillageByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("village not found: %v", err)
+	}
+
+	villageResponse := &dto.VillageResponseDTO{
+		ID:         village.ID,
+		DistrictID: village.DistrictID,
+		Name:       village.Name,
+	}
+
+	cacheData := map[string]interface{}{
+		"data": villageResponse,
+	}
+	err = utils.SetJSONData(cacheKey, cacheData, 24*time.Hour)
+	if err != nil {
+		fmt.Printf("Error caching village data to Redis: %v\n", err)
+	}
+
+	return villageResponse, nil
 }

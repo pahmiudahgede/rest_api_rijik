@@ -21,6 +21,7 @@ type WilayahIndonesiaRepository interface {
 	FindDistrictByID(id string, page, limit int) (*model.District, int, error)
 
 	FindAllVillages(page, limit int) ([]model.Village, int, error)
+	FindVillageByID(id string) (*model.Village, error)
 }
 
 type wilayahIndonesiaRepository struct {
@@ -128,6 +129,7 @@ func (r *wilayahIndonesiaRepository) FindAllRegencies(page, limit int) ([]model.
 			return nil, 0, err
 		}
 	} else {
+
 		err := r.DB.Find(&regencies).Error
 		if err != nil {
 			return nil, 0, err
@@ -140,22 +142,24 @@ func (r *wilayahIndonesiaRepository) FindAllRegencies(page, limit int) ([]model.
 func (r *wilayahIndonesiaRepository) FindRegencyByID(id string, page, limit int) (*model.Regency, int, error) {
 	var regency model.Regency
 
-	err := r.DB.Preload("Districs", func(db *gorm.DB) *gorm.DB {
+	err := r.DB.Preload("Districts", func(db *gorm.DB) *gorm.DB {
 		if page > 0 && limit > 0 {
-
 			return db.Offset((page - 1) * limit).Limit(limit)
 		}
-
 		return db
 	}).Where("id = ?", id).First(&regency).Error
+
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var totalDistrict int64
-	r.DB.Model(&model.District{}).Where("regency_id = ?", id).Count(&totalDistrict)
+	var totalDistricts int64
+	err = r.DB.Model(&model.District{}).Where("regency_id = ?", id).Count(&totalDistricts).Error
+	if err != nil {
+		return nil, 0, err
+	}
 
-	return &regency, int(totalDistrict), nil
+	return &regency, int(totalDistricts), nil
 }
 
 func (r *wilayahIndonesiaRepository) FindAllDistricts(page, limit int) ([]model.District, int, error) {
@@ -186,7 +190,7 @@ func (r *wilayahIndonesiaRepository) FindAllDistricts(page, limit int) ([]model.
 func (r *wilayahIndonesiaRepository) FindDistrictByID(id string, page, limit int) (*model.District, int, error) {
 	var district model.District
 
-	err := r.DB.Preload("Village", func(db *gorm.DB) *gorm.DB {
+	err := r.DB.Preload("Villages", func(db *gorm.DB) *gorm.DB {
 		if page > 0 && limit > 0 {
 
 			return db.Offset((page - 1) * limit).Limit(limit)
@@ -205,7 +209,7 @@ func (r *wilayahIndonesiaRepository) FindDistrictByID(id string, page, limit int
 }
 
 func (r *wilayahIndonesiaRepository) FindAllVillages(page, limit int) ([]model.Village, int, error) {
-	var village []model.Village
+	var villages []model.Village
 	var total int64
 
 	err := r.DB.Model(&model.Village{}).Count(&total).Error
@@ -214,17 +218,26 @@ func (r *wilayahIndonesiaRepository) FindAllVillages(page, limit int) ([]model.V
 	}
 
 	if page > 0 && limit > 0 {
-		err := r.DB.Offset((page - 1) * limit).Limit(limit).Find(&village).Error
+		err := r.DB.Offset((page - 1) * limit).Limit(limit).Find(&villages).Error
 		if err != nil {
 			return nil, 0, err
 		}
 	} else {
 
-		err := r.DB.Find(&village).Error
+		err := r.DB.Find(&villages).Error
 		if err != nil {
 			return nil, 0, err
 		}
 	}
 
-	return village, int(total), nil
+	return villages, int(total), nil
+}
+
+func (r *wilayahIndonesiaRepository) FindVillageByID(id string) (*model.Village, error) {
+	var village model.Village
+	err := r.DB.Where("id = ?", id).First(&village).Error
+	if err != nil {
+		return nil, err
+	}
+	return &village, nil
 }

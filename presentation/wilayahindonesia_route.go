@@ -16,18 +16,20 @@ func WilayahRouter(api fiber.Router) {
 	wilayahService := services.NewWilayahIndonesiaService(wilayahRepo)
 	wilayahHandler := handler.NewWilayahImportHandler(wilayahService)
 
+	api.Post("/import/data-wilayah-indonesia", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), wilayahHandler.ImportWilayahData)
+
 	wilayahAPI := api.Group("/wilayah-indonesia")
 
 	wilayahAPI.Get("/provinces", middleware.AuthMiddleware, wilayahHandler.GetProvinces)
-	wilayahAPI.Get("/provinces/:id", middleware.AuthMiddleware, wilayahHandler.GetProvinceByID)
+	wilayahAPI.Get("/provinces/:provinceid", middleware.AuthMiddleware, wilayahHandler.GetProvinceByID)
 
 	wilayahAPI.Get("/regencies", middleware.AuthMiddleware, wilayahHandler.GetAllRegencies)
-	wilayahAPI.Get("/regencies/:id", middleware.AuthMiddleware, wilayahHandler.GetRegencyByID)
+	wilayahAPI.Get("/regencies/:regencyid", middleware.AuthMiddleware, wilayahHandler.GetRegencyByID)
 
 	wilayahAPI.Get("/districts", middleware.AuthMiddleware, wilayahHandler.GetAllDistricts)
-	wilayahAPI.Get("/districts/:id", middleware.AuthMiddleware, wilayahHandler.GetDistrictByID)
+	wilayahAPI.Get("/districts/:districtid", middleware.AuthMiddleware, wilayahHandler.GetDistrictByID)
 
 	wilayahAPI.Get("/villages", middleware.AuthMiddleware, wilayahHandler.GetAllVillages)
+	wilayahAPI.Get("/villages/:villageid", middleware.AuthMiddleware, wilayahHandler.GetVillageByID)
 
-	api.Post("/import/data-wilayah-indonesia", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), wilayahHandler.ImportWilayahData)
 }

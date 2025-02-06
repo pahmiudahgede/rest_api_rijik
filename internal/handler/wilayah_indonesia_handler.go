@@ -50,7 +50,7 @@ func (h *WilayahIndonesiaHandler) GetProvinces(c *fiber.Ctx) error {
 }
 
 func (h *WilayahIndonesiaHandler) GetProvinceByID(c *fiber.Ctx) error {
-	provinceID := c.Params("id")
+	provinceID := c.Params("provinceid")
 
 	page, err := strconv.Atoi(c.Query("page", "0"))
 	if err != nil {
@@ -96,7 +96,7 @@ func (h *WilayahIndonesiaHandler) GetAllRegencies(c *fiber.Ctx) error {
 }
 
 func (h *WilayahIndonesiaHandler) GetRegencyByID(c *fiber.Ctx) error {
-	regencyId := c.Params("id")
+	regencyId := c.Params("regencyid")
 
 	page, err := strconv.Atoi(c.Query("page", "0"))
 	if err != nil {
@@ -142,7 +142,7 @@ func (h *WilayahIndonesiaHandler) GetAllDistricts(c *fiber.Ctx) error {
 }
 
 func (h *WilayahIndonesiaHandler) GetDistrictByID(c *fiber.Ctx) error {
-	districtId := c.Params("id")
+	districtId := c.Params("districtid")
 
 	page, err := strconv.Atoi(c.Query("page", "0"))
 	if err != nil {
@@ -185,4 +185,15 @@ func (h *WilayahIndonesiaHandler) GetAllVillages(c *fiber.Ctx) error {
 	}
 
 	return utils.NonPaginatedResponse(c, villages, totalVillages, "villages fetched successfully")
+}
+
+func (h *WilayahIndonesiaHandler) GetVillageByID(c *fiber.Ctx) error {
+	id := c.Params("villageid")
+
+	village, err := h.WilayahService.GetVillageByID(id)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.LogResponse(c, village, "Village fetched successfully")
 }
