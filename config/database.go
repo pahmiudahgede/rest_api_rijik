@@ -31,9 +31,18 @@ func ConnectDatabase() {
 	log.Println("Database connected successfully!")
 
 	err = DB.AutoMigrate(
+		// ==wilayah indonesia==
+		&model.Province{},
+		&model.Regency{},
+		&model.District{},
+		&model.Village{},
+		// ==wilayah indonesia==
+
+		// ==main feature==
 		&model.User{},
 		&model.Role{},
 		&model.UserPin{},
+		// ==main feature==
 	)
 	if err != nil {
 		log.Fatalf("Error performing auto-migration: %v", err)
