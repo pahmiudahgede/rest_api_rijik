@@ -18,7 +18,7 @@ func WilayahRouter(api fiber.Router) {
 
 	wilayahAPI := api.Group("/wilayah-indonesia")
 
-	wilayahAPI.Get("/provinces", middleware.AuthMiddleware, wilayahHandler.GetAllProvinces)
+	wilayahAPI.Get("/provinces", middleware.AuthMiddleware, wilayahHandler.GetProvinces)
 	wilayahAPI.Get("/provinces/:id", middleware.AuthMiddleware, wilayahHandler.GetProvinceByID)
 
 	wilayahAPI.Get("/regencies", middleware.AuthMiddleware, wilayahHandler.GetAllRegencies)
@@ -28,7 +28,6 @@ func WilayahRouter(api fiber.Router) {
 	wilayahAPI.Get("/districts/:id", middleware.AuthMiddleware, wilayahHandler.GetDistrictByID)
 
 	wilayahAPI.Get("/villages", middleware.AuthMiddleware, wilayahHandler.GetAllVillages)
-	wilayahAPI.Get("/villages/:id", middleware.AuthMiddleware, wilayahHandler.GetVillageByID)
 
 	api.Post("/import/data-wilayah-indonesia", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), wilayahHandler.ImportWilayahData)
 }

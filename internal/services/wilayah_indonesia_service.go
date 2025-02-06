@@ -1,7 +1,9 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pahmiudahgede/senggoldong/dto"
@@ -13,17 +15,16 @@ import (
 type WilayahIndonesiaService interface {
 	ImportDataFromCSV() error
 
-	GetAllProvinces(page, limit int) ([]dto.ProvinceResponseDTO, error)
-	GetProvinceByID(id string) (*dto.ProvinceResponseDTO, error)
+	GetAllProvinces(page, limit int) ([]dto.ProvinceResponseDTO, int, error)
+	GetProvinceByID(id string, page, limit int) (*dto.ProvinceResponseDTO, int, error)
 
-	GetAllRegencies(page, limit int) ([]dto.RegencyResponseDTO, error)
-	GetRegencyByID(id string) (*dto.RegencyResponseDTO, error)
+	GetAllRegencies(page, limit int) ([]dto.RegencyResponseDTO, int, error)
+	GetRegencyByID(id string, page, limit int) (*dto.RegencyResponseDTO, int, error)
 
-	GetAllDistricts(page, limit int) ([]dto.DistrictResponseDTO, error)
-	GetDistrictByID(id string) (*dto.DistrictResponseDTO, error)
+	GetAllDistricts(page, limit int) ([]dto.DistrictResponseDTO, int, error)
+	GetDistrictByID(id string, page, limit int) (*dto.DistrictResponseDTO, int, error)
 
-	GetAllVillages(page, limit int) ([]dto.VillageResponseDTO, error)
-	GetVillageByID(id string) (*dto.VillageResponseDTO, error)
+	GetAllVillages(page, limit int) ([]dto.VillageResponseDTO, int, error)
 }
 
 type wilayahIndonesiaService struct {
@@ -114,9 +115,9 @@ func (s *wilayahIndonesiaService) ImportDataFromCSV() error {
 	return nil
 }
 
-func (s *wilayahIndonesiaService) GetAllProvinces(page, limit int) ([]dto.ProvinceResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetAllProvinces(page, limit int) ([]dto.ProvinceResponseDTO, int, error) {
 
-	cacheKey := fmt.Sprintf("provinces_page_%d_limit_%d", page, limit)
+	cacheKey := fmt.Sprintf("provinces_page:%d_limit:%d", page, limit)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
 		var provinces []dto.ProvinceResponseDTO
@@ -130,13 +131,14 @@ func (s *wilayahIndonesiaService) GetAllProvinces(page, limit int) ([]dto.Provin
 					})
 				}
 			}
-			return provinces, nil
+			total := int(cachedData["total"].(float64))
+			return provinces, total, nil
 		}
 	}
 
 	provinces, total, err := s.WilayahRepo.FindAllProvinces(page, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch provinces: %v", err)
+		return nil, 0, fmt.Errorf("failed to fetch provinces: %v", err)
 	}
 
 	var provinceDTOs []dto.ProvinceResponseDTO
@@ -150,66 +152,68 @@ func (s *wilayahIndonesiaService) GetAllProvinces(page, limit int) ([]dto.Provin
 	cacheData := map[string]interface{}{
 		"data":  provinceDTOs,
 		"total": total,
-		"page":  page,
-		"limit": limit,
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching provinces data to Redis: %v\n", err)
+		fmt.Printf("Error caching provinces data: %v\n", err)
 	}
 
-	return provinceDTOs, nil
+	return provinceDTOs, total, nil
 }
 
-func (s *wilayahIndonesiaService) GetProvinceByID(id string) (*dto.ProvinceResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetProvinceByID(id string, page, limit int) (*dto.ProvinceResponseDTO, int, error) {
 
-	cacheKey := fmt.Sprintf("province:%s", id)
+	cacheKey := fmt.Sprintf("province:%s_page:%d_limit:%d", id, page, limit)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
-		var province dto.ProvinceResponseDTO
-		if data, ok := cachedData["data"].(map[string]interface{}); ok {
-			province = dto.ProvinceResponseDTO{
-				ID:   data["id"].(string),
-				Name: data["name"].(string),
+
+		var provinceDTO dto.ProvinceResponseDTO
+		if data, ok := cachedData["data"].(string); ok {
+			if err := json.Unmarshal([]byte(data), &provinceDTO); err == nil {
+
+				totalRegencies, _ := strconv.Atoi(cachedData["total_regencies"].(string))
+				return &provinceDTO, totalRegencies, nil
 			}
-			return &province, nil
 		}
 	}
 
-	province, err := s.WilayahRepo.FindProvinceByID(id)
+	province, totalRegencies, err := s.WilayahRepo.FindProvinceByID(id, page, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch province: %v", err)
+		return nil, 0, err
 	}
 
-	provinceDTO := &dto.ProvinceResponseDTO{
+	provinceDTO := dto.ProvinceResponseDTO{
 		ID:   province.ID,
 		Name: province.Name,
 	}
 
-	regenciesDTO := []dto.RegencyResponseDTO{}
+	var regencyDTOs []dto.RegencyResponseDTO
 	for _, regency := range province.Regencies {
-		regenciesDTO = append(regenciesDTO, dto.RegencyResponseDTO{
+		regencyDTO := dto.RegencyResponseDTO{
 			ID:         regency.ID,
 			ProvinceID: regency.ProvinceID,
 			Name:       regency.Name,
-		})
+		}
+		regencyDTOs = append(regencyDTOs, regencyDTO)
 	}
-	provinceDTO.Regencies = regenciesDTO
+
+	provinceDTO.Regencies = regencyDTOs
 
 	cacheData := map[string]interface{}{
-		"data": provinceDTO,
+		"data":            provinceDTO,
+		"total_regencies": strconv.Itoa(totalRegencies),
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching province data to Redis: %v\n", err)
+		fmt.Printf("Error caching province data: %v\n", err)
 	}
 
-	return provinceDTO, nil
+	return &provinceDTO, totalRegencies, nil
 }
 
-func (s *wilayahIndonesiaService) GetAllRegencies(page, limit int) ([]dto.RegencyResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetAllRegencies(page, limit int) ([]dto.RegencyResponseDTO, int, error) {
 
-	cacheKey := fmt.Sprintf("regencies_page_%d_limit_%d", page, limit)
+	cacheKey := fmt.Sprintf("regencies_page:%d_limit:%d", page, limit)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
 		var regencies []dto.RegencyResponseDTO
@@ -224,13 +228,14 @@ func (s *wilayahIndonesiaService) GetAllRegencies(page, limit int) ([]dto.Regenc
 					})
 				}
 			}
-			return regencies, nil
+			total := int(cachedData["total"].(float64))
+			return regencies, total, nil
 		}
 	}
 
 	regencies, total, err := s.WilayahRepo.FindAllRegencies(page, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch regencies: %v", err)
+		return nil, 0, fmt.Errorf("failed to fetch provinces: %v", err)
 	}
 
 	var regencyDTOs []dto.RegencyResponseDTO
@@ -245,68 +250,69 @@ func (s *wilayahIndonesiaService) GetAllRegencies(page, limit int) ([]dto.Regenc
 	cacheData := map[string]interface{}{
 		"data":  regencyDTOs,
 		"total": total,
-		"page":  page,
-		"limit": limit,
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching regencies data to Redis: %v\n", err)
+		fmt.Printf("Error caching regencies data: %v\n", err)
 	}
 
-	return regencyDTOs, nil
+	return regencyDTOs, total, nil
 }
 
-func (s *wilayahIndonesiaService) GetRegencyByID(id string) (*dto.RegencyResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetRegencyByID(id string, page, limit int) (*dto.RegencyResponseDTO, int, error) {
 
-	cacheKey := fmt.Sprintf("regency:%s", id)
+	cacheKey := fmt.Sprintf("regency:%s_page:%d_limit:%d", id, page, limit)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
-		var regency dto.RegencyResponseDTO
-		if data, ok := cachedData["data"].(map[string]interface{}); ok {
-			regency = dto.RegencyResponseDTO{
-				ID:         data["id"].(string),
-				ProvinceID: data["province_id"].(string),
-				Name:       data["name"].(string),
+
+		var regencyDTO dto.RegencyResponseDTO
+		if data, ok := cachedData["data"].(string); ok {
+			if err := json.Unmarshal([]byte(data), &regencyDTO); err == nil {
+
+				totalDistrict, _ := strconv.Atoi(cachedData["total_regencies"].(string))
+				return &regencyDTO, totalDistrict, nil
 			}
-			return &regency, nil
 		}
 	}
 
-	regency, err := s.WilayahRepo.FindRegencyByID(id)
+	regency, totalDistrict, err := s.WilayahRepo.FindRegencyByID(id, page, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch regency: %v", err)
+		return nil, 0, err
 	}
 
-	regencyDTO := &dto.RegencyResponseDTO{
+	regencyDTO := dto.RegencyResponseDTO{
 		ID:         regency.ID,
 		ProvinceID: regency.ProvinceID,
 		Name:       regency.Name,
 	}
 
-	districtsDTO := []dto.DistrictResponseDTO{}
-	for _, district := range regency.Districts {
-		districtsDTO = append(districtsDTO, dto.DistrictResponseDTO{
-			ID:        district.ID,
-			RegencyID: district.RegencyID,
-			Name:      district.Name,
-		})
+	var districtDTOs []dto.DistrictResponseDTO
+	for _, regency := range regency.Districts {
+		districtDTO := dto.DistrictResponseDTO{
+			ID:        regency.ID,
+			RegencyID: regency.RegencyID,
+			Name:      regency.Name,
+		}
+		districtDTOs = append(districtDTOs, districtDTO)
 	}
-	regencyDTO.Districts = districtsDTO
+
+	regencyDTO.Districts = districtDTOs
 
 	cacheData := map[string]interface{}{
-		"data": regencyDTO,
+		"data":            regencyDTO,
+		"total_regencies": strconv.Itoa(totalDistrict),
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching regency data to Redis: %v\n", err)
+		fmt.Printf("Error caching province data: %v\n", err)
 	}
 
-	return regencyDTO, nil
+	return &regencyDTO, totalDistrict, nil
 }
 
-func (s *wilayahIndonesiaService) GetAllDistricts(page, limit int) ([]dto.DistrictResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetAllDistricts(page, limit int) ([]dto.DistrictResponseDTO, int, error) {
 
-	cacheKey := fmt.Sprintf("districts_page_%d_limit_%d", page, limit)
+	cacheKey := fmt.Sprintf("district_page:%d_limit:%d", page, limit)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
 		var districts []dto.DistrictResponseDTO
@@ -321,18 +327,19 @@ func (s *wilayahIndonesiaService) GetAllDistricts(page, limit int) ([]dto.Distri
 					})
 				}
 			}
-			return districts, nil
+			total := int(cachedData["total"].(float64))
+			return districts, total, nil
 		}
 	}
 
 	districts, total, err := s.WilayahRepo.FindAllDistricts(page, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch districts: %v", err)
+		return nil, 0, fmt.Errorf("failed to fetch districts: %v", err)
 	}
 
-	var districtDTOs []dto.DistrictResponseDTO
+	var districtsDTOs []dto.DistrictResponseDTO
 	for _, district := range districts {
-		districtDTOs = append(districtDTOs, dto.DistrictResponseDTO{
+		districtsDTOs = append(districtsDTOs, dto.DistrictResponseDTO{
 			ID:        district.ID,
 			RegencyID: district.RegencyID,
 			Name:      district.Name,
@@ -340,70 +347,71 @@ func (s *wilayahIndonesiaService) GetAllDistricts(page, limit int) ([]dto.Distri
 	}
 
 	cacheData := map[string]interface{}{
-		"data":  districtDTOs,
+		"data":  districtsDTOs,
 		"total": total,
-		"page":  page,
-		"limit": limit,
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching districts data to Redis: %v\n", err)
+		fmt.Printf("Error caching districts data: %v\n", err)
 	}
 
-	return districtDTOs, nil
+	return districtsDTOs, total, nil
 }
 
-func (s *wilayahIndonesiaService) GetDistrictByID(id string) (*dto.DistrictResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetDistrictByID(id string, page, limit int) (*dto.DistrictResponseDTO, int, error) {
 
-	cacheKey := fmt.Sprintf("district:%s", id)
+	cacheKey := fmt.Sprintf("district:%s_page:%d_limit:%d", id, page, limit)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
-		var district dto.DistrictResponseDTO
-		if data, ok := cachedData["data"].(map[string]interface{}); ok {
-			district = dto.DistrictResponseDTO{
-				ID:        data["id"].(string),
-				RegencyID: data["regency_id"].(string),
-				Name:      data["name"].(string),
+
+		var districtDTO dto.DistrictResponseDTO
+		if data, ok := cachedData["data"].(string); ok {
+			if err := json.Unmarshal([]byte(data), &districtDTO); err == nil {
+
+				totalVillage, _ := strconv.Atoi(cachedData["total_village"].(string))
+				return &districtDTO, totalVillage, nil
 			}
-			return &district, nil
 		}
 	}
 
-	district, err := s.WilayahRepo.FindDistrictByID(id)
+	district, totalVillages, err := s.WilayahRepo.FindDistrictByID(id, page, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch district: %v", err)
+		return nil, 0, err
 	}
 
-	districtDTO := &dto.DistrictResponseDTO{
+	districtDTO := dto.DistrictResponseDTO{
 		ID:        district.ID,
 		RegencyID: district.RegencyID,
 		Name:      district.Name,
 	}
 
-	villagesDTO := []dto.VillageResponseDTO{}
+	var villageDTOs []dto.VillageResponseDTO
 	for _, village := range district.Villages {
-		villagesDTO = append(villagesDTO, dto.VillageResponseDTO{
+		regencyDTO := dto.VillageResponseDTO{
 			ID:         village.ID,
 			DistrictID: village.DistrictID,
 			Name:       village.Name,
-		})
+		}
+		villageDTOs = append(villageDTOs, regencyDTO)
 	}
-	districtDTO.Villages = villagesDTO
+
+	districtDTO.Villages = villageDTOs
 
 	cacheData := map[string]interface{}{
-		"data": districtDTO,
+		"data":           districtDTO,
+		"total_villages": strconv.Itoa(totalVillages),
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching district data to Redis: %v\n", err)
+		fmt.Printf("Error caching province data: %v\n", err)
 	}
 
-	return districtDTO, nil
+	return &districtDTO, totalVillages, nil
 }
 
-func (s *wilayahIndonesiaService) GetAllVillages(page, limit int) ([]dto.VillageResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetAllVillages(page, limit int) ([]dto.VillageResponseDTO, int, error) {
 
-	cacheKey := fmt.Sprintf("villages:%d:%d", page, limit)
+	cacheKey := fmt.Sprintf("villages_page:%d_limit:%d", page, limit)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
 		var villages []dto.VillageResponseDTO
@@ -418,13 +426,14 @@ func (s *wilayahIndonesiaService) GetAllVillages(page, limit int) ([]dto.Village
 					})
 				}
 			}
-			return villages, nil
+			total := int(cachedData["total"].(float64))
+			return villages, total, nil
 		}
 	}
 
 	villages, total, err := s.WilayahRepo.FindAllVillages(page, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch villages: %v", err)
+		return nil, 0, fmt.Errorf("failed to fetch villages: %v", err)
 	}
 
 	var villageDTOs []dto.VillageResponseDTO
@@ -442,46 +451,8 @@ func (s *wilayahIndonesiaService) GetAllVillages(page, limit int) ([]dto.Village
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-		fmt.Printf("Error caching village data to Redis: %v\n", err)
+		fmt.Printf("Error caching villages data: %v\n", err)
 	}
 
-	return villageDTOs, nil
-}
-
-func (s *wilayahIndonesiaService) GetVillageByID(id string) (*dto.VillageResponseDTO, error) {
-
-	cacheKey := fmt.Sprintf("village:%s", id)
-	cachedData, err := utils.GetJSONData(cacheKey)
-	if err == nil && cachedData != nil {
-		var villageDTO dto.VillageResponseDTO
-		if data, ok := cachedData["data"].(map[string]interface{}); ok {
-			villageDTO = dto.VillageResponseDTO{
-				ID:         data["id"].(string),
-				DistrictID: data["district_id"].(string),
-				Name:       data["name"].(string),
-			}
-			return &villageDTO, nil
-		}
-	}
-
-	village, err := s.WilayahRepo.FindVillageByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("village not found: %v", err)
-	}
-
-	villageDTO := &dto.VillageResponseDTO{
-		ID:         village.ID,
-		DistrictID: village.DistrictID,
-		Name:       village.Name,
-	}
-
-	cacheData := map[string]interface{}{
-		"data": villageDTO,
-	}
-	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
-	if err != nil {
-		fmt.Printf("Error caching village data to Redis: %v\n", err)
-	}
-
-	return villageDTO, nil
+	return villageDTOs, total, nil
 }
