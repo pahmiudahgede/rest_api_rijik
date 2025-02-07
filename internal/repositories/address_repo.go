@@ -9,6 +9,7 @@ type AddressRepository interface {
 	CreateAddress(address *model.Address) error
 	FindAddressByUserID(userID string) ([]model.Address, error)
 	FindAddressByID(id string) (*model.Address, error)
+	UpdateAddress(address *model.Address) error
 }
 
 type addressRepository struct {
@@ -40,4 +41,12 @@ func (r *addressRepository) FindAddressByID(id string) (*model.Address, error) {
 		return nil, err
 	}
 	return &address, nil
+}
+
+func (r *addressRepository) UpdateAddress(address *model.Address) error {
+	err := r.DB.Save(address).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }

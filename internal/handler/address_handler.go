@@ -55,3 +55,24 @@ func (h *AddressHandler) GetAddressByID(c *fiber.Ctx) error {
 
 	return utils.SuccessResponse(c, address, "Address fetched successfully")
 }
+
+func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
+	addressID := c.Params("address_id")
+
+	var addressDTO dto.CreateAddressDTO
+	if err := c.BodyParser(&addressDTO); err != nil {
+		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
+	}
+
+	errors, valid := addressDTO.Validate()
+	if !valid {
+		return utils.ValidationErrorResponse(c, errors)
+	}
+
+	updatedAddress, err := h.AddressService.UpdateAddress(addressID, addressDTO)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+	}
+
+	return utils.SuccessResponse(c, updatedAddress, "User address updated successfully")
+}

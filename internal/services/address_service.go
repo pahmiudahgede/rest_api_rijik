@@ -14,6 +14,7 @@ type AddressService interface {
 	CreateAddress(userID string, request dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
 	GetAddressByUserID(userID string) ([]dto.AddressResponseDTO, error)
 	GetAddressByID(id string) (*dto.AddressResponseDTO, error)
+	UpdateAddress(id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
 }
 
 type addressService struct {
@@ -28,66 +29,107 @@ func NewAddressService(addressRepo repositories.AddressRepository, wilayahRepo r
 	}
 }
 
-func (s *addressService) CreateAddress(userID string, request dto.CreateAddressDTO) (*dto.AddressResponseDTO, error) {
+func (s *addressService) CreateAddress(userID string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error) {
 
-	errors, valid := request.Validate()
-	if !valid {
-		return nil, fmt.Errorf("validation failed: %v", errors)
-	}
-
-	province, _, err := s.WilayahRepo.FindProvinceByID(request.Province, 0, 0)
+	province, _, err := s.WilayahRepo.FindProvinceByID(addressDTO.Province, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("invalid province_id")
 	}
 
-	regency, _, err := s.WilayahRepo.FindRegencyByID(request.Regency, 0, 0)
+	regency, _, err := s.WilayahRepo.FindRegencyByID(addressDTO.Regency, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("invalid regency_id")
 	}
 
-	district, _, err := s.WilayahRepo.FindDistrictByID(request.District, 0, 0)
+	district, _, err := s.WilayahRepo.FindDistrictByID(addressDTO.District, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("invalid district_id")
 	}
 
-	village, err := s.WilayahRepo.FindVillageByID(request.Village)
+	village, err := s.WilayahRepo.FindVillageByID(addressDTO.Village)
 	if err != nil {
 		return nil, fmt.Errorf("invalid village_id")
 	}
 
-	newAddress := &model.Address{
+	address := model.Address{
 		UserID:     userID,
 		Province:   province.Name,
 		Regency:    regency.Name,
 		District:   district.Name,
 		Village:    village.Name,
-		PostalCode: request.PostalCode,
-		Detail:     request.Detail,
-		Geography:  request.Geography,
+		PostalCode: addressDTO.PostalCode,
+		Detail:     addressDTO.Detail,
+		Geography:  addressDTO.Geography,
 	}
 
-	err = s.AddressRepo.CreateAddress(newAddress)
+	err = s.AddressRepo.CreateAddress(&address)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user address: %v", err)
+		return nil, fmt.Errorf("failed to create address: %v", err)
 	}
 
-	createdAt, _ := utils.FormatDateToIndonesianFormat(newAddress.CreatedAt)
+	userCacheKey := fmt.Sprintf("user:%s:addresses", userID)
+	utils.DeleteData(userCacheKey)
 
-	addressResponse := &dto.AddressResponseDTO{
-		UserID:     newAddress.UserID,
-		ID:         newAddress.ID,
-		Province:   newAddress.Province,
-		Regency:    newAddress.Regency,
-		District:   newAddress.District,
-		Village:    newAddress.Village,
-		PostalCode: newAddress.PostalCode,
-		Detail:     newAddress.Detail,
-		Geography:  newAddress.Geography,
+	createdAt, _ := utils.FormatDateToIndonesianFormat(address.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(address.UpdatedAt)
+
+	addressResponseDTO := &dto.AddressResponseDTO{
+		UserID:     address.UserID,
+		ID:         address.ID,
+		Province:   address.Province,
+		Regency:    address.Regency,
+		District:   address.District,
+		Village:    address.Village,
+		PostalCode: address.PostalCode,
+		Detail:     address.Detail,
+		Geography:  address.Geography,
 		CreatedAt:  createdAt,
-		UpdatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
 	}
 
-	return addressResponse, nil
+	cacheKey := fmt.Sprintf("address:%s", address.ID)
+	cacheData := map[string]interface{}{
+		"data": addressResponseDTO,
+	}
+	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
+	if err != nil {
+		fmt.Printf("Error caching new address to Redis: %v\n", err)
+	}
+
+	addresses, err := s.AddressRepo.FindAddressByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch updated addresses for user: %v", err)
+	}
+
+	var addressDTOs []dto.AddressResponseDTO
+	for _, addr := range addresses {
+		createdAt, _ := utils.FormatDateToIndonesianFormat(addr.CreatedAt)
+		updatedAt, _ := utils.FormatDateToIndonesianFormat(addr.UpdatedAt)
+
+		addressDTOs = append(addressDTOs, dto.AddressResponseDTO{
+			UserID:     addr.UserID,
+			ID:         addr.ID,
+			Province:   addr.Province,
+			Regency:    addr.Regency,
+			District:   addr.District,
+			Village:    addr.Village,
+			PostalCode: addr.PostalCode,
+			Detail:     addr.Detail,
+			Geography:  addr.Geography,
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
+		})
+	}
+
+	cacheData = map[string]interface{}{
+		"data": addressDTOs,
+	}
+	err = utils.SetJSONData(userCacheKey, cacheData, time.Hour*24)
+	if err != nil {
+		fmt.Printf("Error caching updated user addresses to Redis: %v\n", err)
+	}
+
+	return addressResponseDTO, nil
 }
 
 func (s *addressService) GetAddressByUserID(userID string) ([]dto.AddressResponseDTO, error) {
@@ -156,7 +198,6 @@ func (s *addressService) GetAddressByUserID(userID string) ([]dto.AddressRespons
 }
 
 func (s *addressService) GetAddressByID(id string) (*dto.AddressResponseDTO, error) {
-
 	cacheKey := fmt.Sprintf("address:%s", id)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
@@ -210,4 +251,112 @@ func (s *addressService) GetAddressByID(id string) (*dto.AddressResponseDTO, err
 	}
 
 	return addressDTO, nil
+}
+
+func (s *addressService) UpdateAddress(id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error) {
+
+	province, _, err := s.WilayahRepo.FindProvinceByID(addressDTO.Province, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid province_id")
+	}
+
+	regency, _, err := s.WilayahRepo.FindRegencyByID(addressDTO.Regency, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regency_id")
+	}
+
+	district, _, err := s.WilayahRepo.FindDistrictByID(addressDTO.District, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid district_id")
+	}
+
+	village, err := s.WilayahRepo.FindVillageByID(addressDTO.Village)
+	if err != nil {
+		return nil, fmt.Errorf("invalid village_id")
+	}
+
+	address, err := s.AddressRepo.FindAddressByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("address not found: %v", err)
+	}
+
+	address.Province = province.Name
+	address.Regency = regency.Name
+	address.District = district.Name
+	address.Village = village.Name
+	address.PostalCode = addressDTO.PostalCode
+	address.Detail = addressDTO.Detail
+	address.Geography = addressDTO.Geography
+	address.UpdatedAt = time.Now()
+
+	err = s.AddressRepo.UpdateAddress(address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update address: %v", err)
+	}
+
+	addressCacheKey := fmt.Sprintf("address:%s", id)
+	utils.DeleteData(addressCacheKey)
+
+	userAddressesCacheKey := fmt.Sprintf("user:%s:addresses", address.UserID)
+	utils.DeleteData(userAddressesCacheKey)
+
+	createdAt, _ := utils.FormatDateToIndonesianFormat(address.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(address.UpdatedAt)
+
+	addressResponseDTO := &dto.AddressResponseDTO{
+		UserID:     address.UserID,
+		ID:         address.ID,
+		Province:   address.Province,
+		Regency:    address.Regency,
+		District:   address.District,
+		Village:    address.Village,
+		PostalCode: address.PostalCode,
+		Detail:     address.Detail,
+		Geography:  address.Geography,
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
+	}
+
+	cacheData := map[string]interface{}{
+		"data": addressResponseDTO,
+	}
+	err = utils.SetJSONData(addressCacheKey, cacheData, time.Hour*24)
+	if err != nil {
+		fmt.Printf("Error caching updated address to Redis: %v\n", err)
+	}
+
+	addresses, err := s.AddressRepo.FindAddressByUserID(address.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch updated addresses for user: %v", err)
+	}
+
+	var addressDTOs []dto.AddressResponseDTO
+	for _, addr := range addresses {
+		createdAt, _ := utils.FormatDateToIndonesianFormat(addr.CreatedAt)
+		updatedAt, _ := utils.FormatDateToIndonesianFormat(addr.UpdatedAt)
+
+		addressDTOs = append(addressDTOs, dto.AddressResponseDTO{
+			UserID:     addr.UserID,
+			ID:         addr.ID,
+			Province:   addr.Province,
+			Regency:    addr.Regency,
+			District:   addr.District,
+			Village:    addr.Village,
+			PostalCode: addr.PostalCode,
+			Detail:     addr.Detail,
+			Geography:  addr.Geography,
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
+		})
+	}
+
+	cacheData = map[string]interface{}{
+		"data": addressDTOs,
+	}
+	err = utils.SetJSONData(userAddressesCacheKey, cacheData, time.Hour*24)
+	if err != nil {
+		fmt.Printf("Error caching updated user addresses to Redis: %v\n", err)
+	}
+
+	return addressResponseDTO, nil
 }

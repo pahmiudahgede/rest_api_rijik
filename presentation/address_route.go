@@ -20,4 +20,5 @@ func AddressRouter(api fiber.Router) {
 	adddressAPI.Post("/create-address", middleware.AuthMiddleware, addressHandler.CreateAddress)
 	adddressAPI.Get("/get-address", middleware.AuthMiddleware, addressHandler.GetAddressByUserID)
 	adddressAPI.Get("/get-address/:address_id", middleware.AuthMiddleware, addressHandler.GetAddressByID)
+	adddressAPI.Put("/update-address/:address_id", middleware.AuthMiddleware, addressHandler.UpdateAddress)
 }
