@@ -11,7 +11,7 @@ type ArticleResponseDTO struct {
 	Author      string `json:"author"`
 	Heading     string `json:"heading"`
 	Content     string `json:"content"`
-	PublishedAt string `json:"createdAt"`
+	PublishedAt string `json:"publishedAt"`
 	UpdatedAt   string `json:"updatedAt"`
 }
 

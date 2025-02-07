@@ -18,4 +18,5 @@ func ArticleRouter(api fiber.Router) {
 	articleAPI := api.Group("/article-rijik")
 
 	articleAPI.Post("/create-article", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), articleHandler.CreateArticle)
+	articleAPI.Get("/view-article", middleware.AuthMiddleware, articleHandler.GetAllArticles)
 }
