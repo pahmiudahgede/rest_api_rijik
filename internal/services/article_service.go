@@ -13,6 +13,7 @@ import (
 type ArticleService interface {
 	CreateArticle(articleDTO dto.RequestArticleDTO) (*dto.ArticleResponseDTO, error)
 	GetAllArticles(page, limit int) ([]dto.ArticleResponseDTO, int, error)
+	GetArticleByID(id string) (*dto.ArticleResponseDTO, error)
 }
 
 type articleService struct {
@@ -122,4 +123,55 @@ func (s *articleService) GetAllArticles(page, limit int) ([]dto.ArticleResponseD
 	}
 
 	return articleDTOs, total, nil
+}
+
+func (s *articleService) GetArticleByID(id string) (*dto.ArticleResponseDTO, error) {
+	cacheKey := fmt.Sprintf("article:%s", id)
+
+	cachedData, err := utils.GetJSONData(cacheKey)
+	if err == nil && cachedData != nil {
+		articleData, ok := cachedData["data"].(map[string]interface{})
+		if ok {
+			article := dto.ArticleResponseDTO{
+				ID:          articleData["article_id"].(string),
+				Title:       articleData["title"].(string),
+				CoverImage:  articleData["coverImage"].(string),
+				Author:      articleData["author"].(string),
+				Heading:     articleData["heading"].(string),
+				Content:     articleData["content"].(string),
+				PublishedAt: articleData["publishedAt"].(string),
+				UpdatedAt:   articleData["updatedAt"].(string),
+			}
+			return &article, nil
+		}
+	}
+
+	article, err := s.ArticleRepo.FindArticleByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch article by ID: %v", err)
+	}
+
+	createdAt, _ := utils.FormatDateToIndonesianFormat(article.PublishedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(article.UpdatedAt)
+
+	articleResponseDTO := &dto.ArticleResponseDTO{
+		ID:          article.ID,
+		Title:       article.Title,
+		CoverImage:  article.CoverImage,
+		Author:      article.Author,
+		Heading:     article.Heading,
+		Content:     article.Content,
+		PublishedAt: createdAt,
+		UpdatedAt:   updatedAt,
+	}
+
+	cacheData := map[string]interface{}{
+		"data": articleResponseDTO,
+	}
+	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
+	if err != nil {
+		fmt.Printf("Error caching article to Redis: %v\n", err)
+	}
+
+	return articleResponseDTO, nil
 }

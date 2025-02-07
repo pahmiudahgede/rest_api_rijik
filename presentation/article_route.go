@@ -19,4 +19,5 @@ func ArticleRouter(api fiber.Router) {
 
 	articleAPI.Post("/create-article", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), articleHandler.CreateArticle)
 	articleAPI.Get("/view-article", middleware.AuthMiddleware, articleHandler.GetAllArticles)
+	articleAPI.Get("/view-article/:article_id", middleware.AuthMiddleware, articleHandler.GetArticleByID)
 }

@@ -59,3 +59,18 @@ func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {
 	return utils.NonPaginatedResponse(c, article, totalArticle, "Article fetched successfully")
 
 }
+
+func (h *ArticleHandler) GetArticleByID(c *fiber.Ctx) error {
+
+	id := c.Params("article_id")
+	if id == "" {
+		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "Article ID is required")
+	}
+
+	article, err := h.ArticleService.GetArticleByID(id)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+	}
+
+	return utils.SuccessResponse(c, article, "Article fetched successfully")
+}
