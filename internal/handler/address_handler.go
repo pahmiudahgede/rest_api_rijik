@@ -46,9 +46,10 @@ func (h *AddressHandler) GetAddressByUserID(c *fiber.Ctx) error {
 }
 
 func (h *AddressHandler) GetAddressByID(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
 	addressID := c.Params("address_id")
 
-	address, err := h.AddressService.GetAddressByID(addressID)
+	address, err := h.AddressService.GetAddressByID(userID, addressID)
 	if err != nil {
 		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
 	}
@@ -57,6 +58,7 @@ func (h *AddressHandler) GetAddressByID(c *fiber.Ctx) error {
 }
 
 func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
 	addressID := c.Params("address_id")
 
 	var addressDTO dto.CreateAddressDTO
@@ -69,7 +71,7 @@ func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, errors)
 	}
 
-	updatedAddress, err := h.AddressService.UpdateAddress(addressID, addressDTO)
+	updatedAddress, err := h.AddressService.UpdateAddress(userID, addressID, addressDTO)
 	if err != nil {
 		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
 	}
@@ -78,12 +80,13 @@ func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
 }
 
 func (h *AddressHandler) DeleteAddress(c *fiber.Ctx) error {
-	id := c.Params("address_id")
+	userID := c.Locals("userID").(string)
+	addressID := c.Params("address_id")
 
-	err := h.AddressService.DeleteAddress(id)
+	err := h.AddressService.DeleteAddress(userID, addressID)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+		return utils.GenericErrorResponse(c, fiber.StatusForbidden, err.Error())
 	}
 
-	return utils.GenericErrorResponse(c, fiber.StatusOK, "Address deleted successfully")
+	return utils.SuccessResponse(c, nil, "Address deleted successfully")
 }

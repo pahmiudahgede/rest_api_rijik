@@ -13,9 +13,9 @@ import (
 type AddressService interface {
 	CreateAddress(userID string, request dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
 	GetAddressByUserID(userID string) ([]dto.AddressResponseDTO, error)
-	GetAddressByID(id string) (*dto.AddressResponseDTO, error)
-	UpdateAddress(id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
-	DeleteAddress(id string) error
+	GetAddressByID(userID, id string) (*dto.AddressResponseDTO, error)
+	UpdateAddress(userID, id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
+	DeleteAddress(userID, id string) error
 }
 
 type addressService struct {
@@ -198,7 +198,16 @@ func (s *addressService) GetAddressByUserID(userID string) ([]dto.AddressRespons
 	return addressDTOs, nil
 }
 
-func (s *addressService) GetAddressByID(id string) (*dto.AddressResponseDTO, error) {
+func (s *addressService) GetAddressByID(userID, id string) (*dto.AddressResponseDTO, error) {
+	address, err := s.AddressRepo.FindAddressByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("address not found: %v", err)
+	}
+
+	if address.UserID != userID {
+		return nil, fmt.Errorf("you are not authorized to update this address")
+	}
+
 	cacheKey := fmt.Sprintf("address:%s", id)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
@@ -219,11 +228,6 @@ func (s *addressService) GetAddressByID(id string) (*dto.AddressResponseDTO, err
 			}
 			return &address, nil
 		}
-	}
-
-	address, err := s.AddressRepo.FindAddressByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch address: %v", err)
 	}
 
 	createdAt, _ := utils.FormatDateToIndonesianFormat(address.CreatedAt)
@@ -254,7 +258,16 @@ func (s *addressService) GetAddressByID(id string) (*dto.AddressResponseDTO, err
 	return addressDTO, nil
 }
 
-func (s *addressService) UpdateAddress(id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error) {
+func (s *addressService) UpdateAddress(userID, id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error) {
+
+	address, err := s.AddressRepo.FindAddressByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("address not found: %v", err)
+	}
+
+	if address.UserID != userID {
+		return nil, fmt.Errorf("you are not authorized to update this address")
+	}
 
 	province, _, err := s.WilayahRepo.FindProvinceByID(addressDTO.Province, 0, 0)
 	if err != nil {
@@ -276,11 +289,6 @@ func (s *addressService) UpdateAddress(id string, addressDTO dto.CreateAddressDT
 		return nil, fmt.Errorf("invalid village_id")
 	}
 
-	address, err := s.AddressRepo.FindAddressByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("address not found: %v", err)
-	}
-
 	address.Province = province.Name
 	address.Regency = regency.Name
 	address.District = district.Name
@@ -298,7 +306,7 @@ func (s *addressService) UpdateAddress(id string, addressDTO dto.CreateAddressDT
 	addressCacheKey := fmt.Sprintf("address:%s", id)
 	utils.DeleteData(addressCacheKey)
 
-	userAddressesCacheKey := fmt.Sprintf("user:%s:addresses", address.UserID)
+	userAddressesCacheKey := fmt.Sprintf("user:%s:addresses", userID)
 	utils.DeleteData(userAddressesCacheKey)
 
 	createdAt, _ := utils.FormatDateToIndonesianFormat(address.CreatedAt)
@@ -362,19 +370,23 @@ func (s *addressService) UpdateAddress(id string, addressDTO dto.CreateAddressDT
 	return addressResponseDTO, nil
 }
 
-func (s *addressService) DeleteAddress(id string) error {
+func (s *addressService) DeleteAddress(userID, addressID string) error {
 
-	address, err := s.AddressRepo.FindAddressByID(id)
+	address, err := s.AddressRepo.FindAddressByID(addressID)
 	if err != nil {
 		return fmt.Errorf("address not found: %v", err)
 	}
 
-	err = s.AddressRepo.DeleteAddress(id)
+	if address.UserID != userID {
+		return fmt.Errorf("you are not authorized to delete this address")
+	}
+
+	err = s.AddressRepo.DeleteAddress(addressID)
 	if err != nil {
 		return fmt.Errorf("failed to delete address: %v", err)
 	}
 
-	addressCacheKey := fmt.Sprintf("address:%s", id)
+	addressCacheKey := fmt.Sprintf("address:%s", addressID)
 	err = utils.DeleteData(addressCacheKey)
 	if err != nil {
 		fmt.Printf("Error deleting address cache: %v\n", err)
