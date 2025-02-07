@@ -26,7 +26,7 @@ func (h *RoleHandler) GetRoles(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.LogResponse(c, roles, "Roles fetched successfully")
+	return utils.SuccessResponse(c, roles, "Roles fetched successfully")
 }
 
 func (h *RoleHandler) GetRoleByID(c *fiber.Ctx) error {
@@ -42,5 +42,5 @@ func (h *RoleHandler) GetRoleByID(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusNotFound, "role id tidak ditemukan")
 	}
 
-	return utils.LogResponse(c, role, "Role fetched successfully")
+	return utils.SuccessResponse(c, role, "Role fetched successfully")
 }

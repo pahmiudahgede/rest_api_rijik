@@ -9,9 +9,11 @@ import (
 func SetupRoutes(app *fiber.App) {
 	api := app.Group("/apirijikid")
 	api.Use(middleware.APIKeyMiddleware)
+
 	presentation.AuthRouter(api)
 	presentation.UserProfileRouter(api)
 	presentation.UserPinRouter(api)
 	presentation.RoleRouter(api)
 	presentation.WilayahRouter(api)
+	presentation.AddressRouter(api)
 }

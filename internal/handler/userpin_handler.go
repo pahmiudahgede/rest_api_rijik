@@ -36,7 +36,7 @@ func (h *UserPinHandler) VerifyUserPin(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "pin yang anda masukkan salah")
 	}
 
-	return utils.LogResponse(c, map[string]string{"data": "pin yang anda masukkan benar"}, "Pin verification successful")
+	return utils.SuccessResponse(c, map[string]string{"data": "pin yang anda masukkan benar"}, "Pin verification successful")
 }
 
 func (h *UserPinHandler) CheckPinStatus(c *fiber.Ctx) error {
@@ -54,7 +54,7 @@ func (h *UserPinHandler) CheckPinStatus(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "pin belum dibuat")
 	}
 
-	return utils.LogResponse(c, map[string]string{"data": "pin sudah dibuat"}, "Pin status retrieved successfully")
+	return utils.SuccessResponse(c, map[string]string{"data": "pin sudah dibuat"}, "Pin status retrieved successfully")
 }
 
 func (h *UserPinHandler) CreateUserPin(c *fiber.Ctx) error {
@@ -75,7 +75,7 @@ func (h *UserPinHandler) CreateUserPin(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusConflict, err.Error())
 	}
 
-	return utils.LogResponse(c, userPinResponse, "User pin created successfully")
+	return utils.CreateResponse(c, userPinResponse, "User pin created successfully")
 }
 
 func (h *UserPinHandler) UpdateUserPin(c *fiber.Ctx) error {
@@ -96,5 +96,5 @@ func (h *UserPinHandler) UpdateUserPin(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return utils.LogResponse(c, userPinResponse, "User pin updated successfully")
+	return utils.SuccessResponse(c, userPinResponse, "User pin updated successfully")
 }

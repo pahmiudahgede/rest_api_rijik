@@ -27,7 +27,7 @@ func (h *UserProfileHandler) GetUserProfile(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
-	return utils.LogResponse(c, userProfile, "User profile retrieved successfully")
+	return utils.SuccessResponse(c, userProfile, "User profile retrieved successfully")
 }
 
 func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
@@ -51,7 +51,7 @@ func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusConflict, err.Error())
 	}
 
-	return utils.LogResponse(c, userResponse, "User profile updated successfully")
+	return utils.SuccessResponse(c, userResponse, "User profile updated successfully")
 }
 
 func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
@@ -75,7 +75,7 @@ func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return utils.LogResponse(c, userResponse, "Password updated successfully")
+	return utils.SuccessResponse(c, userResponse, "Password updated successfully")
 }
 
 func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
@@ -94,5 +94,5 @@ func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.LogResponse(c, userResponse, "Avatar updated successfully")
+	return utils.SuccessResponse(c, userResponse, "Avatar updated successfully")
 }

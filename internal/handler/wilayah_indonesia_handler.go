@@ -23,7 +23,7 @@ func (h *WilayahIndonesiaHandler) ImportWilayahData(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.GenericErrorResponse(c, fiber.StatusCreated, "Data imported successfully")
+	return utils.SuccessResponse(c, fiber.StatusCreated, "Data imported successfully")
 }
 
 func (h *WilayahIndonesiaHandler) GetProvinces(c *fiber.Ctx) error {
@@ -195,5 +195,5 @@ func (h *WilayahIndonesiaHandler) GetVillageByID(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.LogResponse(c, village, "Village fetched successfully")
+	return utils.SuccessResponse(c, village, "Village fetched successfully")
 }

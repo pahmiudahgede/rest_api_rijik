@@ -33,7 +33,7 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, err.Error())
 	}
 
-	return utils.LogResponse(c, user, "Login successful")
+	return utils.SuccessResponse(c, user, "Login successful")
 }
 
 func (h *UserHandler) Register(c *fiber.Ctx) error {
@@ -67,7 +67,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 		UpdatedAt:     updatedAt,
 	}
 
-	return utils.LogResponse(c, userResponse, "Registration successful")
+	return utils.CreateResponse(c, userResponse, "Registration successful")
 }
 
 func (h *UserHandler) Logout(c *fiber.Ctx) error {

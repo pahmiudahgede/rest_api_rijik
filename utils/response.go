@@ -84,10 +84,21 @@ func GenericErrorResponse(c *fiber.Ctx, status int, message string) error {
 	return c.Status(status).JSON(response)
 }
 
-func LogResponse(c *fiber.Ctx, data interface{}, message string) error {
+func SuccessResponse(c *fiber.Ctx, data interface{}, message string) error {
 	response := APIResponse{
 		Meta: MetaData{
 			Status:  fiber.StatusOK,
+			Message: message,
+		},
+		Data: data,
+	}
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func CreateResponse(c *fiber.Ctx, data interface{}, message string) error {
+	response := APIResponse{
+		Meta: MetaData{
+			Status:  fiber.StatusCreated,
 			Message: message,
 		},
 		Data: data,
