@@ -18,22 +18,28 @@ func NewArticleHandler(articleService services.ArticleService) *ArticleHandler {
 }
 
 func (h *ArticleHandler) CreateArticle(c *fiber.Ctx) error {
-	var requestArticleDTO dto.RequestArticleDTO
-	if err := c.BodyParser(&requestArticleDTO); err != nil {
+
+	var request dto.RequestArticleDTO
+	if err := c.BodyParser(&request); err != nil {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
 
-	errors, valid := requestArticleDTO.Validate()
+	errors, valid := request.Validate()
 	if !valid {
 		return utils.ValidationErrorResponse(c, errors)
 	}
 
-	articleResponse, err := h.ArticleService.CreateArticle(requestArticleDTO)
+	coverImage, err := c.FormFile("coverImage")
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "Cover image is required")
 	}
 
-	return utils.CreateResponse(c, articleResponse, "Article created successfully")
+	articleResponse, err := h.ArticleService.CreateArticle(request, coverImage)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.SuccessResponse(c, articleResponse, "Article created successfully")
 }
 
 func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {

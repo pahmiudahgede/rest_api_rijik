@@ -2,8 +2,12 @@ package services
 
 import (
 	"fmt"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
 	"github.com/pahmiudahgede/senggoldong/model"
@@ -11,7 +15,7 @@ import (
 )
 
 type ArticleService interface {
-	CreateArticle(articleDTO dto.RequestArticleDTO) (*dto.ArticleResponseDTO, error)
+	CreateArticle(request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error)
 	GetAllArticles(page, limit int) ([]dto.ArticleResponseDTO, int, error)
 	GetArticleByID(id string) (*dto.ArticleResponseDTO, error)
 }
@@ -24,22 +28,55 @@ func NewArticleService(articleRepo repositories.ArticleRepository) ArticleServic
 	return &articleService{ArticleRepo: articleRepo}
 }
 
-func (s *articleService) CreateArticle(articleDTO dto.RequestArticleDTO) (*dto.ArticleResponseDTO, error) {
+func (s *articleService) CreateArticle(request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error) {
 
-	article := &model.Article{
-		Title:      articleDTO.Title,
-		CoverImage: articleDTO.CoverImage,
-		Author:     articleDTO.Author,
-		Heading:    articleDTO.Heading,
-		Content:    articleDTO.Content,
+	coverImageDir := "./public/uploads/articles"
+	if _, err := os.Stat(coverImageDir); os.IsNotExist(err) {
+		err := os.MkdirAll(coverImageDir, os.ModePerm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create directory for cover image: %v", err)
+		}
 	}
 
-	err := s.ArticleRepo.CreateArticle(article)
+	extension := filepath.Ext(coverImage.Filename)
+	if extension != ".jpg" && extension != ".jpeg" && extension != ".png" {
+		return nil, fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
+	}
+
+	coverImageFileName := fmt.Sprintf("%s_cover%s", uuid.New().String(), extension)
+	coverImagePath := filepath.Join(coverImageDir, coverImageFileName)
+
+	src, err := coverImage.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open uploaded file: %v", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(coverImagePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cover image file: %v", err)
+	}
+	defer dst.Close()
+
+	_, err = dst.ReadFrom(src)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save cover image: %v", err)
+	}
+
+	article := model.Article{
+		Title:      request.Title,
+		CoverImage: coverImagePath,
+		Author:     request.Author,
+		Heading:    request.Heading,
+		Content:    request.Content,
+	}
+
+	err = s.ArticleRepo.CreateArticle(&article)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create article: %v", err)
 	}
 
-	publishedAt, _ := utils.FormatDateToIndonesianFormat(article.PublishedAt)
+	createdAt, _ := utils.FormatDateToIndonesianFormat(article.PublishedAt)
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(article.UpdatedAt)
 
 	articleResponseDTO := &dto.ArticleResponseDTO{
@@ -49,7 +86,7 @@ func (s *articleService) CreateArticle(articleDTO dto.RequestArticleDTO) (*dto.A
 		Author:      article.Author,
 		Heading:     article.Heading,
 		Content:     article.Content,
-		PublishedAt: publishedAt,
+		PublishedAt: createdAt,
 		UpdatedAt:   updatedAt,
 	}
 

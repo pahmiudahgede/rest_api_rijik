@@ -29,9 +29,7 @@ func (r *RequestArticleDTO) Validate() (map[string][]string, bool) {
 	if strings.TrimSpace(r.Title) == "" {
 		errors["title"] = append(errors["title"], "Title is required")
 	}
-	if strings.TrimSpace(r.CoverImage) == "" {
-		errors["coverImage"] = append(errors["coverImage"], "Cover image is required")
-	}
+
 	if strings.TrimSpace(r.Author) == "" {
 		errors["author"] = append(errors["author"], "Author is required")
 	}
