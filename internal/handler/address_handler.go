@@ -33,3 +33,25 @@ func (h *AddressHandler) CreateAddress(c *fiber.Ctx) error {
 
 	return utils.CreateResponse(c, addressResponse, "user address created successfully")
 }
+
+func (h *AddressHandler) GetAddressByUserID(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+
+	addresses, err := h.AddressService.GetAddressByUserID(userID)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+	}
+
+	return utils.SuccessResponse(c, addresses, "User addresses fetched successfully")
+}
+
+func (h *AddressHandler) GetAddressByID(c *fiber.Ctx) error {
+	addressID := c.Params("address_id")
+
+	address, err := h.AddressService.GetAddressByID(addressID)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+	}
+
+	return utils.SuccessResponse(c, address, "Address fetched successfully")
+}

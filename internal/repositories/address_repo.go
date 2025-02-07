@@ -7,6 +7,8 @@ import (
 
 type AddressRepository interface {
 	CreateAddress(address *model.Address) error
+	FindAddressByUserID(userID string) ([]model.Address, error)
+	FindAddressByID(id string) (*model.Address, error)
 }
 
 type addressRepository struct {
@@ -19,4 +21,23 @@ func NewAddressRepository(db *gorm.DB) AddressRepository {
 
 func (r *addressRepository) CreateAddress(address *model.Address) error {
 	return r.DB.Create(address).Error
+}
+
+
+func (r *addressRepository) FindAddressByUserID(userID string) ([]model.Address, error) {
+	var addresses []model.Address
+	err := r.DB.Where("user_id = ?", userID).Find(&addresses).Error
+	if err != nil {
+		return nil, err
+	}
+	return addresses, nil
+}
+
+func (r *addressRepository) FindAddressByID(id string) (*model.Address, error) {
+	var address model.Address
+	err := r.DB.Where("id = ?", id).First(&address).Error
+	if err != nil {
+		return nil, err
+	}
+	return &address, nil
 }
