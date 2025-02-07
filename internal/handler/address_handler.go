@@ -76,3 +76,14 @@ func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
 
 	return utils.SuccessResponse(c, updatedAddress, "User address updated successfully")
 }
+
+func (h *AddressHandler) DeleteAddress(c *fiber.Ctx) error {
+	id := c.Params("address_id")
+
+	err := h.AddressService.DeleteAddress(id)
+	if err != nil {
+		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+	}
+
+	return utils.GenericErrorResponse(c, fiber.StatusOK, "Address deleted successfully")
+}

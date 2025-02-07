@@ -15,6 +15,7 @@ type AddressService interface {
 	GetAddressByUserID(userID string) ([]dto.AddressResponseDTO, error)
 	GetAddressByID(id string) (*dto.AddressResponseDTO, error)
 	UpdateAddress(id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
+	DeleteAddress(id string) error
 }
 
 type addressService struct {
@@ -359,4 +360,31 @@ func (s *addressService) UpdateAddress(id string, addressDTO dto.CreateAddressDT
 	}
 
 	return addressResponseDTO, nil
+}
+
+func (s *addressService) DeleteAddress(id string) error {
+
+	address, err := s.AddressRepo.FindAddressByID(id)
+	if err != nil {
+		return fmt.Errorf("address not found: %v", err)
+	}
+
+	err = s.AddressRepo.DeleteAddress(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete address: %v", err)
+	}
+
+	addressCacheKey := fmt.Sprintf("address:%s", id)
+	err = utils.DeleteData(addressCacheKey)
+	if err != nil {
+		fmt.Printf("Error deleting address cache: %v\n", err)
+	}
+
+	userAddressesCacheKey := fmt.Sprintf("user:%s:addresses", address.UserID)
+	err = utils.DeleteData(userAddressesCacheKey)
+	if err != nil {
+		fmt.Printf("Error deleting user addresses cache: %v\n", err)
+	}
+
+	return nil
 }

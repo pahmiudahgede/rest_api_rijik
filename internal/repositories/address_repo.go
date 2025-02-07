@@ -10,6 +10,7 @@ type AddressRepository interface {
 	FindAddressByUserID(userID string) ([]model.Address, error)
 	FindAddressByID(id string) (*model.Address, error)
 	UpdateAddress(address *model.Address) error
+	DeleteAddress(id string) error
 }
 
 type addressRepository struct {
@@ -45,6 +46,14 @@ func (r *addressRepository) FindAddressByID(id string) (*model.Address, error) {
 
 func (r *addressRepository) UpdateAddress(address *model.Address) error {
 	err := r.DB.Save(address).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *addressRepository) DeleteAddress(id string) error {
+	err := r.DB.Where("id = ?", id).Delete(&model.Address{}).Error
 	if err != nil {
 		return err
 	}
