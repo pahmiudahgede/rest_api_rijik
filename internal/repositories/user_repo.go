@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/pahmiudahgede/senggoldong/model"
 	"gorm.io/gorm"
 )
@@ -25,6 +27,11 @@ func (r *userProfileRepository) FindByID(userID string) (*model.User, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if user.Role == nil {
+		return nil, fmt.Errorf("role not found for this user")
+	}
+
 	return &user, nil
 }
 

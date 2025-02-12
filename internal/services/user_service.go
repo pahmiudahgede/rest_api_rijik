@@ -11,6 +11,7 @@ import (
 
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
+	"github.com/pahmiudahgede/senggoldong/model"
 	"github.com/pahmiudahgede/senggoldong/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -32,6 +33,24 @@ func NewUserProfileService(userProfileRepo repositories.UserProfileRepository) U
 	return &userProfileService{UserProfileRepo: userProfileRepo}
 }
 
+func (s *userProfileService) prepareUserResponse(user *model.User) *dto.UserResponseDTO {
+	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
+
+	return &dto.UserResponseDTO{
+		ID:            user.ID,
+		Username:      user.Username,
+		Avatar:        user.Avatar,
+		Name:          user.Name,
+		Phone:         user.Phone,
+		Email:         user.Email,
+		EmailVerified: user.EmailVerified,
+		RoleName:      user.Role.RoleName,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+	}
+}
+
 func (s *userProfileService) GetUserProfile(userID string) (*dto.UserResponseDTO, error) {
 
 	cacheKey := fmt.Sprintf("userProfile:%s", userID)
@@ -39,9 +58,7 @@ func (s *userProfileService) GetUserProfile(userID string) (*dto.UserResponseDTO
 	if err == nil && cachedData != nil {
 
 		userResponse := &dto.UserResponseDTO{}
-
 		if data, ok := cachedData["data"].(string); ok {
-
 			if err := json.Unmarshal([]byte(data), userResponse); err != nil {
 				return nil, err
 			}
@@ -54,27 +71,13 @@ func (s *userProfileService) GetUserProfile(userID string) (*dto.UserResponseDTO
 		return nil, errors.New("user not found")
 	}
 
-	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
-	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
-
-	userResponse := &dto.UserResponseDTO{
-		ID:            user.ID,
-		Username:      user.Username,
-		Name:          user.Name,
-		Phone:         user.Phone,
-		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
-		RoleName:      user.Role.RoleName,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-	}
+	userResponse := s.prepareUserResponse(user)
 
 	cacheData := map[string]interface{}{
 		"data": userResponse,
 	}
 	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
 	if err != nil {
-
 		fmt.Printf("Error caching user profile to Redis: %v\n", err)
 	}
 
@@ -82,7 +85,6 @@ func (s *userProfileService) GetUserProfile(userID string) (*dto.UserResponseDTO
 }
 
 func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error) {
-
 	user, err := s.UserProfileRepo.FindByID(userID)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -98,19 +100,15 @@ func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.Upd
 	}
 
 	if updateData.Phone != "" && updateData.Phone != user.Phone {
-
-		existingPhone, _ := s.UserRepo.FindByPhoneAndRole(updateData.Phone, user.RoleID)
-		if existingPhone != nil {
-			return nil, fmt.Errorf("phone number is already used for this role")
+		if err := s.updatePhoneIfNeeded(user, updateData.Phone); err != nil {
+			return nil, err
 		}
 		user.Phone = updateData.Phone
 	}
 
 	if updateData.Email != "" && updateData.Email != user.Email {
-
-		existingEmail, _ := s.UserRepo.FindByEmailAndRole(updateData.Email, user.RoleID)
-		if existingEmail != nil {
-			return nil, fmt.Errorf("email is already used for this role")
+		if err := s.updateEmailIfNeeded(user, updateData.Email); err != nil {
+			return nil, err
 		}
 		user.Email = updateData.Email
 	}
@@ -120,20 +118,7 @@ func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.Upd
 		return nil, fmt.Errorf("failed to update user: %v", err)
 	}
 
-	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
-	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
-
-	userResponse := &dto.UserResponseDTO{
-		ID:            user.ID,
-		Username:      user.Username,
-		Name:          user.Name,
-		Phone:         user.Phone,
-		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
-		RoleName:      user.Role.RoleName,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-	}
+	userResponse := s.prepareUserResponse(user)
 
 	cacheKey := fmt.Sprintf("userProfile:%s", userID)
 	cacheData := map[string]interface{}{
@@ -145,6 +130,22 @@ func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.Upd
 	}
 
 	return userResponse, nil
+}
+
+func (s *userProfileService) updatePhoneIfNeeded(user *model.User, newPhone string) error {
+	existingPhone, _ := s.UserRepo.FindByPhoneAndRole(newPhone, user.RoleID)
+	if existingPhone != nil {
+		return fmt.Errorf("phone number is already used for this role")
+	}
+	return nil
+}
+
+func (s *userProfileService) updateEmailIfNeeded(user *model.User, newEmail string) error {
+	existingEmail, _ := s.UserRepo.FindByEmailAndRole(newEmail, user.RoleID)
+	if existingEmail != nil {
+		return fmt.Errorf("email is already used for this role")
+	}
+	return nil
 }
 
 func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (*dto.UserResponseDTO, error) {
