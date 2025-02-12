@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/pahmiudahgede/senggoldong/model"
 	"gorm.io/gorm"
 )
@@ -28,6 +30,9 @@ func (r *userRepository) FindByIdentifierAndRole(identifier, roleID string) (*mo
 	err := r.DB.Preload("Role").Where("(email = ? OR username = ? OR phone = ?) AND role_id = ?", identifier, identifier, identifier, roleID).First(&user).Error
 	if err != nil {
 		return nil, err
+	}
+	if user.Role == nil {
+		return nil, fmt.Errorf("role not found for this user")
 	}
 	return &user, nil
 }

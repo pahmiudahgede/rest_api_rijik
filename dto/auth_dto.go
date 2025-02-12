@@ -13,7 +13,7 @@ type LoginDTO struct {
 
 type UserResponseWithToken struct {
 	UserID   string `json:"user_id"`
-	RoleName string `json:"loginas"`
+	RoleName string `json:"role_name"`
 	Token    string `json:"token"`
 }
 
@@ -49,38 +49,22 @@ func (l *LoginDTO) Validate() (map[string][]string, bool) {
 func (r *RegisterDTO) Validate() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 
-	if strings.TrimSpace(r.Username) == "" {
-		errors["username"] = append(errors["username"], "Username is required")
-	}
-	if strings.TrimSpace(r.Name) == "" {
-		errors["name"] = append(errors["name"], "Name is required")
-	}
+	r.validateRequiredFields(errors)
 
-	if strings.TrimSpace(r.Phone) == "" {
-		errors["phone"] = append(errors["phone"], "Phone number is required")
-	} else if !IsValidPhoneNumber(r.Phone) {
+	if r.Phone != "" && !IsValidPhoneNumber(r.Phone) {
 		errors["phone"] = append(errors["phone"], "Invalid phone number format. Use +62 followed by 9-13 digits")
 	}
 
-	if strings.TrimSpace(r.Email) == "" {
-		errors["email"] = append(errors["email"], "Email is required")
-	} else if !IsValidEmail(r.Email) {
+	if r.Email != "" && !IsValidEmail(r.Email) {
 		errors["email"] = append(errors["email"], "Invalid email format")
 	}
 
-	if strings.TrimSpace(r.Password) == "" {
-		errors["password"] = append(errors["password"], "Password is required")
-	} else if !IsValidPassword(r.Password) {
+	if r.Password != "" && !IsValidPassword(r.Password) {
 		errors["password"] = append(errors["password"], "Password must be at least 8 characters long and contain at least one number")
 	}
 
-	if strings.TrimSpace(r.ConfirmPassword) == "" {
-		errors["confirm_password"] = append(errors["confirm_password"], "Confirm password is required")
-	} else if r.Password != r.ConfirmPassword {
+	if r.ConfirmPassword != "" && r.Password != r.ConfirmPassword {
 		errors["confirm_password"] = append(errors["confirm_password"], "Password and confirm password do not match")
-	}
-	if strings.TrimSpace(r.RoleID) == "" {
-		errors["roleId"] = append(errors["roleId"], "RoleID is required")
 	}
 
 	if len(errors) > 0 {
@@ -88,6 +72,31 @@ func (r *RegisterDTO) Validate() (map[string][]string, bool) {
 	}
 
 	return nil, true
+}
+
+func (r *RegisterDTO) validateRequiredFields(errors map[string][]string) {
+
+	if strings.TrimSpace(r.Username) == "" {
+		errors["username"] = append(errors["username"], "Username is required")
+	}
+	if strings.TrimSpace(r.Name) == "" {
+		errors["name"] = append(errors["name"], "Name is required")
+	}
+	if strings.TrimSpace(r.Phone) == "" {
+		errors["phone"] = append(errors["phone"], "Phone number is required")
+	}
+	if strings.TrimSpace(r.Email) == "" {
+		errors["email"] = append(errors["email"], "Email is required")
+	}
+	if strings.TrimSpace(r.Password) == "" {
+		errors["password"] = append(errors["password"], "Password is required")
+	}
+	if strings.TrimSpace(r.ConfirmPassword) == "" {
+		errors["confirm_password"] = append(errors["confirm_password"], "Confirm password is required")
+	}
+	if strings.TrimSpace(r.RoleID) == "" {
+		errors["roleId"] = append(errors["roleId"], "RoleID is required")
+	}
 }
 
 func IsValidPhoneNumber(phone string) bool {

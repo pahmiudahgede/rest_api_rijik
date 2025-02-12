@@ -9,6 +9,7 @@ type ArticleRepository interface {
 	CreateArticle(article *model.Article) error
 	FindArticleByID(id string) (*model.Article, error)
 	FindAllArticles(page, limit int) ([]model.Article, int, error)
+	UpdateArticle(id string, article *model.Article) error
 }
 
 type articleRepository struct {
@@ -20,11 +21,7 @@ func NewArticleRepository(db *gorm.DB) ArticleRepository {
 }
 
 func (r *articleRepository) CreateArticle(article *model.Article) error {
-	err := r.DB.Create(article).Error
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.DB.Create(article).Error
 }
 
 func (r *articleRepository) FindArticleByID(id string) (*model.Article, error) {
@@ -51,6 +48,7 @@ func (r *articleRepository) FindAllArticles(page, limit int) ([]model.Article, i
 			return nil, 0, err
 		}
 	} else {
+
 		err := r.DB.Find(&articles).Error
 		if err != nil {
 			return nil, 0, err
@@ -58,4 +56,8 @@ func (r *articleRepository) FindAllArticles(page, limit int) ([]model.Article, i
 	}
 
 	return articles, int(total), nil
+}
+
+func (r *articleRepository) UpdateArticle(id string, article *model.Article) error {
+	return r.DB.Save(article).Error
 }
