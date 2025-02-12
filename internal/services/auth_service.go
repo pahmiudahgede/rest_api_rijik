@@ -104,11 +104,11 @@ func CheckPasswordHash(password, hashedPassword string) bool {
 func (s *userService) Register(user dto.RegisterDTO) (*dto.UserResponseDTO, error) {
 
 	if user.Password != user.ConfirmPassword {
-		return nil, fmt.Errorf("%s: %v", ErrPasswordMismatch, nil)
+		return nil, fmt.Errorf("%s", ErrPasswordMismatch)
 	}
 
 	if user.RoleID == "" {
-		return nil, fmt.Errorf("%s: %v", ErrRoleIDRequired, nil)
+		return nil, fmt.Errorf("%s", ErrRoleIDRequired)
 	}
 
 	role, err := s.RoleRepo.FindByID(user.RoleID)
@@ -117,15 +117,15 @@ func (s *userService) Register(user dto.RegisterDTO) (*dto.UserResponseDTO, erro
 	}
 
 	if existingUser, _ := s.UserRepo.FindByUsername(user.Username); existingUser != nil {
-		return nil, fmt.Errorf("%s: %v", ErrUsernameTaken, nil)
+		return nil, fmt.Errorf("%s", ErrUsernameTaken)
 	}
 
 	if existingPhone, _ := s.UserRepo.FindByPhoneAndRole(user.Phone, user.RoleID); existingPhone != nil {
-		return nil, fmt.Errorf("%s: %v", ErrPhoneTaken, nil)
+		return nil, fmt.Errorf("%s", ErrPhoneTaken)
 	}
 
 	if existingEmail, _ := s.UserRepo.FindByEmailAndRole(user.Email, user.RoleID); existingEmail != nil {
-		return nil, fmt.Errorf("%s: %v", ErrEmailTaken, nil)
+		return nil, fmt.Errorf("%s", ErrEmailTaken)
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)

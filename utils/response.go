@@ -74,7 +74,7 @@ func InternalServerErrorResponse(c *fiber.Ctx, message string) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(response)
 }
 
-func GenericErrorResponse(c *fiber.Ctx, status int, message string) error {
+func GenericResponse(c *fiber.Ctx, status int, message string) error {
 	response := APIResponse{
 		Meta: MetaData{
 			Status:  status,

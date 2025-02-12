@@ -30,7 +30,7 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 
 	user, err := h.UserService.Login(loginDTO)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, err.Error())
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, err.Error())
 	}
 
 	return utils.SuccessResponse(c, user, "Login successful")
@@ -50,7 +50,7 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 
 	userResponse, err := h.UserService.Register(registerDTO)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusConflict, err.Error())
+		return utils.GenericResponse(c, fiber.StatusConflict, err.Error())
 	}
 
 	return utils.CreateResponse(c, userResponse, "Registration successful")
@@ -60,7 +60,7 @@ func (h *UserHandler) Logout(c *fiber.Ctx) error {
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
 		log.Println("Unauthorized access: User ID not found in session")
-		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
 	err := utils.DeleteSessionData(userID)

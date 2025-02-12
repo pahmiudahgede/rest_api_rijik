@@ -28,7 +28,7 @@ func (h *AddressHandler) CreateAddress(c *fiber.Ctx) error {
 
 	addressResponse, err := h.AddressService.CreateAddress(c.Locals("userID").(string), requestAddressDTO)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
 	}
 
 	return utils.CreateResponse(c, addressResponse, "user address created successfully")
@@ -39,7 +39,7 @@ func (h *AddressHandler) GetAddressByUserID(c *fiber.Ctx) error {
 
 	addresses, err := h.AddressService.GetAddressByUserID(userID)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.SuccessResponse(c, addresses, "User addresses fetched successfully")
@@ -51,7 +51,7 @@ func (h *AddressHandler) GetAddressByID(c *fiber.Ctx) error {
 
 	address, err := h.AddressService.GetAddressByID(userID, addressID)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.SuccessResponse(c, address, "Address fetched successfully")
@@ -73,7 +73,7 @@ func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
 
 	updatedAddress, err := h.AddressService.UpdateAddress(userID, addressID, addressDTO)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.SuccessResponse(c, updatedAddress, "User address updated successfully")
@@ -85,7 +85,7 @@ func (h *AddressHandler) DeleteAddress(c *fiber.Ctx) error {
 
 	err := h.AddressService.DeleteAddress(userID, addressID)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusForbidden, err.Error())
+		return utils.GenericResponse(c, fiber.StatusForbidden, err.Error())
 	}
 
 	return utils.SuccessResponse(c, nil, "Address deleted successfully")

@@ -9,12 +9,12 @@ func RoleMiddleware(allowedRoles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
 		if len(allowedRoles) == 0 {
-			return utils.GenericErrorResponse(c, fiber.StatusForbidden, "Forbidden: No roles specified")
+			return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: No roles specified")
 		}
 
 		roleID, ok := c.Locals("roleID").(string)
 		if !ok || roleID == "" {
-			return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: Role not found")
+			return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: Role not found")
 		}
 
 		for _, role := range allowedRoles {
@@ -23,6 +23,6 @@ func RoleMiddleware(allowedRoles ...string) fiber.Handler {
 			}
 		}
 
-		return utils.GenericErrorResponse(c, fiber.StatusForbidden, "Access Denied: You don't have permission to access this resource")
+		return utils.GenericResponse(c, fiber.StatusForbidden, "Access Denied: You don't have permission to access this resource")
 	}
 }

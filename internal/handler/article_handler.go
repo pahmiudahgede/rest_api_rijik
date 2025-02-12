@@ -31,12 +31,12 @@ func (h *ArticleHandler) CreateArticle(c *fiber.Ctx) error {
 
 	coverImage, err := c.FormFile("coverImage")
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "Cover image is required")
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Cover image is required")
 	}
 
 	articleResponse, err := h.ArticleService.CreateArticle(request, coverImage)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
 	return utils.SuccessResponse(c, articleResponse, "Article created successfully")
@@ -61,7 +61,7 @@ func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {
 
 		articles, totalArticles, err = h.ArticleService.GetAllArticles(0, 0)
 		if err != nil {
-			return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch articles")
+			return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch articles")
 		}
 
 		return utils.NonPaginatedResponse(c, articles, totalArticles, "Articles fetched successfully")
@@ -69,7 +69,7 @@ func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {
 
 	articles, totalArticles, err = h.ArticleService.GetAllArticles(page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch articles")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch articles")
 	}
 
 	return utils.PaginatedResponse(c, articles, page, limit, totalArticles, "Articles fetched successfully")
@@ -78,12 +78,12 @@ func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {
 func (h *ArticleHandler) GetArticleByID(c *fiber.Ctx) error {
 	id := c.Params("article_id")
 	if id == "" {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "Article ID is required")
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Article ID is required")
 	}
 
 	article, err := h.ArticleService.GetArticleByID(id)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.SuccessResponse(c, article, "Article fetched successfully")
@@ -92,7 +92,7 @@ func (h *ArticleHandler) GetArticleByID(c *fiber.Ctx) error {
 func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
 	id := c.Params("article_id")
 	if id == "" {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "Article ID is required")
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Article ID is required")
 	}
 
 	var request dto.RequestArticleDTO
@@ -108,12 +108,12 @@ func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
 
 	coverImage, err := c.FormFile("coverImage")
 	if err != nil && err.Error() != "no such file" {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "Cover image is required")
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Cover image is required")
 	}
 
 	articleResponse, err := h.ArticleService.UpdateArticle(id, request, coverImage)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
 	return utils.SuccessResponse(c, articleResponse, "Article updated successfully")

@@ -20,7 +20,7 @@ func (h *WilayahIndonesiaHandler) ImportWilayahData(c *fiber.Ctx) error {
 
 	err := h.WilayahService.ImportDataFromCSV()
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
 	return utils.SuccessResponse(c, fiber.StatusCreated, "Data imported successfully")
@@ -39,7 +39,7 @@ func (h *WilayahIndonesiaHandler) GetProvinces(c *fiber.Ctx) error {
 
 	provinces, totalProvinces, err := h.WilayahService.GetAllProvinces(page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch provinces")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch provinces")
 	}
 
 	if page > 0 && limit > 0 {
@@ -63,7 +63,7 @@ func (h *WilayahIndonesiaHandler) GetProvinceByID(c *fiber.Ctx) error {
 
 	province, totalRegencies, err := h.WilayahService.GetProvinceByID(provinceID, page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch province")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch province")
 	}
 
 	if page > 0 && limit > 0 {
@@ -85,7 +85,7 @@ func (h *WilayahIndonesiaHandler) GetAllRegencies(c *fiber.Ctx) error {
 
 	regencies, totalRegencies, err := h.WilayahService.GetAllRegencies(page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch regency")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch regency")
 	}
 
 	if page > 0 && limit > 0 {
@@ -109,7 +109,7 @@ func (h *WilayahIndonesiaHandler) GetRegencyByID(c *fiber.Ctx) error {
 
 	regency, totalDistrict, err := h.WilayahService.GetRegencyByID(regencyId, page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch regency")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch regency")
 	}
 
 	if page > 0 && limit > 0 {
@@ -131,7 +131,7 @@ func (h *WilayahIndonesiaHandler) GetAllDistricts(c *fiber.Ctx) error {
 
 	districts, totalDistricts, err := h.WilayahService.GetAllDistricts(page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch districts")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch districts")
 	}
 
 	if page > 0 && limit > 0 {
@@ -155,7 +155,7 @@ func (h *WilayahIndonesiaHandler) GetDistrictByID(c *fiber.Ctx) error {
 
 	district, totalVillages, err := h.WilayahService.GetDistrictByID(districtId, page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch district")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch district")
 	}
 
 	if page > 0 && limit > 0 {
@@ -177,7 +177,7 @@ func (h *WilayahIndonesiaHandler) GetAllVillages(c *fiber.Ctx) error {
 
 	villages, totalVillages, err := h.WilayahService.GetAllVillages(page, limit)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, "Failed to fetch villages")
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch villages")
 	}
 
 	if page > 0 && limit > 0 {
@@ -192,7 +192,7 @@ func (h *WilayahIndonesiaHandler) GetVillageByID(c *fiber.Ctx) error {
 
 	village, err := h.WilayahService.GetVillageByID(id)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
 	return utils.SuccessResponse(c, village, "Village fetched successfully")

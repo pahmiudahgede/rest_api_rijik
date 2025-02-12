@@ -19,7 +19,7 @@ import (
 type UserProfileService interface {
 	GetUserProfile(userID string) (*dto.UserResponseDTO, error)
 	UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error)
-	UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (*dto.UserResponseDTO, error)
+	UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error)
 	UpdateUserAvatar(userID string, file *multipart.FileHeader) (*dto.UserResponseDTO, error)
 }
 
@@ -148,50 +148,34 @@ func (s *userProfileService) updateEmailIfNeeded(user *model.User, newEmail stri
 	return nil
 }
 
-func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (*dto.UserResponseDTO, error) {
+func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error) {
 
 	validationErrors, valid := passwordData.Validate()
 	if !valid {
-		return nil, fmt.Errorf("validation failed: %v", validationErrors)
+		return "", fmt.Errorf("validation failed: %v", validationErrors)
 	}
 
 	user, err := s.UserProfileRepo.FindByID(userID)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return "", errors.New("user not found")
 	}
 
 	if !CheckPasswordHash(passwordData.OldPassword, user.Password) {
-		return nil, errors.New("old password is incorrect")
+		return "", errors.New("old password is incorrect")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordData.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash new password: %v", err)
+		return "", fmt.Errorf("failed to hash new password: %v", err)
 	}
 
 	user.Password = string(hashedPassword)
-
 	err = s.UserProfileRepo.Update(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update password: %v", err)
+		return "", fmt.Errorf("failed to update password: %v", err)
 	}
 
-	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
-	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
-
-	userResponse := &dto.UserResponseDTO{
-		ID:            user.ID,
-		Username:      user.Username,
-		Name:          user.Name,
-		Phone:         user.Phone,
-		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
-		RoleName:      user.Role.RoleName,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-	}
-
-	return userResponse, nil
+	return "Password berhasil diupdate", nil
 }
 
 func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.FileHeader) (*dto.UserResponseDTO, error) {

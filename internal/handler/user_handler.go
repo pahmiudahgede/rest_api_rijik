@@ -19,12 +19,12 @@ func (h *UserProfileHandler) GetUserProfile(c *fiber.Ctx) error {
 
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
-		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
 	userProfile, err := h.UserProfileService.GetUserProfile(userID)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, err.Error())
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.SuccessResponse(c, userProfile, "User profile retrieved successfully")
@@ -38,7 +38,7 @@ func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
 
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
-		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
 	errors, valid := updateData.Validate()
@@ -48,7 +48,7 @@ func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
 
 	userResponse, err := h.UserProfileService.UpdateUserProfile(userID, updateData)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusConflict, err.Error())
+		return utils.GenericResponse(c, fiber.StatusConflict, err.Error())
 	}
 
 	return utils.SuccessResponse(c, userResponse, "User profile updated successfully")
@@ -62,7 +62,7 @@ func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
 
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
-		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
 	errors, valid := passwordData.Validate()
@@ -70,28 +70,28 @@ func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, errors)
 	}
 
-	userResponse, err := h.UserProfileService.UpdateUserPassword(userID, passwordData)
+	_, err := h.UserProfileService.UpdateUserPassword(userID, passwordData)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, err.Error())
+		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return utils.SuccessResponse(c, userResponse, "Password updated successfully")
+	return utils.GenericResponse(c, fiber.StatusOK, "Password updated successfully")
 }
 
 func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
-		return utils.GenericErrorResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
 	file, err := c.FormFile("avatar")
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusBadRequest, "No avatar file uploaded")
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "No avatar file uploaded")
 	}
 
 	userResponse, err := h.UserProfileService.UpdateUserAvatar(userID, file)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
 	return utils.SuccessResponse(c, userResponse, "Avatar updated successfully")

@@ -18,12 +18,12 @@ func (h *RoleHandler) GetRoles(c *fiber.Ctx) error {
 
 	roleID, ok := c.Locals("roleID").(string)
 	if !ok || roleID != utils.RoleAdministrator {
-		return utils.GenericErrorResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
+		return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
 	}
 
 	roles, err := h.RoleService.GetRoles()
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusInternalServerError, err.Error())
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
 	return utils.SuccessResponse(c, roles, "Roles fetched successfully")
@@ -34,12 +34,12 @@ func (h *RoleHandler) GetRoleByID(c *fiber.Ctx) error {
 
 	roleIDFromSession, ok := c.Locals("roleID").(string)
 	if !ok || roleIDFromSession != utils.RoleAdministrator {
-		return utils.GenericErrorResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
+		return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
 	}
 
 	role, err := h.RoleService.GetRoleByID(roleID)
 	if err != nil {
-		return utils.GenericErrorResponse(c, fiber.StatusNotFound, "role id tidak ditemukan")
+		return utils.GenericResponse(c, fiber.StatusNotFound, "role id tidak ditemukan")
 	}
 
 	return utils.SuccessResponse(c, role, "Role fetched successfully")
