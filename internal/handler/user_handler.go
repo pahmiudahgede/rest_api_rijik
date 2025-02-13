@@ -70,15 +70,15 @@ func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, errors)
 	}
 
-	_, err := h.UserProfileService.UpdateUserPassword(userID, passwordData)
+	message, err := h.UserProfileService.UpdateUserPassword(userID, passwordData)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return utils.GenericResponse(c, fiber.StatusOK, "Password updated successfully")
+	return utils.GenericResponse(c, fiber.StatusOK, message)
 }
-
 func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
+
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
 		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
@@ -89,10 +89,10 @@ func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
 		return utils.GenericResponse(c, fiber.StatusBadRequest, "No avatar file uploaded")
 	}
 
-	userResponse, err := h.UserProfileService.UpdateUserAvatar(userID, file)
+	message, err := h.UserProfileService.UpdateUserAvatar(userID, file)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.SuccessResponse(c, userResponse, "Avatar updated successfully")
+	return utils.GenericResponse(c, fiber.StatusOK, message)
 }

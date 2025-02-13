@@ -16,11 +16,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const avatarDir = "./public/uploads/avatars"
+
+var allowedExtensions = []string{".jpg", ".jpeg", ".png"}
+
 type UserProfileService interface {
 	GetUserProfile(userID string) (*dto.UserResponseDTO, error)
 	UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error)
 	UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error)
-	UpdateUserAvatar(userID string, file *multipart.FileHeader) (*dto.UserResponseDTO, error)
+	UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error)
 }
 
 type userProfileService struct {
@@ -178,68 +182,81 @@ func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.
 	return "Password berhasil diupdate", nil
 }
 
-func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.FileHeader) (*dto.UserResponseDTO, error) {
+func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error) {
 
-	avatarDir := "./public/uploads/avatars"
-	if _, err := os.Stat(avatarDir); os.IsNotExist(err) {
-		err := os.MkdirAll(avatarDir, os.ModePerm)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create avatar directory: %v", err)
+	if err := ensureAvatarDirectoryExists(); err != nil {
+		return "", err
+	}
+
+	if err := validateAvatarFile(file); err != nil {
+		return "", err
+	}
+
+	updatedUser, err := s.UserProfileRepo.FindByID(userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve user data: %v", err)
+	}
+
+	if updatedUser.Avatar != nil && *updatedUser.Avatar != "" {
+		oldAvatarPath := "./public" + *updatedUser.Avatar
+		if err := os.Remove(oldAvatarPath); err != nil {
+			return "", fmt.Errorf("failed to remove old avatar: %v", err)
 		}
 	}
 
-	extension := filepath.Ext(file.Filename)
-	if extension != ".jpg" && extension != ".jpeg" && extension != ".png" {
-		return nil, fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
+	avatarURL, err := saveAvatarFile(file, userID)
+	if err != nil {
+		return "", err
 	}
 
+	err = s.UserProfileRepo.UpdateAvatar(userID, avatarURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to update avatar in the database: %v", err)
+	}
+
+	return "Foto profil berhasil diupdate", nil
+}
+
+func ensureAvatarDirectoryExists() error {
+	if _, err := os.Stat(avatarDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(avatarDir, os.ModePerm); err != nil {
+			return fmt.Errorf("failed to create avatar directory: %v", err)
+		}
+	}
+	return nil
+}
+
+func validateAvatarFile(file *multipart.FileHeader) error {
+	extension := filepath.Ext(file.Filename)
+	for _, ext := range allowedExtensions {
+		if extension == ext {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
+}
+
+func saveAvatarFile(file *multipart.FileHeader, userID string) (string, error) {
+	extension := filepath.Ext(file.Filename)
 	avatarFileName := fmt.Sprintf("%s_avatar%s", userID, extension)
 	avatarPath := filepath.Join(avatarDir, avatarFileName)
 
 	src, err := file.Open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to open uploaded file: %v", err)
+		return "", fmt.Errorf("failed to open uploaded file: %v", err)
 	}
 	defer src.Close()
 
 	dst, err := os.Create(avatarPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file: %v", err)
+		return "", fmt.Errorf("failed to create file: %v", err)
 	}
 	defer dst.Close()
 
 	_, err = dst.ReadFrom(src)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save avatar file: %v", err)
+		return "", fmt.Errorf("failed to save avatar file: %v", err)
 	}
 
-	avatarURL := fmt.Sprintf("/uploads/avatars/%s", avatarFileName)
-
-	err = s.UserProfileRepo.UpdateAvatar(userID, avatarURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update avatar in the database: %v", err)
-	}
-
-	updatedUser, err := s.UserProfileRepo.FindByID(userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve updated user data: %v", err)
-	}
-
-	createdAt, _ := utils.FormatDateToIndonesianFormat(updatedUser.CreatedAt)
-	updatedAt, _ := utils.FormatDateToIndonesianFormat(updatedUser.UpdatedAt)
-
-	userResponse := &dto.UserResponseDTO{
-		ID:            updatedUser.ID,
-		Username:      updatedUser.Username,
-		Avatar:        updatedUser.Avatar,
-		Name:          updatedUser.Name,
-		Phone:         updatedUser.Phone,
-		Email:         updatedUser.Email,
-		EmailVerified: updatedUser.EmailVerified,
-		RoleName:      updatedUser.Role.RoleName,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-	}
-
-	return userResponse, nil
+	return fmt.Sprintf("/uploads/avatars/%s", avatarFileName), nil
 }

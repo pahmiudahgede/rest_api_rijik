@@ -25,6 +25,9 @@ func (r *userProfileRepository) FindByID(userID string) (*model.User, error) {
 	var user model.User
 	err := r.DB.Preload("Role").Where("id = ?", userID).First(&user).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("user with ID %s not found", userID)
+		}
 		return nil, err
 	}
 
