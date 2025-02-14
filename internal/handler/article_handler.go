@@ -113,3 +113,17 @@ func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
 
 	return utils.SuccessResponse(c, articleResponse, "Article updated successfully")
 }
+
+func (h *ArticleHandler) DeleteArticle(c *fiber.Ctx) error {
+	id := c.Params("article_id")
+	if id == "" {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Article ID is required")
+	}
+
+	err := h.ArticleService.DeleteArticle(id)
+	if err != nil {
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.GenericResponse(c, fiber.StatusOK, "Article deleted successfully")
+}

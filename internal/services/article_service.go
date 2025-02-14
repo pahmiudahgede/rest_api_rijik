@@ -20,6 +20,7 @@ type ArticleService interface {
 	GetAllArticles(page, limit int) ([]dto.ArticleResponseDTO, int, error)
 	GetArticleByID(id string) (*dto.ArticleResponseDTO, error)
 	UpdateArticle(id string, request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error)
+	DeleteArticle(id string) error
 }
 
 type articleService struct {
@@ -370,4 +371,26 @@ func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader) (strin
 	}
 
 	return coverImagePath, nil
+}
+
+func (s *articleService) DeleteArticle(id string) error {
+
+	err := s.ArticleRepo.DeleteArticle(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete article: %v", err)
+	}
+
+	articleCacheKey := fmt.Sprintf("article:%s", id)
+	err = utils.DeleteData(articleCacheKey)
+	if err != nil {
+		fmt.Printf("Error deleting cache for article: %v\n", err)
+	}
+
+	articlesCacheKey := "articles:all"
+	err = utils.DeleteData(articlesCacheKey)
+	if err != nil {
+		fmt.Printf("Error deleting cache for all articles: %v\n", err)
+	}
+
+	return nil
 }

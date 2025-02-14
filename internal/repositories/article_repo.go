@@ -12,6 +12,7 @@ type ArticleRepository interface {
 	FindArticleByID(id string) (*model.Article, error)
 	FindAllArticles(page, limit int) ([]model.Article, int, error)
 	UpdateArticle(id string, article *model.Article) error
+	DeleteArticle(id string) error
 }
 
 type articleRepository struct {
@@ -65,4 +66,9 @@ func (r *articleRepository) FindAllArticles(page, limit int) ([]model.Article, i
 
 func (r *articleRepository) UpdateArticle(id string, article *model.Article) error {
 	return r.DB.Model(&model.Article{}).Where("id = ?", id).Updates(article).Error
+}
+
+func (r *articleRepository) DeleteArticle(id string) error {
+	result := r.DB.Delete(&model.Article{}, "id = ?", id)
+	return result.Error
 }

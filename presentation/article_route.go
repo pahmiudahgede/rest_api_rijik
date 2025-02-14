@@ -21,4 +21,5 @@ func ArticleRouter(api fiber.Router) {
 	articleAPI.Get("/view-article", articleHandler.GetAllArticles)
 	articleAPI.Get("/view-article/:article_id", articleHandler.GetArticleByID)
 	articleAPI.Put("/update-article/:article_id", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), articleHandler.UpdateArticle)
+	articleAPI.Delete("/delete-article/:article_id", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), articleHandler.DeleteArticle)
 }
