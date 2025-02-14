@@ -21,6 +21,7 @@ func (h *UserPinHandler) VerifyUserPin(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
 
+	// Validasi input pin
 	errors, valid := requestUserPinDTO.Validate()
 	if !valid {
 		return utils.ValidationErrorResponse(c, errors)
@@ -31,12 +32,12 @@ func (h *UserPinHandler) VerifyUserPin(c *fiber.Ctx) error {
 		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
-	_, err := h.UserPinService.VerifyUserPin(requestUserPinDTO.Pin, userID)
+	message, err := h.UserPinService.VerifyUserPin(userID, requestUserPinDTO.Pin)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusUnauthorized, "pin yang anda masukkan salah")
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, err.Error())
 	}
 
-	return utils.SuccessResponse(c, map[string]string{"data": "pin yang anda masukkan benar"}, "Pin verification successful")
+	return utils.GenericResponse(c, fiber.StatusOK, message)
 }
 
 func (h *UserPinHandler) CheckPinStatus(c *fiber.Ctx) error {
@@ -45,16 +46,16 @@ func (h *UserPinHandler) CheckPinStatus(c *fiber.Ctx) error {
 		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
-	status, _, err := h.UserPinService.CheckPinStatus(userID)
+	status, err := h.UserPinService.CheckPinStatus(userID)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
 	if status == "Pin not created" {
-		return utils.GenericResponse(c, fiber.StatusBadRequest, "pin belum dibuat")
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Pin belum dibuat")
 	}
 
-	return utils.SuccessResponse(c, map[string]string{"data": "pin sudah dibuat"}, "Pin status retrieved successfully")
+	return utils.GenericResponse(c, fiber.StatusOK, "Pin sudah dibuat")
 }
 
 func (h *UserPinHandler) CreateUserPin(c *fiber.Ctx) error {
@@ -70,12 +71,13 @@ func (h *UserPinHandler) CreateUserPin(c *fiber.Ctx) error {
 
 	userID := c.Locals("userID").(string)
 
-	userPinResponse, err := h.UserPinService.CreateUserPin(userID, requestUserPinDTO.Pin)
+	message, err := h.UserPinService.CreateUserPin(userID, requestUserPinDTO.Pin)
 	if err != nil {
+
 		return utils.GenericResponse(c, fiber.StatusConflict, err.Error())
 	}
 
-	return utils.CreateResponse(c, userPinResponse, "User pin created successfully")
+	return utils.GenericResponse(c, fiber.StatusCreated, message)
 }
 
 func (h *UserPinHandler) UpdateUserPin(c *fiber.Ctx) error {
@@ -91,10 +93,10 @@ func (h *UserPinHandler) UpdateUserPin(c *fiber.Ctx) error {
 
 	userID := c.Locals("userID").(string)
 
-	userPinResponse, err := h.UserPinService.UpdateUserPin(userID, requestUserPinDTO.OldPin, requestUserPinDTO.NewPin)
+	message, err := h.UserPinService.UpdateUserPin(userID, requestUserPinDTO.OldPin, requestUserPinDTO.NewPin)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return utils.SuccessResponse(c, userPinResponse, "User pin updated successfully")
+	return utils.GenericResponse(c, fiber.StatusOK, message)
 }

@@ -24,6 +24,10 @@ func (r *userPinRepository) FindByUserID(userID string) (*model.UserPin, error) 
 	var userPin model.UserPin
 	err := r.DB.Where("user_id = ?", userID).First(&userPin).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &userPin, nil
