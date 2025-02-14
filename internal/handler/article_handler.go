@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+	"mime/multipart"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -43,7 +45,6 @@ func (h *ArticleHandler) CreateArticle(c *fiber.Ctx) error {
 }
 
 func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {
-
 	page, err := strconv.Atoi(c.Query("page", "0"))
 	if err != nil || page < 1 {
 		page = 0
@@ -54,22 +55,15 @@ func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {
 		limit = 0
 	}
 
-	var articles []dto.ArticleResponseDTO
-	var totalArticles int
-
-	if page == 0 && limit == 0 {
-
-		articles, totalArticles, err = h.ArticleService.GetAllArticles(0, 0)
-		if err != nil {
-			return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch articles")
-		}
-
-		return utils.NonPaginatedResponse(c, articles, totalArticles, "Articles fetched successfully")
-	}
-
-	articles, totalArticles, err = h.ArticleService.GetAllArticles(page, limit)
+	articles, totalArticles, err := h.ArticleService.GetAllArticles(page, limit)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch articles")
+	}
+
+	fmt.Printf("Total Articles: %d\n", totalArticles)
+
+	if page == 0 && limit == 0 {
+		return utils.NonPaginatedResponse(c, articles, totalArticles, "Articles fetched successfully")
 	}
 
 	return utils.PaginatedResponse(c, articles, page, limit, totalArticles, "Articles fetched successfully")
@@ -83,7 +77,8 @@ func (h *ArticleHandler) GetArticleByID(c *fiber.Ctx) error {
 
 	article, err := h.ArticleService.GetArticleByID(id)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
+
+		return utils.GenericResponse(c, fiber.StatusNotFound, "Article not found")
 	}
 
 	return utils.SuccessResponse(c, article, "Article fetched successfully")
@@ -96,7 +91,6 @@ func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
 	}
 
 	var request dto.RequestArticleDTO
-
 	if err := c.BodyParser(&request); err != nil {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
@@ -106,6 +100,7 @@ func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, errors)
 	}
 
+	var coverImage *multipart.FileHeader
 	coverImage, err := c.FormFile("coverImage")
 	if err != nil && err.Error() != "no such file" {
 		return utils.GenericResponse(c, fiber.StatusBadRequest, "Cover image is required")

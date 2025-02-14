@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"os"
@@ -36,8 +37,9 @@ func (s *articleService) CreateArticle(request dto.RequestArticleDTO, coverImage
 		return nil, fmt.Errorf("failed to create directory for cover image: %v", err)
 	}
 
+	allowedExtensions := map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
 	extension := filepath.Ext(coverImage.Filename)
-	if extension != ".jpg" && extension != ".jpeg" && extension != ".png" {
+	if !allowedExtensions[extension] {
 		return nil, fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
 	}
 
@@ -90,83 +92,77 @@ func (s *articleService) CreateArticle(request dto.RequestArticleDTO, coverImage
 	cacheData := map[string]interface{}{
 		"data": articleResponseDTO,
 	}
-
 	if err := utils.SetJSONData(cacheKey, cacheData, time.Hour*24); err != nil {
-
 		fmt.Printf("Error caching article to Redis: %v\n", err)
 	}
 
-	articlesCacheKey := "articles:all"
-	if err := utils.DeleteData(articlesCacheKey); err != nil {
-
-		fmt.Printf("Error deleting articles cache: %v\n", err)
+	articles, total, err := s.ArticleRepo.FindAllArticles(0, 0)
+	if err != nil {
+		fmt.Printf("Error fetching all articles: %v\n", err)
 	}
 
-	articles, _, err := s.ArticleRepo.FindAllArticles(0, 0)
-	if err == nil {
-		var articleDTOs []dto.ArticleResponseDTO
-		for _, a := range articles {
-			createdAt, _ := utils.FormatDateToIndonesianFormat(a.PublishedAt)
-			updatedAt, _ := utils.FormatDateToIndonesianFormat(a.UpdatedAt)
+	var articleDTOs []dto.ArticleResponseDTO
+	for _, a := range articles {
+		createdAt, _ := utils.FormatDateToIndonesianFormat(a.PublishedAt)
+		updatedAt, _ := utils.FormatDateToIndonesianFormat(a.UpdatedAt)
 
-			articleDTOs = append(articleDTOs, dto.ArticleResponseDTO{
-				ID:          a.ID,
-				Title:       a.Title,
-				CoverImage:  a.CoverImage,
-				Author:      a.Author,
-				Heading:     a.Heading,
-				Content:     a.Content,
-				PublishedAt: createdAt,
-				UpdatedAt:   updatedAt,
-			})
-		}
+		articleDTOs = append(articleDTOs, dto.ArticleResponseDTO{
+			ID:          a.ID,
+			Title:       a.Title,
+			CoverImage:  a.CoverImage,
+			Author:      a.Author,
+			Heading:     a.Heading,
+			Content:     a.Content,
+			PublishedAt: createdAt,
+			UpdatedAt:   updatedAt,
+		})
+	}
 
-		cacheData = map[string]interface{}{
-			"data": articleDTOs,
-		}
-		if err := utils.SetJSONData(articlesCacheKey, cacheData, time.Hour*24); err != nil {
-
-			fmt.Printf("Error caching all articles to Redis: %v\n", err)
-		}
-	} else {
-
-		fmt.Printf("Error fetching all articles: %v\n", err)
+	articlesCacheKey := "articles:all"
+	cacheData = map[string]interface{}{
+		"data":  articleDTOs,
+		"total": total,
+	}
+	if err := utils.SetJSONData(articlesCacheKey, cacheData, time.Hour*24); err != nil {
+		fmt.Printf("Error caching all articles to Redis: %v\n", err)
 	}
 
 	return articleResponseDTO, nil
 }
 
 func (s *articleService) GetAllArticles(page, limit int) ([]dto.ArticleResponseDTO, int, error) {
+	var cacheKey string
 
-	cacheKey := fmt.Sprintf("articles_page:%d_limit:%d", page, limit)
+	if page == 0 && limit == 0 {
+		cacheKey = "articles:all"
+		cachedData, err := utils.GetJSONData(cacheKey)
+		if err == nil && cachedData != nil {
+			if data, ok := cachedData["data"].([]interface{}); ok {
+				var articles []dto.ArticleResponseDTO
+				for _, item := range data {
+					articleData, ok := item.(map[string]interface{})
+					if ok {
+						articles = append(articles, dto.ArticleResponseDTO{
+							ID:          articleData["article_id"].(string),
+							Title:       articleData["title"].(string),
+							CoverImage:  articleData["coverImage"].(string),
+							Author:      articleData["author"].(string),
+							Heading:     articleData["heading"].(string),
+							Content:     articleData["content"].(string),
+							PublishedAt: articleData["publishedAt"].(string),
+							UpdatedAt:   articleData["updatedAt"].(string),
+						})
+					}
+				}
 
-	cachedData, err := utils.GetJSONData(cacheKey)
-	if err == nil && cachedData != nil {
-		var articles []dto.ArticleResponseDTO
-
-		if data, ok := cachedData["data"].([]interface{}); ok {
-			for _, item := range data {
-				articleData, ok := item.(map[string]interface{})
-				if ok {
-
-					articles = append(articles, dto.ArticleResponseDTO{
-						ID:          articleData["article_id"].(string),
-						Title:       articleData["title"].(string),
-						CoverImage:  articleData["coverImage"].(string),
-						Author:      articleData["author"].(string),
-						Heading:     articleData["heading"].(string),
-						Content:     articleData["content"].(string),
-						PublishedAt: articleData["publishedAt"].(string),
-						UpdatedAt:   articleData["updatedAt"].(string),
-					})
+				if total, ok := cachedData["total"].(float64); ok {
+					fmt.Printf("Cached Total Articles: %f\n", total)
+					return articles, int(total), nil
+				} else {
+					fmt.Println("Total articles not found in cache, using 0 as fallback.")
+					return articles, 0, nil
 				}
 			}
-
-			total, ok := cachedData["total"].(float64)
-			if !ok {
-				return nil, 0, fmt.Errorf("invalid total count in cache")
-			}
-			return articles, int(total), nil
 		}
 	}
 
@@ -174,6 +170,8 @@ func (s *articleService) GetAllArticles(page, limit int) ([]dto.ArticleResponseD
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch articles: %v", err)
 	}
+
+	fmt.Printf("Total Articles from Database: %d\n", total)
 
 	var articleDTOs []dto.ArticleResponseDTO
 	for _, article := range articles {
@@ -192,12 +190,14 @@ func (s *articleService) GetAllArticles(page, limit int) ([]dto.ArticleResponseD
 		})
 	}
 
+	cacheKey = fmt.Sprintf("articles_page:%d_limit:%d", page, limit)
 	cacheData := map[string]interface{}{
 		"data":  articleDTOs,
 		"total": total,
 	}
-	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
-	if err != nil {
+
+	fmt.Printf("Setting cache with total: %d\n", total)
+	if err := utils.SetJSONData(cacheKey, cacheData, time.Hour*24); err != nil {
 		fmt.Printf("Error caching articles to Redis: %v\n", err)
 	}
 
@@ -205,24 +205,15 @@ func (s *articleService) GetAllArticles(page, limit int) ([]dto.ArticleResponseD
 }
 
 func (s *articleService) GetArticleByID(id string) (*dto.ArticleResponseDTO, error) {
-	cacheKey := fmt.Sprintf("article:%s", id)
 
+	cacheKey := fmt.Sprintf("article:%s", id)
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
-		articleData, ok := cachedData["data"].(map[string]interface{})
-		if ok {
-
-			article := dto.ArticleResponseDTO{
-				ID:          articleData["article_id"].(string),
-				Title:       articleData["title"].(string),
-				CoverImage:  articleData["coverImage"].(string),
-				Author:      articleData["author"].(string),
-				Heading:     articleData["heading"].(string),
-				Content:     articleData["content"].(string),
-				PublishedAt: articleData["publishedAt"].(string),
-				UpdatedAt:   articleData["updatedAt"].(string),
+		articleResponse := &dto.ArticleResponseDTO{}
+		if data, ok := cachedData["data"].(string); ok {
+			if err := json.Unmarshal([]byte(data), articleResponse); err == nil {
+				return articleResponse, nil
 			}
-			return &article, nil
 		}
 	}
 
@@ -248,9 +239,7 @@ func (s *articleService) GetArticleByID(id string) (*dto.ArticleResponseDTO, err
 	cacheData := map[string]interface{}{
 		"data": articleResponseDTO,
 	}
-	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
-	if err != nil {
-
+	if err := utils.SetJSONData(cacheKey, cacheData, time.Hour*24); err != nil {
 		fmt.Printf("Error caching article to Redis: %v\n", err)
 	}
 
@@ -258,6 +247,7 @@ func (s *articleService) GetArticleByID(id string) (*dto.ArticleResponseDTO, err
 }
 
 func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error) {
+
 	article, err := s.ArticleRepo.FindArticleByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("article not found: %v", err)
@@ -270,39 +260,10 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 
 	var coverImagePath string
 	if coverImage != nil {
-		coverImageDir := "./public/uploads/articles"
-		if _, err := os.Stat(coverImageDir); os.IsNotExist(err) {
-			err := os.MkdirAll(coverImageDir, os.ModePerm)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create directory for cover image: %v", err)
-			}
-		}
-
-		extension := filepath.Ext(coverImage.Filename)
-		if extension != ".jpg" && extension != ".jpeg" && extension != ".png" {
-			return nil, fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
-		}
-
-		coverImageFileName := fmt.Sprintf("%s_cover%s", uuid.New().String(), extension)
-		coverImagePath = filepath.Join(coverImageDir, coverImageFileName)
-
-		src, err := coverImage.Open()
-		if err != nil {
-			return nil, fmt.Errorf("failed to open uploaded file: %v", err)
-		}
-		defer src.Close()
-
-		dst, err := os.Create(coverImagePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create cover image file: %v", err)
-		}
-		defer dst.Close()
-
-		_, err = dst.ReadFrom(src)
+		coverImagePath, err = s.saveCoverImage(coverImage)
 		if err != nil {
 			return nil, fmt.Errorf("failed to save cover image: %v", err)
 		}
-
 		article.CoverImage = coverImagePath
 	}
 
@@ -331,15 +292,7 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 	}
 
 	articleCacheKey := fmt.Sprintf("article:%s", updatedArticle.ID)
-	err = utils.DeleteData(articleCacheKey)
-	if err != nil {
-		fmt.Printf("Error deleting old cache for article: %v\n", err)
-	}
-
-	cacheData := map[string]interface{}{
-		"data": articleResponseDTO,
-	}
-	err = utils.SetJSONData(articleCacheKey, cacheData, time.Hour*24)
+	err = utils.SetJSONData(articleCacheKey, map[string]interface{}{"data": articleResponseDTO}, time.Hour*24)
 	if err != nil {
 		fmt.Printf("Error caching updated article to Redis: %v\n", err)
 	}
@@ -371,7 +324,7 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 			})
 		}
 
-		cacheData = map[string]interface{}{
+		cacheData := map[string]interface{}{
 			"data": articleDTOs,
 		}
 		err = utils.SetJSONData(articlesCacheKey, cacheData, time.Hour*24)
@@ -381,4 +334,40 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 	}
 
 	return articleResponseDTO, nil
+}
+
+func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader) (string, error) {
+	coverImageDir := "./public/uploads/articles"
+	if _, err := os.Stat(coverImageDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(coverImageDir, os.ModePerm); err != nil {
+			return "", fmt.Errorf("failed to create directory for cover image: %v", err)
+		}
+	}
+
+	extension := filepath.Ext(coverImage.Filename)
+	if extension != ".jpg" && extension != ".jpeg" && extension != ".png" {
+		return "", fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
+	}
+
+	coverImageFileName := fmt.Sprintf("%s_cover%s", uuid.New().String(), extension)
+	coverImagePath := filepath.Join(coverImageDir, coverImageFileName)
+
+	src, err := coverImage.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open uploaded file: %v", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(coverImagePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cover image file: %v", err)
+	}
+	defer dst.Close()
+
+	_, err = dst.ReadFrom(src)
+	if err != nil {
+		return "", fmt.Errorf("failed to save cover image: %v", err)
+	}
+
+	return coverImagePath, nil
 }

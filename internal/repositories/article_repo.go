@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/pahmiudahgede/senggoldong/model"
 	"gorm.io/gorm"
 )
@@ -28,7 +30,10 @@ func (r *articleRepository) FindArticleByID(id string) (*model.Article, error) {
 	var article model.Article
 	err := r.DB.Where("id = ?", id).First(&article).Error
 	if err != nil {
-		return nil, err
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("article with ID %s not found", id)
+		}
+		return nil, fmt.Errorf("failed to fetch article: %v", err)
 	}
 	return &article, nil
 }
@@ -37,21 +42,21 @@ func (r *articleRepository) FindAllArticles(page, limit int) ([]model.Article, i
 	var articles []model.Article
 	var total int64
 
-	err := r.DB.Model(&model.Article{}).Count(&total).Error
-	if err != nil {
-		return nil, 0, err
+	if err := r.DB.Model(&model.Article{}).Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count articles: %v", err)
 	}
+
+	fmt.Printf("Total Articles Count: %d\n", total)
 
 	if page > 0 && limit > 0 {
 		err := r.DB.Offset((page - 1) * limit).Limit(limit).Find(&articles).Error
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("failed to fetch articles: %v", err)
 		}
 	} else {
-
 		err := r.DB.Find(&articles).Error
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("failed to fetch articles: %v", err)
 		}
 	}
 
@@ -59,5 +64,5 @@ func (r *articleRepository) FindAllArticles(page, limit int) ([]model.Article, i
 }
 
 func (r *articleRepository) UpdateArticle(id string, article *model.Article) error {
-	return r.DB.Save(article).Error
+	return r.DB.Model(&model.Article{}).Where("id = ?", id).Updates(article).Error
 }
