@@ -335,8 +335,18 @@ func (s *bannerService) DeleteBanner(id string) error {
 		return fmt.Errorf("banner with ID %s not found", id)
 	}
 
+	if banner.BannerImage != "" {
+		err := os.Remove(banner.BannerImage)
+		if err != nil {
+
+			fmt.Printf("Failed to delete banner image: %v\n", err)
+		} else {
+			fmt.Printf("Successfully deleted banner image: %s\n", banner.BannerImage)
+		}
+	}
+
 	if err := s.BannerRepo.DeleteBanner(id); err != nil {
-		return fmt.Errorf("failed to delete banner: %v", err)
+		return fmt.Errorf("failed to delete banner from database: %v", err)
 	}
 
 	cacheKey := fmt.Sprintf("banner:%s", banner.ID)

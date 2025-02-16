@@ -101,7 +101,6 @@ func (h *BannerHandler) DeleteBanner(c *fiber.Ctx) error {
 
 	err := h.BannerService.DeleteBanner(id)
 	if err != nil {
-
 		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
