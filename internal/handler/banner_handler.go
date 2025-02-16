@@ -57,7 +57,7 @@ func (h *BannerHandler) GetBannerByID(c *fiber.Ctx) error {
 
 	banner, err := h.BannerService.GetBannerByID(id)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to fetch banner")
+		return utils.GenericResponse(c, fiber.StatusNotFound, "invalid banner id")
 	}
 
 	return utils.SuccessResponse(c, banner, "Banner fetched successfully")
@@ -87,7 +87,7 @@ func (h *BannerHandler) UpdateBanner(c *fiber.Ctx) error {
 
 	bannerResponse, err := h.BannerService.UpdateBanner(id, request, bannerImage)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.SuccessResponse(c, bannerResponse, "Banner updated successfully")
@@ -101,7 +101,8 @@ func (h *BannerHandler) DeleteBanner(c *fiber.Ctx) error {
 
 	err := h.BannerService.DeleteBanner(id)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.GenericResponse(c, fiber.StatusOK, "Banner deleted successfully")

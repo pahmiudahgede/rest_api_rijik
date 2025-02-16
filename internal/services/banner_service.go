@@ -210,7 +210,8 @@ func (s *bannerService) GetBannerByID(id string) (*dto.ResponseBannerDTO, error)
 
 	banner, err := s.BannerRepo.FindBannerByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch banner by ID: %v", err)
+
+		return nil, fmt.Errorf("banner with ID %s not found", id)
 	}
 
 	createdAt, _ := utils.FormatDateToIndonesianFormat(banner.CreatedAt)
@@ -235,33 +236,41 @@ func (s *bannerService) GetBannerByID(id string) (*dto.ResponseBannerDTO, error)
 }
 
 func (s *bannerService) UpdateBanner(id string, request dto.RequestBannerDTO, bannerImage *multipart.FileHeader) (*dto.ResponseBannerDTO, error) {
-	// Cari banner yang ingin diupdate
+
 	banner, err := s.BannerRepo.FindBannerByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("banner not found: %v", err)
+
+		return nil, fmt.Errorf("banner with ID %s not found", id)
 	}
 
-	// Update data banner
-	banner.BannerName = request.BannerName
+	var oldImagePath string
 	if bannerImage != nil {
-		// Hapus file lama jika ada gambar baru yang diupload
+
 		bannerImagePath, err := s.saveBannerImage(bannerImage)
 		if err != nil {
 			return nil, fmt.Errorf("failed to save banner image: %v", err)
 		}
+
+		oldImagePath = banner.BannerImage
 		banner.BannerImage = bannerImagePath
 	}
 
-	// Simpan perubahan ke database
+	banner.BannerName = request.BannerName
+
 	if err := s.BannerRepo.UpdateBanner(id, banner); err != nil {
 		return nil, fmt.Errorf("failed to update banner: %v", err)
 	}
 
-	// Format tanggal
+	if oldImagePath != "" {
+		err := os.Remove(oldImagePath)
+		if err != nil {
+			fmt.Printf("Failed to delete old banner image: %v\n", err)
+		}
+	}
+
 	createdAt, _ := utils.FormatDateToIndonesianFormat(banner.CreatedAt)
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(banner.UpdatedAt)
 
-	// Membuat Response DTO
 	bannerResponseDTO := &dto.ResponseBannerDTO{
 		ID:          banner.ID,
 		BannerName:  banner.BannerName,
@@ -270,14 +279,12 @@ func (s *bannerService) UpdateBanner(id string, request dto.RequestBannerDTO, ba
 		UpdatedAt:   updatedAt,
 	}
 
-	// Menghapus cache untuk banner yang lama
 	cacheKey := fmt.Sprintf("banner:%s", id)
 	err = utils.DeleteData(cacheKey)
 	if err != nil {
 		fmt.Printf("Error deleting cache for banner: %v\n", err)
 	}
 
-	// Cache banner yang terbaru
 	cacheData := map[string]interface{}{
 		"data": bannerResponseDTO,
 	}
@@ -285,14 +292,12 @@ func (s *bannerService) UpdateBanner(id string, request dto.RequestBannerDTO, ba
 		fmt.Printf("Error caching updated banner: %v\n", err)
 	}
 
-	// Menghapus dan memperbarui cache untuk seluruh banner
 	articlesCacheKey := "banners:all"
 	err = utils.DeleteData(articlesCacheKey)
 	if err != nil {
 		fmt.Printf("Error deleting cache for all banners: %v\n", err)
 	}
 
-	// Cache seluruh daftar banner yang terbaru
 	banners, err := s.BannerRepo.FindAllBanners()
 	if err == nil {
 		var bannersDTO []dto.ResponseBannerDTO
@@ -322,21 +327,24 @@ func (s *bannerService) UpdateBanner(id string, request dto.RequestBannerDTO, ba
 	return bannerResponseDTO, nil
 }
 
-// DeleteBanner - Menghapus banner dan memperbarui cache
 func (s *bannerService) DeleteBanner(id string) error {
-	// Hapus banner dari database
+
+	banner, err := s.BannerRepo.FindBannerByID(id)
+	if err != nil {
+
+		return fmt.Errorf("banner with ID %s not found", id)
+	}
+
 	if err := s.BannerRepo.DeleteBanner(id); err != nil {
 		return fmt.Errorf("failed to delete banner: %v", err)
 	}
 
-	// Menghapus cache untuk banner yang dihapus
-	cacheKey := fmt.Sprintf("banner:%s", id)
-	err := utils.DeleteData(cacheKey)
+	cacheKey := fmt.Sprintf("banner:%s", banner.ID)
+	err = utils.DeleteData(cacheKey)
 	if err != nil {
 		fmt.Printf("Error deleting cache for banner: %v\n", err)
 	}
 
-	// Menghapus cache untuk seluruh banner
 	articlesCacheKey := "banners:all"
 	err = utils.DeleteData(articlesCacheKey)
 	if err != nil {

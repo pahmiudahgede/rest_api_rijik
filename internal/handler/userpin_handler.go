@@ -21,7 +21,6 @@ func (h *UserPinHandler) VerifyUserPin(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
 
-	// Validasi input pin
 	errors, valid := requestUserPinDTO.Validate()
 	if !valid {
 		return utils.ValidationErrorResponse(c, errors)
