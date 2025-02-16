@@ -17,4 +17,5 @@ func SetupRoutes(app *fiber.App) {
 	presentation.WilayahRouter(api)
 	presentation.AddressRouter(api)
 	presentation.ArticleRouter(api)
+	presentation.BannerRouter(api)
 }

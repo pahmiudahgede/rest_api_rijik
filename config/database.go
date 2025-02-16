@@ -44,6 +44,7 @@ func ConnectDatabase() {
 		&model.UserPin{},
 		&model.Address{},
 		&model.Article{},
+		&model.Banner{},
 		// ==main feature==
 	)
 	if err != nil {

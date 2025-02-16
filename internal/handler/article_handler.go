@@ -41,7 +41,7 @@ func (h *ArticleHandler) CreateArticle(c *fiber.Ctx) error {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.SuccessResponse(c, articleResponse, "Article created successfully")
+	return utils.CreateResponse(c, articleResponse, "Article created successfully")
 }
 
 func (h *ArticleHandler) GetAllArticles(c *fiber.Ctx) error {

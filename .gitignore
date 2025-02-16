@@ -29,3 +29,4 @@ go.work.sum
 # Ignore avatar images
 /public/uploads/avatars/
 /public/uploads/articles/
+/public/uploads/banners/
