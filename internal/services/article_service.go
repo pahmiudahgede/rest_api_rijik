@@ -248,10 +248,9 @@ func (s *articleService) GetArticleByID(id string) (*dto.ArticleResponseDTO, err
 }
 
 func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error) {
-
 	article, err := s.ArticleRepo.FindArticleByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("article not found: %v", err)
+		return nil, fmt.Errorf("article not found: %v", id)
 	}
 
 	article.Title = request.Title
@@ -261,7 +260,8 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 
 	var coverImagePath string
 	if coverImage != nil {
-		coverImagePath, err = s.saveCoverImage(coverImage)
+
+		coverImagePath, err = s.saveCoverImage(coverImage, article.CoverImage)
 		if err != nil {
 			return nil, fmt.Errorf("failed to save cover image: %v", err)
 		}
@@ -337,7 +337,7 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 	return articleResponseDTO, nil
 }
 
-func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader) (string, error) {
+func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader, oldImagePath string) (string, error) {
 	coverImageDir := "./public/uploads/articles"
 	if _, err := os.Stat(coverImageDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(coverImageDir, os.ModePerm); err != nil {
@@ -352,6 +352,15 @@ func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader) (strin
 
 	coverImageFileName := fmt.Sprintf("%s_cover%s", uuid.New().String(), extension)
 	coverImagePath := filepath.Join(coverImageDir, coverImageFileName)
+
+	if oldImagePath != "" {
+		err := os.Remove(oldImagePath)
+		if err != nil {
+			fmt.Printf("Failed to delete old cover image: %v\n", err)
+		} else {
+			fmt.Printf("Successfully deleted old cover image: %s\n", oldImagePath)
+		}
+	}
 
 	src, err := coverImage.Open()
 	if err != nil {
@@ -374,8 +383,21 @@ func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader) (strin
 }
 
 func (s *articleService) DeleteArticle(id string) error {
+	article, err := s.ArticleRepo.FindArticleByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to find article: %v", id)
+	}
 
-	err := s.ArticleRepo.DeleteArticle(id)
+	if article.CoverImage != "" {
+		err := os.Remove(article.CoverImage)
+		if err != nil {
+			fmt.Printf("Failed to delete cover image: %v\n", err)
+		} else {
+			fmt.Printf("Successfully deleted cover image: %s\n", article.CoverImage)
+		}
+	}
+
+	err = s.ArticleRepo.DeleteArticle(id)
 	if err != nil {
 		return fmt.Errorf("failed to delete article: %v", err)
 	}

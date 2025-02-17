@@ -77,7 +77,6 @@ func (h *ArticleHandler) GetArticleByID(c *fiber.Ctx) error {
 
 	article, err := h.ArticleService.GetArticleByID(id)
 	if err != nil {
-
 		return utils.GenericResponse(c, fiber.StatusNotFound, "Article not found")
 	}
 
@@ -108,7 +107,11 @@ func (h *ArticleHandler) UpdateArticle(c *fiber.Ctx) error {
 
 	articleResponse, err := h.ArticleService.UpdateArticle(id, request, coverImage)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+		if err.Error() == fmt.Sprintf("article with ID %s not found", id) {
+			return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+		}
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
+
 	}
 
 	return utils.SuccessResponse(c, articleResponse, "Article updated successfully")
@@ -122,7 +125,12 @@ func (h *ArticleHandler) DeleteArticle(c *fiber.Ctx) error {
 
 	err := h.ArticleService.DeleteArticle(id)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+
+		if err.Error() == fmt.Sprintf("article with ID %s not found", id) {
+			return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+		}
+
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
 	return utils.GenericResponse(c, fiber.StatusOK, "Article deleted successfully")
