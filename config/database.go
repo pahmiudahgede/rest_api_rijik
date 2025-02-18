@@ -45,6 +45,7 @@ func ConnectDatabase() {
 		&model.Address{},
 		&model.Article{},
 		&model.Banner{},
+		&model.InitialCoint{},
 		// ==main feature==
 	)
 	if err != nil {

@@ -81,6 +81,10 @@ func GetJSONData(key string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
+	if data == nil {
+		return nil, fmt.Errorf("error: no data found for key %s", key)
+	}
+
 	return data, nil
 }
 
