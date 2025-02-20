@@ -7,7 +7,7 @@ import (
 )
 
 func SetupRoutes(app *fiber.App) {
-	api := app.Group("/apirijikid")
+	api := app.Group("/apirijikid/v2")
 	api.Use(middleware.APIKeyMiddleware)
 
 	presentation.AuthRouter(api)
@@ -19,4 +19,5 @@ func SetupRoutes(app *fiber.App) {
 	presentation.ArticleRouter(api)
 	presentation.BannerRouter(api)
 	presentation.InitialCointRoute(api)
+	presentation.TrashRouter(api)
 }
