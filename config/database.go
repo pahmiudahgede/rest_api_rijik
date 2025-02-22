@@ -38,17 +38,31 @@ func ConnectDatabase() {
 		&model.Village{},
 		// ==wilayah indonesia==
 
-		// ==main feature==
+		// ==============main feature==============
+		// =>user preparation<=
 		&model.User{},
 		&model.Role{},
 		&model.UserPin{},
 		&model.Address{},
+		// =>user preparation<=
+
+		// =>store preparation<=
+		&model.Store{},
+		&model.Product{},
+		&model.ProductImage{},
+		// =>store preparation<=
+		// ==============main feature==============
+
+		// ==============additional content========
 		&model.Article{},
 		&model.Banner{},
 		&model.InitialCoint{},
+
+		// =>Trash Model<=
 		&model.TrashCategory{},
 		&model.TrashDetail{},
-		// ==main feature==
+		// =>Trash Model<=
+		// ==============additional content========
 	)
 	if err != nil {
 		log.Fatalf("Error performing auto-migration: %v", err)
