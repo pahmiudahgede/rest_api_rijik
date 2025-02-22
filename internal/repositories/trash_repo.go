@@ -13,6 +13,7 @@ type TrashRepository interface {
 	GetCategories() ([]model.TrashCategory, error)
 	GetCategoryByID(id string) (*model.TrashCategory, error)
 	GetTrashDetailByID(id string) (*model.TrashDetail, error)
+	GetDetailsByCategoryID(categoryID string) ([]model.TrashDetail, error)
 	UpdateCategoryName(id string, newName string) error
 	UpdateTrashDetail(id string, description string, price float64) error
 	DeleteCategory(id string) error
@@ -64,6 +65,15 @@ func (r *trashRepository) GetTrashDetailByID(id string) (*model.TrashDetail, err
 		return nil, fmt.Errorf("trash detail not found: %v", err)
 	}
 	return &detail, nil
+}
+
+func (r *trashRepository) GetDetailsByCategoryID(categoryID string) ([]model.TrashDetail, error) {
+	var details []model.TrashDetail
+
+	if err := r.DB.Where("category_id = ?", categoryID).Find(&details).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch details for category %s: %v", categoryID, err)
+	}
+	return details, nil
 }
 
 func (r *trashRepository) UpdateCategoryName(id string, newName string) error {

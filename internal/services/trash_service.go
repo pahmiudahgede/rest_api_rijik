@@ -47,26 +47,31 @@ func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO) (*dto
 		return nil, fmt.Errorf("failed to create category: %v", err)
 	}
 
+	createdAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
+
 	categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 		ID:        category.ID,
 		Name:      category.Name,
-		CreatedAt: category.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: category.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 
-	if err := s.CacheCategoryAndDetails(category.ID, categoryResponseDTO, category.Details, time.Hour*6); err != nil {
-		fmt.Printf("Error caching category: %v\n", err)
+	if err := s.CacheCategoryAndDetails(category.ID, categoryResponseDTO, nil, time.Hour*6); err != nil {
+		return nil, fmt.Errorf("error caching category: %v", err)
 	}
 
 	categories, err := s.TrashRepo.GetCategories()
 	if err == nil {
 		var categoriesDTO []dto.ResponseTrashCategoryDTO
 		for _, c := range categories {
+			ccreatedAt, _ := utils.FormatDateToIndonesianFormat(c.CreatedAt)
+			cupdatedAt, _ := utils.FormatDateToIndonesianFormat(c.UpdatedAt)
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
 				ID:        c.ID,
 				Name:      c.Name,
-				CreatedAt: c.CreatedAt.Format("2006-01-02 15:04:05"),
-				UpdatedAt: c.UpdatedAt.Format("2006-01-02 15:04:05"),
+				CreatedAt: ccreatedAt,
+				UpdatedAt: cupdatedAt,
 			})
 		}
 
@@ -94,13 +99,16 @@ func (s *trashService) AddDetailToCategory(request dto.RequestTrashDetailDTO) (*
 		return nil, fmt.Errorf("failed to add detail to category: %v", err)
 	}
 
+	dcreatedAt, _ := utils.FormatDateToIndonesianFormat(detail.CreatedAt)
+	dupdatedAt, _ := utils.FormatDateToIndonesianFormat(detail.UpdatedAt)
+
 	detailResponseDTO := &dto.ResponseTrashDetailDTO{
 		ID:          detail.ID,
 		CategoryID:  detail.CategoryID,
 		Description: detail.Description,
 		Price:       detail.Price,
-		CreatedAt:   detail.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:   detail.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt:   dcreatedAt,
+		UpdatedAt:   dupdatedAt,
 	}
 
 	cacheKey := fmt.Sprintf("detail:%s", detail.ID)
@@ -108,30 +116,34 @@ func (s *trashService) AddDetailToCategory(request dto.RequestTrashDetailDTO) (*
 		"data": detailResponseDTO,
 	}
 	if err := utils.SetJSONData(cacheKey, cacheData, time.Hour*6); err != nil {
-		fmt.Printf("Error caching detail: %v\n", err)
+		return nil, fmt.Errorf("error caching detail: %v", err)
 	}
 
 	category, err := s.TrashRepo.GetCategoryByID(detail.CategoryID)
+
 	if err == nil {
+
+		ccreatedAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
+		cupdatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
+
 		categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 			ID:        category.ID,
 			Name:      category.Name,
-			CreatedAt: category.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: category.UpdatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt: ccreatedAt,
+			UpdatedAt: cupdatedAt,
 		}
 
 		if err := s.CacheCategoryAndDetails(detail.CategoryID, categoryResponseDTO, category.Details, time.Hour*6); err != nil {
-			fmt.Printf("Error caching updated category: %v\n", err)
+			return nil, fmt.Errorf("error caching updated category: %v", err)
 		}
 	} else {
-		fmt.Printf("Error fetching category for cache update: %v\n", err)
+		return nil, fmt.Errorf("error fetching category for cache update: %v", err)
 	}
 
 	return detailResponseDTO, nil
 }
 
 func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
-
 	cacheKey := "categories:all"
 	cachedCategories, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedCategories != nil {
@@ -155,11 +167,13 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 
 	var categoriesDTO []dto.ResponseTrashCategoryDTO
 	for _, category := range categories {
+		createdAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
+		updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
 		categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
 			ID:        category.ID,
 			Name:      category.Name,
-			CreatedAt: category.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: category.UpdatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
 		})
 	}
 
@@ -174,17 +188,17 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 }
 
 func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO, error) {
-
 	cacheKey := fmt.Sprintf("category:%s", id)
 	cachedCategory, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedCategory != nil {
 		categoryData := cachedCategory["data"].(map[string]interface{})
+		details := mapDetails(cachedCategory["details"])
 		return &dto.ResponseTrashCategoryDTO{
 			ID:        categoryData["id"].(string),
 			Name:      categoryData["name"].(string),
 			CreatedAt: categoryData["createdAt"].(string),
 			UpdatedAt: categoryData["updatedAt"].(string),
-			Details:   mapDetails(cachedCategory["details"]),
+			Details:   details,
 		}, nil
 	}
 
@@ -193,11 +207,14 @@ func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO
 		return nil, fmt.Errorf("category not found: %v", err)
 	}
 
+	createdAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
+
 	categoryDTO := &dto.ResponseTrashCategoryDTO{
 		ID:        category.ID,
 		Name:      category.Name,
-		CreatedAt: category.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: category.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 
 	if category.Details != nil {
@@ -208,22 +225,21 @@ func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO
 				CategoryID:  detail.CategoryID,
 				Description: detail.Description,
 				Price:       detail.Price,
-				CreatedAt:   detail.CreatedAt.Format("2006-01-02 15:04:05"),
-				UpdatedAt:   detail.UpdatedAt.Format("2006-01-02 15:04:05"),
+				CreatedAt:   detail.CreatedAt.Format("02-01-2006 15:04"),
+				UpdatedAt:   detail.UpdatedAt.Format("02-01-2006 15:04"),
 			})
 		}
 		categoryDTO.Details = detailsDTO
 	}
 
 	if err := s.CacheCategoryAndDetails(category.ID, categoryDTO, categoryDTO.Details, time.Hour*6); err != nil {
-		fmt.Printf("Error caching category and details: %v\n", err)
+		return nil, fmt.Errorf("error caching category and details: %v", err)
 	}
 
 	return categoryDTO, nil
 }
 
 func (s *trashService) GetTrashDetailByID(id string) (*dto.ResponseTrashDetailDTO, error) {
-
 	cacheKey := fmt.Sprintf("detail:%s", id)
 	cachedDetail, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedDetail != nil {
@@ -243,20 +259,23 @@ func (s *trashService) GetTrashDetailByID(id string) (*dto.ResponseTrashDetailDT
 		return nil, fmt.Errorf("trash detail not found: %v", err)
 	}
 
+	createdAt, _ := utils.FormatDateToIndonesianFormat(detail.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(detail.UpdatedAt)
+
 	detailDTO := &dto.ResponseTrashDetailDTO{
 		ID:          detail.ID,
 		CategoryID:  detail.CategoryID,
 		Description: detail.Description,
 		Price:       detail.Price,
-		CreatedAt:   detail.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:   detail.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 	}
 
 	cacheData := map[string]interface{}{
 		"data": detailDTO,
 	}
 	if err := utils.SetJSONData(cacheKey, cacheData, time.Hour*24); err != nil {
-		fmt.Printf("Error caching detail: %v\n", err)
+		return nil, fmt.Errorf("error caching detail: %v", err)
 	}
 
 	return detailDTO, nil
@@ -277,26 +296,31 @@ func (s *trashService) UpdateCategory(id string, request dto.RequestTrashCategor
 		return nil, fmt.Errorf("category not found: %v", err)
 	}
 
+	createdAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
+
 	categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 		ID:        category.ID,
 		Name:      category.Name,
-		CreatedAt: category.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: category.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 
 	if err := s.CacheCategoryAndDetails(category.ID, categoryResponseDTO, category.Details, time.Hour*6); err != nil {
-		fmt.Printf("Error caching updated category: %v\n", err)
+		return nil, fmt.Errorf("error caching updated category: %v", err)
 	}
 
 	allCategories, err := s.TrashRepo.GetCategories()
 	if err == nil {
 		var categoriesDTO []dto.ResponseTrashCategoryDTO
 		for _, c := range allCategories {
+			ccreatedAt, _ := utils.FormatDateToIndonesianFormat(c.CreatedAt)
+			cupdatedAt, _ := utils.FormatDateToIndonesianFormat(c.UpdatedAt)
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
 				ID:        c.ID,
 				Name:      c.Name,
-				CreatedAt: c.CreatedAt.Format("2006-01-02 15:04:05"),
-				UpdatedAt: c.UpdatedAt.Format("2006-01-02 15:04:05"),
+				CreatedAt: ccreatedAt,
+				UpdatedAt: cupdatedAt,
 			})
 		}
 
@@ -323,13 +347,16 @@ func (s *trashService) UpdateDetail(id string, request dto.RequestTrashDetailDTO
 		return nil, fmt.Errorf("trash detail not found: %v", err)
 	}
 
+	createdAt, _ := utils.FormatDateToIndonesianFormat(detail.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(detail.UpdatedAt)
+
 	detailResponseDTO := &dto.ResponseTrashDetailDTO{
 		ID:          detail.ID,
 		CategoryID:  detail.CategoryID,
 		Description: detail.Description,
 		Price:       detail.Price,
-		CreatedAt:   detail.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:   detail.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 	}
 
 	cacheKey := fmt.Sprintf("detail:%s", detail.ID)
@@ -337,20 +364,24 @@ func (s *trashService) UpdateDetail(id string, request dto.RequestTrashDetailDTO
 		"data": detailResponseDTO,
 	}
 	if err := utils.SetJSONData(cacheKey, cacheData, time.Hour*6); err != nil {
-		fmt.Printf("Error caching updated detail: %v\n", err)
+		return nil, fmt.Errorf("error caching updated detail: %v", err)
 	}
 
 	category, err := s.TrashRepo.GetCategoryByID(detail.CategoryID)
 	if err == nil {
+
+		ccreatedAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
+		cupdatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
+
 		categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 			ID:        category.ID,
 			Name:      category.Name,
-			CreatedAt: category.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: category.UpdatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt: ccreatedAt,
+			UpdatedAt: cupdatedAt,
 		}
 
 		if err := s.CacheCategoryAndDetails(detail.CategoryID, categoryResponseDTO, category.Details, time.Hour*6); err != nil {
-			fmt.Printf("Error caching updated category: %v\n", err)
+			return nil, fmt.Errorf("error caching updated category: %v", err)
 		}
 	} else {
 		fmt.Printf("Error fetching category for cache update: %v\n", err)
@@ -360,34 +391,29 @@ func (s *trashService) UpdateDetail(id string, request dto.RequestTrashDetailDTO
 }
 
 func (s *trashService) DeleteCategory(id string) error {
+	detailsCacheKeyPrefix := "detail:"
+	details, err := s.TrashRepo.GetDetailsByCategoryID(id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch details for category %s: %v", id, err)
+	}
+
+	for _, detail := range details {
+		detailCacheKey := detailsCacheKeyPrefix + detail.ID
+		if err := s.deleteCache(detailCacheKey); err != nil {
+			return fmt.Errorf("error clearing cache for deleted detail: %v", err)
+		}
+	}
 
 	if err := s.TrashRepo.DeleteCategory(id); err != nil {
 		return fmt.Errorf("failed to delete category: %v", err)
 	}
 
-	cacheKey := fmt.Sprintf("category:%s", id)
-	if err := utils.DeleteData(cacheKey); err != nil {
-		fmt.Printf("Error clearing cache for deleted category: %v\n", err)
+	if err := s.deleteCache("category:" + id); err != nil {
+		return fmt.Errorf("error clearing cache for deleted category: %v", err)
 	}
 
-	allCategoriesCacheKey := "categories:all"
-	if err := utils.DeleteData(allCategoriesCacheKey); err != nil {
-		fmt.Printf("Error clearing categories list cache: %v\n", err)
-	}
-
-	category, err := s.TrashRepo.GetCategoryByID(id)
-	if err != nil {
-		return fmt.Errorf("category not found after deletion: %v", err)
-	}
-
-	if category.Details != nil {
-		for _, detail := range category.Details {
-			detailCacheKey := fmt.Sprintf("detail:%s", detail.ID)
-
-			if err := utils.DeleteData(detailCacheKey); err != nil {
-				fmt.Printf("Error clearing cache for deleted detail: %v\n", err)
-			}
-		}
+	if err := s.deleteCache("categories:all"); err != nil {
+		return fmt.Errorf("error clearing categories list cache: %v", err)
 	}
 
 	return nil
@@ -404,14 +430,14 @@ func (s *trashService) DeleteDetail(id string) error {
 		return fmt.Errorf("failed to delete detail: %v", err)
 	}
 
-	cacheKey := fmt.Sprintf("detail:%s", id)
-	if err := utils.DeleteData(cacheKey); err != nil {
-		fmt.Printf("Error clearing cache for deleted detail: %v\n", err)
+	detailCacheKey := fmt.Sprintf("detail:%s", id)
+	if err := s.deleteCache(detailCacheKey); err != nil {
+		return fmt.Errorf("error clearing cache for deleted detail: %v", err)
 	}
 
 	categoryCacheKey := fmt.Sprintf("category:%s", detail.CategoryID)
-	if err := utils.DeleteData(categoryCacheKey); err != nil {
-		fmt.Printf("Error clearing cache for category after detail deletion: %v\n", err)
+	if err := s.deleteCache(categoryCacheKey); err != nil {
+		return fmt.Errorf("error clearing cache for category after detail deletion: %v", err)
 	}
 
 	return nil
@@ -461,5 +487,14 @@ func (s *trashService) CacheCategoryList(categoriesData interface{}, expiration 
 		return fmt.Errorf("error caching categories list: %v", err)
 	}
 
+	return nil
+}
+
+func (s *trashService) deleteCache(cacheKey string) error {
+	if err := utils.DeleteData(cacheKey); err != nil {
+		fmt.Printf("Error clearing cache for key: %v\n", cacheKey)
+		return fmt.Errorf("error clearing cache for key %s: %v", cacheKey, err)
+	}
+	fmt.Printf("Deleted cache for key: %s\n", cacheKey)
 	return nil
 }
