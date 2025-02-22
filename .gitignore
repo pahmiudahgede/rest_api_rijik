@@ -23,3 +23,10 @@ go.work.sum
 
 # env file
 .env
+.env.prod
+.env.dev
+
+# Ignore avatar images
+/public/uploads/avatars/
+/public/uploads/articles/
+/public/uploads/banners/
