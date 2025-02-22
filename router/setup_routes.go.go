@@ -20,4 +20,5 @@ func SetupRoutes(app *fiber.App) {
 	presentation.BannerRouter(api)
 	presentation.InitialCointRoute(api)
 	presentation.TrashRouter(api)
+	presentation.StoreRouter(api)
 }
