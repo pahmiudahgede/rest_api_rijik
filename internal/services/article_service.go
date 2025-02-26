@@ -33,7 +33,7 @@ func NewArticleService(articleRepo repositories.ArticleRepository) ArticleServic
 
 func (s *articleService) CreateArticle(request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error) {
 
-	coverImageDir := "./public/uploads/articles"
+	coverImageDir := "./public" + os.Getenv("BASE_URL") + "/uploads/articles"
 	if err := os.MkdirAll(coverImageDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create directory for cover image: %v", err)
 	}
@@ -338,7 +338,7 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 }
 
 func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader, oldImagePath string) (string, error) {
-	coverImageDir := "./public/uploads/articles"
+	coverImageDir := "/uploads/articles"
 	if _, err := os.Stat(coverImageDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(coverImageDir, os.ModePerm); err != nil {
 			return "", fmt.Errorf("failed to create directory for cover image: %v", err)

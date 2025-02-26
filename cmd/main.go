@@ -8,10 +8,11 @@ import (
 
 func main() {
 	config.SetupConfig()
-
+	
 	app := fiber.New()
-
+	// app.Static(utils.BaseUrl+"/uploads", "./public"+utils.BaseUrl+"/uploads")
+	
 	router.SetupRoutes(app)
-
 	config.StartServer(app)
+
 }

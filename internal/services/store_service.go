@@ -237,7 +237,7 @@ func (s *storeService) DeleteStore(storeID string) error {
 
 func (s *storeService) saveStoreImage(file *multipart.FileHeader, imageType string) (string, error) {
 
-	imageDir := fmt.Sprintf("./public/uploads/store/%s", imageType)
+	imageDir := fmt.Sprintf("./public%s/uploads/store/%s",os.Getenv("BASE_URL"), imageType)
 	if _, err := os.Stat(imageDir); os.IsNotExist(err) {
 
 		if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {

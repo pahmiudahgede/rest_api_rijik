@@ -31,7 +31,7 @@ func NewBannerService(bannerRepo repositories.BannerRepository) BannerService {
 }
 
 func (s *bannerService) saveBannerImage(bannerImage *multipart.FileHeader) (string, error) {
-	bannerImageDir := "./public/uploads/banners"
+	bannerImageDir := "./public" + os.Getenv("BASE_URL") + "/uploads/banners"
 	if _, err := os.Stat(bannerImageDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(bannerImageDir, os.ModePerm); err != nil {
 			return "", fmt.Errorf("failed to create directory for banner image: %v", err)

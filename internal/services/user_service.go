@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -15,8 +16,6 @@ import (
 	"github.com/pahmiudahgede/senggoldong/utils"
 	"golang.org/x/crypto/bcrypt"
 )
-
-const avatarDir = "./public/uploads/avatars"
 
 var allowedExtensions = []string{".jpg", ".jpeg", ".png"}
 
@@ -183,8 +182,13 @@ func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.
 }
 
 func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error) {
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		return "", fmt.Errorf("BASE_URL is not set in environment variables")
+	}
 
-	if err := ensureAvatarDirectoryExists(); err != nil {
+	avatarDir := filepath.Join("./public", baseURL, "/uploads/avatars")
+	if err := ensureAvatarDirectoryExists(avatarDir); err != nil {
 		return "", err
 	}
 
@@ -198,13 +202,19 @@ func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.Fil
 	}
 
 	if updatedUser.Avatar != nil && *updatedUser.Avatar != "" {
-		oldAvatarPath := "./public" + *updatedUser.Avatar
-		if err := os.Remove(oldAvatarPath); err != nil {
-			return "", fmt.Errorf("failed to remove old avatar: %v", err)
+		oldAvatarPath := filepath.Join("./public", *updatedUser.Avatar)
+		if _, err := os.Stat(oldAvatarPath); err == nil {
+
+			if err := os.Remove(oldAvatarPath); err != nil {
+				return "", fmt.Errorf("failed to remove old avatar: %v", err)
+			}
+		} else {
+
+			log.Printf("Old avatar file not found: %s", oldAvatarPath)
 		}
 	}
 
-	avatarURL, err := saveAvatarFile(file, userID)
+	avatarURL, err := saveAvatarFile(file, userID, avatarDir)
 	if err != nil {
 		return "", err
 	}
@@ -217,7 +227,7 @@ func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.Fil
 	return "Foto profil berhasil diupdate", nil
 }
 
-func ensureAvatarDirectoryExists() error {
+func ensureAvatarDirectoryExists(avatarDir string) error {
 	if _, err := os.Stat(avatarDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(avatarDir, os.ModePerm); err != nil {
 			return fmt.Errorf("failed to create avatar directory: %v", err)
@@ -236,7 +246,7 @@ func validateAvatarFile(file *multipart.FileHeader) error {
 	return fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
 }
 
-func saveAvatarFile(file *multipart.FileHeader, userID string) (string, error) {
+func saveAvatarFile(file *multipart.FileHeader, userID, avatarDir string) (string, error) {
 	extension := filepath.Ext(file.Filename)
 	avatarFileName := fmt.Sprintf("%s_avatar%s", userID, extension)
 	avatarPath := filepath.Join(avatarDir, avatarFileName)
@@ -258,5 +268,6 @@ func saveAvatarFile(file *multipart.FileHeader, userID string) (string, error) {
 		return "", fmt.Errorf("failed to save avatar file: %v", err)
 	}
 
-	return fmt.Sprintf("/uploads/avatars/%s", avatarFileName), nil
+	relativePath := filepath.Join("/uploads/avatars", avatarFileName)
+	return relativePath, nil
 }

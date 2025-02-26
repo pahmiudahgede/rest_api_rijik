@@ -27,4 +27,4 @@ go.work.sum
 .env.dev
 
 # Ignore public uploads
-/public/uploads/
+/public/apirijig/v2/uploads/
