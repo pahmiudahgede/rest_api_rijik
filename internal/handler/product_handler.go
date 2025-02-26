@@ -118,3 +118,109 @@ func (h *ProductHandler) GetProductByID(c *fiber.Ctx) error {
 
 	return utils.SuccessResponse(c, product, "Product fetched successfully")
 }
+
+func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
+
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		log.Println("User ID not found in Locals")
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "User ID not found")
+	}
+
+	productID := c.Params("product_id")
+	if productID == "" {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Product ID is required")
+	}
+
+	var productDTO dto.RequestProductDTO
+	if err := c.BodyParser(&productDTO); err != nil {
+		log.Printf("Error parsing body: %v", err)
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	productImages, err := c.MultipartForm()
+	if err != nil {
+		log.Printf("Error parsing form data: %v", err)
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Error parsing form data")
+	}
+
+	productDTO.ProductImages = productImages.File["product_images"]
+
+	product, err := h.ProductService.UpdateProduct(userID, productID, &productDTO)
+	if err != nil {
+		log.Printf("Error updating product: %v", err)
+		return utils.GenericResponse(c, fiber.StatusConflict, err.Error())
+	}
+
+	return utils.CreateResponse(c, product, "Product updated successfully")
+}
+
+func (h *ProductHandler) DeleteProduct(c *fiber.Ctx) error {
+	productID := c.Params("product_id")
+	if productID == "" {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Product ID is required")
+	}
+
+	err := h.ProductService.DeleteProduct(productID)
+	if err != nil {
+		log.Printf("Error deleting product: %v", err)
+		return utils.GenericResponse(c, fiber.StatusConflict, fmt.Sprintf("Failed to delete product: %v", err))
+	}
+
+	return utils.GenericResponse(c, fiber.StatusOK, "Product deleted successfully")
+}
+
+func (h *ProductHandler) DeleteProducts(c *fiber.Ctx) error {
+	var productIDs []string
+	if err := c.BodyParser(&productIDs); err != nil {
+		log.Printf("Error parsing product IDs: %v", err)
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Invalid input for product IDs")
+	}
+
+	if len(productIDs) == 0 {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "No product IDs provided")
+	}
+
+	err := h.ProductService.DeleteProducts(productIDs)
+	if err != nil {
+		log.Printf("Error deleting products: %v", err)
+		return utils.GenericResponse(c, fiber.StatusConflict, fmt.Sprintf("Failed to delete products: %v", err))
+	}
+
+	return utils.GenericResponse(c, fiber.StatusOK, "Products deleted successfully")
+}
+
+func (h *ProductHandler) DeleteProductImage(c *fiber.Ctx) error {
+	imageID := c.Params("image_id")
+	if imageID == "" {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Image ID is required")
+	}
+
+	err := h.ProductService.DeleteProductImage(imageID)
+	if err != nil {
+		log.Printf("Error deleting product image: %v", err)
+		return utils.GenericResponse(c, fiber.StatusConflict, fmt.Sprintf("Failed to delete product image: %v", err))
+	}
+
+	return utils.GenericResponse(c, fiber.StatusOK, "Product image deleted successfully")
+}
+
+func (h *ProductHandler) DeleteProductImages(c *fiber.Ctx) error {
+	var imageIDs []string
+	if err := c.BodyParser(&imageIDs); err != nil {
+		log.Printf("Error parsing image IDs: %v", err)
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Invalid input for image IDs")
+	}
+
+	if len(imageIDs) == 0 {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "No image IDs provided")
+	}
+
+	err := h.ProductService.DeleteProductImages(imageIDs)
+	if err != nil {
+		log.Printf("Error deleting product images: %v", err)
+		return utils.GenericResponse(c, fiber.StatusConflict, fmt.Sprintf("Failed to delete product images: %v", err))
+	}
+
+	return utils.GenericResponse(c, fiber.StatusOK, "Product images deleted successfully")
+}

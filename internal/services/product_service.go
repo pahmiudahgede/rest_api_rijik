@@ -19,6 +19,13 @@ type ProductService interface {
 
 	GetAllProductsByStoreID(userID string, page, limit int) ([]dto.ResponseProductDTO, int64, error)
 	GetProductByID(productID string) (*dto.ResponseProductDTO, error)
+
+	UpdateProduct(userID, productID string, productDTO *dto.RequestProductDTO) (*dto.ResponseProductDTO, error)
+
+	DeleteProduct(productID string) error
+	DeleteProducts(productIDs []string) error
+	DeleteProductImages(imageIDs []string) error
+	DeleteProductImage(imageID string) error
 }
 
 type productService struct {
@@ -191,8 +198,135 @@ func (s *productService) GetProductByID(productID string) (*dto.ResponseProductD
 	return productDTO, nil
 }
 
+func (s *productService) UpdateProduct(userID, productID string, productDTO *dto.RequestProductDTO) (*dto.ResponseProductDTO, error) {
+	store, err := s.storeRepo.FindStoreByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving store by user ID: %w", err)
+	}
+	if store == nil {
+		return nil, fmt.Errorf("store not found for user %s", userID)
+	}
+
+	product, err := s.productRepo.GetProductByID(productID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve product: %v", err)
+	}
+	if product == nil {
+		return nil, fmt.Errorf("product not found")
+	}
+
+	if product.StoreID != store.ID {
+		return nil, fmt.Errorf("user does not own the store for this product")
+	}
+
+	if err := s.deleteProductImages(productID); err != nil {
+		return nil, fmt.Errorf("failed to delete old product images: %v", err)
+	}
+
+	var productImages []model.ProductImage
+	for _, file := range productDTO.ProductImages {
+		imagePath, err := s.SaveProductImage(file, "product")
+		if err != nil {
+			return nil, fmt.Errorf("failed to save product image: %w", err)
+		}
+
+		productImages = append(productImages, model.ProductImage{
+			ImageURL: imagePath,
+		})
+	}
+
+	product.ProductName = productDTO.ProductName
+	product.Quantity = productDTO.Quantity
+	product.ProductImages = productImages
+
+	if err := s.productRepo.UpdateProduct(product); err != nil {
+		return nil, fmt.Errorf("failed to update product: %w", err)
+	}
+
+	createdAt, _ := utils.FormatDateToIndonesianFormat(product.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(product.UpdatedAt)
+
+	var productImagesDTO []dto.ResponseProductImageDTO
+	for _, img := range product.ProductImages {
+		productImagesDTO = append(productImagesDTO, dto.ResponseProductImageDTO{
+			ID:        img.ID,
+			ProductID: img.ProductID,
+			ImageURL:  img.ImageURL,
+		})
+	}
+
+	productDTOResponse := &dto.ResponseProductDTO{
+		ID:            product.ID,
+		StoreID:       product.StoreID,
+		ProductName:   product.ProductName,
+		Quantity:      product.Quantity,
+		ProductImages: productImagesDTO,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+	}
+
+	return productDTOResponse, nil
+}
+
+func (s *productService) DeleteProduct(productID string) error {
+
+	if err := s.deleteProductImages(productID); err != nil {
+		return fmt.Errorf("failed to delete associated product images: %w", err)
+	}
+
+	if err := s.productRepo.DeleteProduct(productID); err != nil {
+		return fmt.Errorf("failed to delete product: %w", err)
+	}
+	return nil
+}
+
+func (s *productService) DeleteProducts(productIDs []string) error {
+
+	for _, productID := range productIDs {
+		if err := s.deleteProductImages(productID); err != nil {
+			return fmt.Errorf("failed to delete associated images for product %s: %w", productID, err)
+		}
+	}
+
+	if err := s.productRepo.DeleteProductsByID(productIDs); err != nil {
+		return fmt.Errorf("failed to delete products: %w", err)
+	}
+
+	return nil
+}
+
+func (s *productService) DeleteProductImages(imageIDs []string) error {
+
+	for _, imageID := range imageIDs {
+		if err := s.deleteImageFile(imageID); err != nil {
+			return fmt.Errorf("failed to delete image file with ID %s: %w", imageID, err)
+		}
+	}
+
+	if err := s.productRepo.DeleteProductImagesByID(imageIDs); err != nil {
+		return fmt.Errorf("failed to delete product images from database: %w", err)
+	}
+
+	return nil
+}
+
+func (s *productService) DeleteProductImage(imageID string) error {
+
+	if err := s.deleteImageFile(imageID); err != nil {
+		return fmt.Errorf("failed to delete image file with ID %s: %w", imageID, err)
+	}
+
+	if err := s.productRepo.DeleteProductImageByID(imageID); err != nil {
+		return fmt.Errorf("failed to delete product image from database: %w", err)
+	}
+
+	return nil
+}
+
 func (s *productService) SaveProductImage(file *multipart.FileHeader, imageType string) (string, error) {
+
 	imageDir := fmt.Sprintf("./public%s/uploads/store/%s", os.Getenv("BASE_URL"), imageType)
+
 	if _, err := os.Stat(imageDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
 			return "", fmt.Errorf("failed to create directory for %s image: %v", imageType, err)
@@ -225,4 +359,46 @@ func (s *productService) SaveProductImage(file *multipart.FileHeader, imageType 
 	}
 
 	return filepath.Join("/uploads/store/", imageType, fileName), nil
+}
+
+func (s *productService) deleteProductImages(productID string) error {
+
+	productImages, err := s.productRepo.FindProductImagesByProductID(productID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch product images: %w", err)
+	}
+
+	for _, img := range productImages {
+		if err := s.deleteImageFile(img.ID); err != nil {
+			return fmt.Errorf("failed to delete image file: %w", err)
+		}
+	}
+
+	if err := s.productRepo.DeleteProductImagesByProductID(productID); err != nil {
+		return fmt.Errorf("failed to delete product images in database: %w", err)
+	}
+
+	return nil
+}
+
+func (s *productService) deleteImageFile(imageID string) error {
+
+	productImage, err := s.productRepo.GetProductImageByID(imageID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch product image: %w", err)
+	}
+
+	if productImage == nil {
+		return fmt.Errorf("product image with ID %s not found", imageID)
+	}
+
+	extension := filepath.Ext(productImage.ImageURL)
+
+	imagePath := fmt.Sprintf("./public/uploads/store/product/%s%s", imageID, extension)
+
+	if err := os.Remove(imagePath); err != nil {
+		return fmt.Errorf("failed to delete image file: %w", err)
+	}
+
+	return nil
 }
