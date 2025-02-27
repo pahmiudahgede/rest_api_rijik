@@ -21,11 +21,11 @@ type ProductService interface {
 	GetProductByID(productID string) (*dto.ResponseProductDTO, error)
 
 	UpdateProduct(userID, productID string, productDTO *dto.RequestProductDTO) (*dto.ResponseProductDTO, error)
-
 	DeleteProduct(productID string) error
 	DeleteProducts(productIDs []string) error
-	DeleteProductImages(imageIDs []string) error
 	DeleteProductImage(imageID string) error
+	DeleteProductImages(imageIDs []string) error
+	deleteImageFile(imageID string) error
 }
 
 type productService struct {
@@ -199,6 +199,7 @@ func (s *productService) GetProductByID(productID string) (*dto.ResponseProductD
 }
 
 func (s *productService) UpdateProduct(userID, productID string, productDTO *dto.RequestProductDTO) (*dto.ResponseProductDTO, error) {
+
 	store, err := s.storeRepo.FindStoreByUserID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving store by user ID: %w", err)
@@ -268,61 +269,6 @@ func (s *productService) UpdateProduct(userID, productID string, productDTO *dto
 	return productDTOResponse, nil
 }
 
-func (s *productService) DeleteProduct(productID string) error {
-
-	if err := s.deleteProductImages(productID); err != nil {
-		return fmt.Errorf("failed to delete associated product images: %w", err)
-	}
-
-	if err := s.productRepo.DeleteProduct(productID); err != nil {
-		return fmt.Errorf("failed to delete product: %w", err)
-	}
-	return nil
-}
-
-func (s *productService) DeleteProducts(productIDs []string) error {
-
-	for _, productID := range productIDs {
-		if err := s.deleteProductImages(productID); err != nil {
-			return fmt.Errorf("failed to delete associated images for product %s: %w", productID, err)
-		}
-	}
-
-	if err := s.productRepo.DeleteProductsByID(productIDs); err != nil {
-		return fmt.Errorf("failed to delete products: %w", err)
-	}
-
-	return nil
-}
-
-func (s *productService) DeleteProductImages(imageIDs []string) error {
-
-	for _, imageID := range imageIDs {
-		if err := s.deleteImageFile(imageID); err != nil {
-			return fmt.Errorf("failed to delete image file with ID %s: %w", imageID, err)
-		}
-	}
-
-	if err := s.productRepo.DeleteProductImagesByID(imageIDs); err != nil {
-		return fmt.Errorf("failed to delete product images from database: %w", err)
-	}
-
-	return nil
-}
-
-func (s *productService) DeleteProductImage(imageID string) error {
-
-	if err := s.deleteImageFile(imageID); err != nil {
-		return fmt.Errorf("failed to delete image file with ID %s: %w", imageID, err)
-	}
-
-	if err := s.productRepo.DeleteProductImageByID(imageID); err != nil {
-		return fmt.Errorf("failed to delete product image from database: %w", err)
-	}
-
-	return nil
-}
-
 func (s *productService) SaveProductImage(file *multipart.FileHeader, imageType string) (string, error) {
 
 	imageDir := fmt.Sprintf("./public%s/uploads/store/%s", os.Getenv("BASE_URL"), imageType)
@@ -361,8 +307,62 @@ func (s *productService) SaveProductImage(file *multipart.FileHeader, imageType 
 	return filepath.Join("/uploads/store/", imageType, fileName), nil
 }
 
-func (s *productService) deleteProductImages(productID string) error {
+func (s *productService) DeleteProduct(productID string) error {
 
+	if err := s.deleteProductImages(productID); err != nil {
+		return fmt.Errorf("failed to delete associated product images: %w", err)
+	}
+
+	if err := s.productRepo.DeleteProduct(productID); err != nil {
+		return fmt.Errorf("failed to delete product: %w", err)
+	}
+	return nil
+}
+
+func (s *productService) DeleteProducts(productIDs []string) error {
+
+	for _, productID := range productIDs {
+		if err := s.deleteProductImages(productID); err != nil {
+			return fmt.Errorf("failed to delete associated images for product %s: %w", productID, err)
+		}
+	}
+
+	if err := s.productRepo.DeleteProductsByID(productIDs); err != nil {
+		return fmt.Errorf("failed to delete products: %w", err)
+	}
+
+	return nil
+}
+
+func (s *productService) DeleteProductImage(imageID string) error {
+
+	if err := s.deleteImageFile(imageID); err != nil {
+		return fmt.Errorf("failed to delete image file with ID %s: %w", imageID, err)
+	}
+
+	if err := s.productRepo.DeleteProductImageByID(imageID); err != nil {
+		return fmt.Errorf("failed to delete product image from database: %w", err)
+	}
+
+	return nil
+}
+
+func (s *productService) DeleteProductImages(imageIDs []string) error {
+
+	for _, imageID := range imageIDs {
+		if err := s.deleteImageFile(imageID); err != nil {
+			return fmt.Errorf("failed to delete image file with ID %s: %w", imageID, err)
+		}
+	}
+
+	if err := s.productRepo.DeleteProductImagesByID(imageIDs); err != nil {
+		return fmt.Errorf("failed to delete product images from database: %w", err)
+	}
+
+	return nil
+}
+
+func (s *productService) deleteProductImages(productID string) error {
 	productImages, err := s.productRepo.FindProductImagesByProductID(productID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch product images: %w", err)
@@ -375,14 +375,13 @@ func (s *productService) deleteProductImages(productID string) error {
 	}
 
 	if err := s.productRepo.DeleteProductImagesByProductID(productID); err != nil {
-		return fmt.Errorf("failed to delete product images in database: %w", err)
+		return fmt.Errorf("failed to delete product images from database: %w", err)
 	}
 
 	return nil
 }
 
 func (s *productService) deleteImageFile(imageID string) error {
-
 	productImage, err := s.productRepo.GetProductImageByID(imageID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch product image: %w", err)
@@ -392,9 +391,9 @@ func (s *productService) deleteImageFile(imageID string) error {
 		return fmt.Errorf("product image with ID %s not found", imageID)
 	}
 
-	extension := filepath.Ext(productImage.ImageURL)
+	baseURL := os.Getenv("BASE_URL")
 
-	imagePath := fmt.Sprintf("./public/uploads/store/product/%s%s", imageID, extension)
+	imagePath := fmt.Sprintf("./public%s%s", baseURL, productImage.ImageURL)
 
 	if err := os.Remove(imagePath); err != nil {
 		return fmt.Errorf("failed to delete image file: %w", err)
