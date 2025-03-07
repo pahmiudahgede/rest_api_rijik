@@ -16,10 +16,10 @@ func NewRoleHandler(roleService services.RoleService) *RoleHandler {
 
 func (h *RoleHandler) GetRoles(c *fiber.Ctx) error {
 
-	roleID, ok := c.Locals("roleID").(string)
-	if !ok || roleID != utils.RoleAdministrator {
-		return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
-	}
+	// roleID, ok := c.Locals("roleID").(string)
+	// if !ok || roleID != utils.RoleAdministrator {
+	// 	return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
+	// }
 
 	roles, err := h.RoleService.GetRoles()
 	if err != nil {
@@ -32,10 +32,10 @@ func (h *RoleHandler) GetRoles(c *fiber.Ctx) error {
 func (h *RoleHandler) GetRoleByID(c *fiber.Ctx) error {
 	roleID := c.Params("role_id")
 
-	roleIDFromSession, ok := c.Locals("roleID").(string)
-	if !ok || roleIDFromSession != utils.RoleAdministrator {
-		return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
-	}
+	// roleIDFromSession, ok := c.Locals("roleID").(string)
+	// if !ok || roleIDFromSession != utils.RoleAdministrator {
+	// 	return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
+	// }
 
 	role, err := h.RoleService.GetRoleByID(roleID)
 	if err != nil {
