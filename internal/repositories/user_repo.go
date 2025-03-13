@@ -11,6 +11,9 @@ type UserProfileRepository interface {
 	FindByID(userID string) (*model.User, error)
 	Update(user *model.User) error
 	UpdateAvatar(userID, avatarURL string) error
+
+	FindAll() ([]model.User, error)
+	FindByRoleID(roleID string) ([]model.User, error)
 }
 
 type userProfileRepository struct {
@@ -53,4 +56,22 @@ func (r *userProfileRepository) UpdateAvatar(userID, avatarURL string) error {
 		return err
 	}
 	return nil
+}
+
+func (r *userProfileRepository) FindAll() ([]model.User, error) {
+	var users []model.User
+	err := r.DB.Preload("Role").Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func (r *userProfileRepository) FindByRoleID(roleID string) ([]model.User, error) {
+	var users []model.User
+	err := r.DB.Preload("Role").Where("role_id = ?", roleID).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }

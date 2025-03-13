@@ -30,6 +30,49 @@ func (h *UserProfileHandler) GetUserProfile(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, userProfile, "User profile retrieved successfully")
 }
 
+
+func (h *UserProfileHandler) GetUserProfileById(c *fiber.Ctx) error {
+	userID := c.Params("userid")
+	if userID == "" {
+		return utils.ValidationErrorResponse(c, map[string][]string{"userid": {"user ID is required"}})
+	}
+
+	// userID, ok := c.Locals("userID").(string)
+	// if !ok || userID == "" {
+	// 	return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+	// }
+
+	userProfile, err := h.UserProfileService.GetUserProfile(userID)
+	if err != nil {
+		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
+	}
+
+	return utils.SuccessResponse(c, userProfile, "User profile retrieved successfully")
+}
+
+func (h *UserProfileHandler) GetAllUsers(c *fiber.Ctx) error {
+	users, err := h.UserProfileService.GetAllUsers()
+	if err != nil {
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.SuccessResponse(c, users, "All users retrieved successfully")
+}
+
+func (h *UserProfileHandler) GetUsersByRoleID(c *fiber.Ctx) error {
+	roleID := c.Params("roleid")
+	if roleID == "" {
+		return utils.ValidationErrorResponse(c, map[string][]string{"roleId": {"Role ID is required"}})
+	}
+
+	users, err := h.UserProfileService.GetUsersByRoleID(roleID)
+	if err != nil {
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.SuccessResponse(c, users, "Users retrieved successfully")
+}
+
 func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
 	var updateData dto.UpdateUserDTO
 	if err := c.BodyParser(&updateData); err != nil {

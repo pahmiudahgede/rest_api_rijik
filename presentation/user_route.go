@@ -14,8 +14,15 @@ func UserProfileRouter(api fiber.Router) {
 	userProfileService := services.NewUserProfileService(userProfileRepo)
 	userProfileHandler := handler.NewUserProfileHandler(userProfileService)
 
-	api.Get("/user", middleware.AuthMiddleware, userProfileHandler.GetUserProfile)
-	api.Put("/user/update-user", middleware.AuthMiddleware, userProfileHandler.UpdateUserProfile)
-	api.Patch("/user/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPassword)
-	api.Patch("/user/upload-photoprofile", middleware.AuthMiddleware, userProfileHandler.UpdateUserAvatar)
+	userProfilRoute := api.Group("/user")
+
+	userProfilRoute.Get("/info", middleware.AuthMiddleware, userProfileHandler.GetUserProfile)
+
+	userProfilRoute.Get("/show-all", middleware.AuthMiddleware, userProfileHandler.GetAllUsers)
+	userProfilRoute.Get("/:userid", middleware.AuthMiddleware, userProfileHandler.GetUserProfileById)
+	userProfilRoute.Get("/:roleid", middleware.AuthMiddleware, userProfileHandler.GetUsersByRoleID)
+
+	userProfilRoute.Put("/update-user", middleware.AuthMiddleware, userProfileHandler.UpdateUserProfile)
+	userProfilRoute.Patch("/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPassword)
+	userProfilRoute.Patch("/upload-photoprofile", middleware.AuthMiddleware, userProfileHandler.UpdateUserAvatar)
 }

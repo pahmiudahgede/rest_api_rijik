@@ -24,6 +24,9 @@ type UserProfileService interface {
 	UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error)
 	UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error)
 	UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error)
+
+	GetAllUsers() ([]dto.UserResponseDTO, error)
+	GetUsersByRoleID(roleID string) ([]dto.UserResponseDTO, error)
 }
 
 type userProfileService struct {
@@ -85,6 +88,56 @@ func (s *userProfileService) GetUserProfile(userID string) (*dto.UserResponseDTO
 	}
 
 	return userResponse, nil
+}
+
+func (s *userProfileService) GetAllUsers() ([]dto.UserResponseDTO, error) {
+	users, err := s.UserProfileRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var response []dto.UserResponseDTO
+	for _, user := range users {
+		response = append(response, dto.UserResponseDTO{
+			ID:            user.ID,
+			Username:      user.Username,
+			Avatar:        user.Avatar,
+			Name:          user.Name,
+			Phone:         user.Phone,
+			Email:         user.Email,
+			EmailVerified: user.EmailVerified,
+			RoleName:      user.Role.RoleName,
+			CreatedAt:     user.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:     user.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return response, nil
+}
+
+func (s *userProfileService) GetUsersByRoleID(roleID string) ([]dto.UserResponseDTO, error) {
+	users, err := s.UserProfileRepo.FindByRoleID(roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []dto.UserResponseDTO
+	for _, user := range users {
+		response = append(response, dto.UserResponseDTO{
+			ID:            user.ID,
+			Username:      user.Username,
+			Avatar:        user.Avatar,
+			Name:          user.Name,
+			Phone:         user.Phone,
+			Email:         user.Email,
+			EmailVerified: user.EmailVerified,
+			RoleName:      user.Role.RoleName,
+			CreatedAt:     user.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:     user.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return response, nil
 }
 
 func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error) {
