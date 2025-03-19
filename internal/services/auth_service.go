@@ -1,171 +1,134 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pahmiudahgede/senggoldong/config"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
 	"github.com/pahmiudahgede/senggoldong/model"
-	"github.com/pahmiudahgede/senggoldong/utils"
-	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	ErrUsernameTaken        = "username is already taken"
-	ErrPhoneTaken           = "phone number is already used for this role"
-	ErrEmailTaken           = "email is already used for this role"
-	ErrInvalidRoleID        = "invalid roleId"
-	ErrPasswordMismatch     = "password and confirm password do not match"
-	ErrRoleIDRequired       = "roleId is required"
-	ErrFailedToHashPassword = "failed to hash password"
-	ErrFailedToCreateUser   = "failed to create user"
-	ErrIncorrectPassword    = "incorrect password"
-	ErrAccountNotFound      = "account not found"
-)
-
-type UserService interface {
-	Login(credentials dto.LoginDTO) (*dto.UserResponseWithToken, error)
-	Register(user dto.RegisterDTO) (*dto.UserResponseDTO, error)
+type AuthService interface {
+	RegisterUser(request dto.RegisterRequest) (*model.User, error)
+	VerifyOTP(phone, otp string) error
+	GetUserByPhone(phone string) (*model.User, error)
+	GenerateJWT(user *model.User) (string, error)
 }
 
-type userService struct {
-	UserRepo  repositories.UserRepository
-	RoleRepo  repositories.RoleRepository
-	SecretKey string
+type authService struct {
+	UserRepo repositories.UserRepository
 }
 
-func NewUserService(userRepo repositories.UserRepository, roleRepo repositories.RoleRepository, secretKey string) UserService {
-	return &userService{UserRepo: userRepo, RoleRepo: roleRepo, SecretKey: secretKey}
+func NewAuthService(userRepo repositories.UserRepository) AuthService {
+	return &authService{UserRepo: userRepo}
 }
 
-func (s *userService) Login(credentials dto.LoginDTO) (*dto.UserResponseWithToken, error) {
-	if credentials.RoleID == "" {
-		return nil, errors.New(ErrRoleIDRequired)
+func (s *authService) RegisterUser(request dto.RegisterRequest) (*model.User, error) {
+
+	user, err := s.UserRepo.FindByPhone(request.Phone)
+	if err == nil && user != nil {
+		return nil, fmt.Errorf("user with phone %s already exists", request.Phone)
 	}
 
-	user, err := s.UserRepo.FindByIdentifierAndRole(credentials.Identifier, credentials.RoleID)
+	user = &model.User{
+		Phone:         request.Phone,
+		RoleID:        request.RoleID,
+		EmailVerified: false,
+	}
+
+	err = s.UserRepo.CreateUser(user)
 	if err != nil {
-		return nil, errors.New(ErrAccountNotFound)
+		return nil, fmt.Errorf("failed to create user: %v", err)
 	}
 
-	if !CheckPasswordHash(credentials.Password, user.Password) {
-		return nil, errors.New(ErrIncorrectPassword)
-	}
-
-	token, err := s.generateJWT(user)
+	_, err = s.SendOTP(request.Phone)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to send OTP: %v", err)
 	}
 
-	sessionKey := fmt.Sprintf("session:%s", user.ID)
-	sessionData := map[string]interface{}{
-		"userID":   user.ID,
-		"roleID":   user.RoleID,
-		"roleName": user.Role.RoleName,
-	}
-
-	err = utils.SetJSONData(sessionKey, sessionData, time.Hour*24)
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.UserResponseWithToken{
-		RoleName: user.Role.RoleName,
-		UserID:   user.ID,
-		Token:    token,
-	}, nil
+	return user, nil
 }
 
-func (s *userService) generateJWT(user *model.User) (string, error) {
+func (s *authService) GetUserByPhone(phone string) (*model.User, error) {
+	user, err := s.UserRepo.FindByPhone(phone)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving user by phone: %v", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return user, nil
+}
+
+func (s *authService) SendOTP(phone string) (string, error) {
+	otpCode := generateOTP()
+
+	message := fmt.Sprintf("Your OTP code is: %s", otpCode)
+	err := config.SendWhatsAppMessage(phone, message)
+	if err != nil {
+		return "", fmt.Errorf("failed to send OTP via WhatsApp: %v", err)
+	}
+
+	expirationTime := 5 * time.Minute
+	err = config.RedisClient.Set(config.Ctx, phone, otpCode, expirationTime).Err()
+	if err != nil {
+		return "", fmt.Errorf("failed to store OTP in Redis: %v", err)
+	}
+
+	return otpCode, nil
+}
+
+func (s *authService) VerifyOTP(phone, otp string) error {
+
+	otpRecord, err := config.RedisClient.Get(config.Ctx, phone).Result()
+	if err == redis.Nil {
+
+		return fmt.Errorf("OTP not found or expired")
+	} else if err != nil {
+
+		return fmt.Errorf("failed to retrieve OTP from Redis: %v", err)
+	}
+
+	if otp != otpRecord {
+		return fmt.Errorf("invalid OTP")
+	}
+
+	err = config.RedisClient.Del(config.Ctx, phone).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete OTP from Redis: %v", err)
+	}
+
+	return nil
+}
+
+func (s *authService) GenerateJWT(user *model.User) (string, error) {
+	if user == nil || user.Role == nil {
+		return "", fmt.Errorf("user or user role is nil, cannot generate token")
+	}
+
 	claims := jwt.MapClaims{
-		"sub": user.ID,
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"sub":  user.ID,
+		"role": user.Role.RoleName,
+		"iat":  time.Now().Unix(),
+		"exp":  time.Now().Add(time.Hour * 24).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenString, err := token.SignedString([]byte(s.SecretKey))
+	secretKey := config.GetSecretKey()
+
+	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to generate JWT token: %v", err)
 	}
 
 	return tokenString, nil
 }
 
-func CheckPasswordHash(password, hashedPassword string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	return err == nil
-}
-
-func (s *userService) Register(user dto.RegisterDTO) (*dto.UserResponseDTO, error) {
-
-	if user.Password != user.ConfirmPassword {
-		return nil, fmt.Errorf("%s", ErrPasswordMismatch)
-	}
-
-	if user.RoleID == "" {
-		return nil, fmt.Errorf("%s", ErrRoleIDRequired)
-	}
-
-	role, err := s.RoleRepo.FindByID(user.RoleID)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %v", ErrInvalidRoleID, err)
-	}
-
-	if existingUser, _ := s.UserRepo.FindByUsername(user.Username); existingUser != nil {
-		return nil, fmt.Errorf("%s", ErrUsernameTaken)
-	}
-
-	if existingPhone, _ := s.UserRepo.FindByPhoneAndRole(user.Phone, user.RoleID); existingPhone != nil {
-		return nil, fmt.Errorf("%s", ErrPhoneTaken)
-	}
-
-	if existingEmail, _ := s.UserRepo.FindByEmailAndRole(user.Email, user.RoleID); existingEmail != nil {
-		return nil, fmt.Errorf("%s", ErrEmailTaken)
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %v", ErrFailedToHashPassword, err)
-	}
-
-	newUser := model.User{
-		Username: user.Username,
-		Name:     user.Name,
-		Phone:    user.Phone,
-		Email:    user.Email,
-		Password: string(hashedPassword),
-		RoleID:   user.RoleID,
-	}
-
-	err = s.UserRepo.Create(&newUser)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %v", ErrFailedToCreateUser, err)
-	}
-
-	userResponse := s.prepareUserResponse(newUser, role)
-
-	return userResponse, nil
-}
-
-func (s *userService) prepareUserResponse(user model.User, role *model.Role) *dto.UserResponseDTO {
-
-	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
-	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
-
-	return &dto.UserResponseDTO{
-		ID:            user.ID,
-		Username:      user.Username,
-		Name:          user.Name,
-		Phone:         user.Phone,
-		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
-		RoleName:      role.RoleName,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-	}
+func generateOTP() string {
+	return fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
 }

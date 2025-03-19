@@ -14,7 +14,7 @@ import (
 	"github.com/pahmiudahgede/senggoldong/internal/repositories"
 	"github.com/pahmiudahgede/senggoldong/model"
 	"github.com/pahmiudahgede/senggoldong/utils"
-	"golang.org/x/crypto/bcrypt"
+	// "golang.org/x/crypto/bcrypt"
 )
 
 var allowedExtensions = []string{".jpg", ".jpeg", ".png"}
@@ -22,7 +22,7 @@ var allowedExtensions = []string{".jpg", ".jpeg", ".png"}
 type UserProfileService interface {
 	GetUserProfile(userID string) (*dto.UserResponseDTO, error)
 	UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error)
-	UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error)
+	// UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error)
 	UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error)
 
 	GetAllUsers() ([]dto.UserResponseDTO, error)
@@ -162,12 +162,12 @@ func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.Upd
 		user.Phone = updateData.Phone
 	}
 
-	if updateData.Email != "" && updateData.Email != user.Email {
-		if err := s.updateEmailIfNeeded(user, updateData.Email); err != nil {
-			return nil, err
-		}
-		user.Email = updateData.Email
-	}
+	// if updateData.Email != "" && updateData.Email != user.Email {
+	// 	if err := s.updateEmailIfNeeded(user, updateData.Email); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	user.Email = updateData.Email
+	// }
 
 	err = s.UserProfileRepo.Update(user)
 	if err != nil {
@@ -196,43 +196,43 @@ func (s *userProfileService) updatePhoneIfNeeded(user *model.User, newPhone stri
 	return nil
 }
 
-func (s *userProfileService) updateEmailIfNeeded(user *model.User, newEmail string) error {
-	existingEmail, _ := s.UserRepo.FindByEmailAndRole(newEmail, user.RoleID)
-	if existingEmail != nil {
-		return fmt.Errorf("email is already used for this role")
-	}
-	return nil
-}
+// func (s *userProfileService) updateEmailIfNeeded(user *model.User, newEmail string) error {
+// 	existingEmail, _ := s.UserRepo.FindByEmailAndRole(newEmail, user.RoleID)
+// 	if existingEmail != nil {
+// 		return fmt.Errorf("email is already used for this role")
+// 	}
+// 	return nil
+// }
 
-func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error) {
+// func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error) {
 
-	validationErrors, valid := passwordData.Validate()
-	if !valid {
-		return "", fmt.Errorf("validation failed: %v", validationErrors)
-	}
+// 	validationErrors, valid := passwordData.Validate()
+// 	if !valid {
+// 		return "", fmt.Errorf("validation failed: %v", validationErrors)
+// 	}
 
-	user, err := s.UserProfileRepo.FindByID(userID)
-	if err != nil {
-		return "", errors.New("user not found")
-	}
+// 	user, err := s.UserProfileRepo.FindByID(userID)
+// 	if err != nil {
+// 		return "", errors.New("user not found")
+// 	}
 
-	if !CheckPasswordHash(passwordData.OldPassword, user.Password) {
-		return "", errors.New("old password is incorrect")
-	}
+// 	if !CheckPasswordHash(passwordData.OldPassword, user.Password) {
+// 		return "", errors.New("old password is incorrect")
+// 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordData.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("failed to hash new password: %v", err)
-	}
+// 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordData.NewPassword), bcrypt.DefaultCost)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to hash new password: %v", err)
+// 	}
 
-	user.Password = string(hashedPassword)
-	err = s.UserProfileRepo.Update(user)
-	if err != nil {
-		return "", fmt.Errorf("failed to update password: %v", err)
-	}
+// 	user.Password = string(hashedPassword)
+// 	err = s.UserProfileRepo.Update(user)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to update password: %v", err)
+// 	}
 
-	return "Password berhasil diupdate", nil
-}
+// 	return "Password berhasil diupdate", nil
+// }
 
 func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error) {
 	baseURL := os.Getenv("BASE_URL")

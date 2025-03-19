@@ -97,29 +97,29 @@ func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, userResponse, "User profile updated successfully")
 }
 
-func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
-	var passwordData dto.UpdatePasswordDTO
-	if err := c.BodyParser(&passwordData); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
-	}
+// func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
+// 	var passwordData dto.UpdatePasswordDTO
+// 	if err := c.BodyParser(&passwordData); err != nil {
+// 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
+// 	}
 
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-	}
+// 	userID, ok := c.Locals("userID").(string)
+// 	if !ok || userID == "" {
+// 		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+// 	}
 
-	errors, valid := passwordData.Validate()
-	if !valid {
-		return utils.ValidationErrorResponse(c, errors)
-	}
+// 	errors, valid := passwordData.Validate()
+// 	if !valid {
+// 		return utils.ValidationErrorResponse(c, errors)
+// 	}
 
-	message, err := h.UserProfileService.UpdateUserPassword(userID, passwordData)
-	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
-	}
+// 	message, err := h.UserProfileService.UpdateUserPassword(userID, passwordData)
+// 	if err != nil {
+// 		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
+// 	}
 
-	return utils.GenericResponse(c, fiber.StatusOK, message)
-}
+// 	return utils.GenericResponse(c, fiber.StatusOK, message)
+// }
 func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
 
 	userID, ok := c.Locals("userID").(string)

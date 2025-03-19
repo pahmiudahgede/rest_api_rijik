@@ -1,72 +1,88 @@
 package handler
 
 import (
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/pahmiudahgede/senggoldong/dto"
 	"github.com/pahmiudahgede/senggoldong/internal/services"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
-type UserHandler struct {
-	UserService services.UserService
+type AuthHandler struct {
+	AuthService services.AuthService
 }
 
-func NewUserHandler(userService services.UserService) *UserHandler {
-	return &UserHandler{UserService: userService}
+func NewAuthHandler(authService services.AuthService) *AuthHandler {
+	return &AuthHandler{AuthService: authService}
 }
 
-func (h *UserHandler) Login(c *fiber.Ctx) error {
-	var loginDTO dto.LoginDTO
-	if err := c.BodyParser(&loginDTO); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
+func (h *AuthHandler) Register(c *fiber.Ctx) error {
+	var request dto.RegisterRequest
+
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(400).SendString("Invalid input")
 	}
 
-	validationErrors, valid := loginDTO.Validate()
-	if !valid {
-		return utils.ValidationErrorResponse(c, validationErrors)
+	if errors, valid := request.Validate(); !valid {
+		return c.Status(400).JSON(errors)
 	}
 
-	user, err := h.UserService.Login(loginDTO)
+	_, err := h.AuthService.RegisterUser(request)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusUnauthorized, err.Error())
+		return c.Status(500).SendString(err.Error())
 	}
 
-	return utils.SuccessResponse(c, user, "Login successful")
+	return c.Status(201).JSON(fiber.Map{
+		"meta": fiber.Map{
+			"status":  201,
+			"message": "The input register from the user has been successfully recorded. Please check the otp code sent to your number.",
+		},
+	})
 }
 
-func (h *UserHandler) Register(c *fiber.Ctx) error {
-
-	var registerDTO dto.RegisterDTO
-	if err := c.BodyParser(&registerDTO); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid request body"}})
+func (h *AuthHandler) VerifyOTP(c *fiber.Ctx) error {
+	var request struct {
+		Phone string `json:"phone"`
+		OTP   string `json:"otp"`
 	}
 
-	errors, valid := registerDTO.Validate()
-	if !valid {
-		return utils.ValidationErrorResponse(c, errors)
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(400).SendString("Invalid input")
 	}
 
-	userResponse, err := h.UserService.Register(registerDTO)
+	err := h.AuthService.VerifyOTP(request.Phone, request.OTP)
 	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusConflict, err.Error())
+		return c.Status(400).JSON(dto.Response{
+			Meta: dto.MetaResponse{
+				Status:  400,
+				Message: "Invalid OTP",
+			},
+			Data: nil,
+		})
 	}
 
-	return utils.CreateResponse(c, userResponse, "Registration successful")
-}
-
-func (h *UserHandler) Logout(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		log.Println("Unauthorized access: User ID not found in session")
-		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-	}
-
-	err := utils.DeleteSessionData(userID)
+	user, err := h.AuthService.GetUserByPhone(request.Phone)
 	if err != nil {
-		return utils.InternalServerErrorResponse(c, "Error logging out")
+		return c.Status(500).SendString("Error retrieving user")
+	}
+	if user == nil {
+		return c.Status(404).SendString("User not found")
 	}
 
-	return utils.SuccessResponse(c, nil, "Logout successful")
+	token, err := h.AuthService.GenerateJWT(user)
+	if err != nil {
+		return c.Status(500).SendString("Error generating token")
+	}
+
+	response := dto.Response{
+		Meta: dto.MetaResponse{
+			Status:  200,
+			Message: "OTP yang dimasukkan valid",
+		},
+		Data: &dto.UserDataResponse{
+			UserID:   user.ID,
+			UserRole: user.Role.RoleName,
+			Token:    token,
+		},
+	}
+
+	return c.Status(200).JSON(response)
 }

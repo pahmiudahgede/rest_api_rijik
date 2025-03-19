@@ -14,4 +14,5 @@ func SetupConfig() {
 
 	ConnectDatabase()
 	ConnectRedis()
+	InitWhatsApp() 
 }

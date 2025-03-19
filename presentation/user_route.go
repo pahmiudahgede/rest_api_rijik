@@ -23,6 +23,6 @@ func UserProfileRouter(api fiber.Router) {
 	userProfilRoute.Get("/:roleid", middleware.AuthMiddleware, userProfileHandler.GetUsersByRoleID)
 
 	userProfilRoute.Put("/update-user", middleware.AuthMiddleware, userProfileHandler.UpdateUserProfile)
-	userProfilRoute.Patch("/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPassword)
+	// userProfilRoute.Patch("/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPassword)
 	userProfilRoute.Patch("/upload-photoprofile", middleware.AuthMiddleware, userProfileHandler.UpdateUserAvatar)
 }

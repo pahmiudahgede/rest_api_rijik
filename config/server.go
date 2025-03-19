@@ -8,6 +8,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+func GetSecretKey() string {
+	return os.Getenv("SECRET_KEY")
+}
+
 func StartServer(app *fiber.App) {
 	host := os.Getenv("SERVER_HOST")
 	port := os.Getenv("SERVER_PORT")
