@@ -29,16 +29,35 @@ func NewAuthService(userRepo repositories.UserRepository, roleRepo repositories.
 	return &authService{userRepo, roleRepo}
 }
 
+const otpCooldown = 30
+
 func (s *authService) RegisterUser(req *dto.RegisterRequest) error {
+
+	user, err := s.userRepo.GetUserByPhone(req.Phone)
+	if err == nil && user != nil {
+		return errors.New("phone number already registered")
+	}
+
+	lastOtpSent, err := utils.GetStringData("otp_sent:" + req.Phone)
+	if err == nil && lastOtpSent != "" {
+		lastSentTime, err := time.Parse(time.RFC3339, lastOtpSent)
+		if err != nil {
+			return errors.New("invalid OTP sent timestamp")
+		}
+
+		if time.Since(lastSentTime).Seconds() < otpCooldown {
+			return errors.New("please wait before requesting another OTP")
+		}
+	}
 
 	userID := uuid.New().String()
 
-	user := &model.User{
+	user = &model.User{
 		Phone:  req.Phone,
 		RoleID: req.RoleID,
 	}
 
-	err := utils.SetJSONData("user:"+userID, user, 10*time.Minute)
+	err = utils.SetJSONData("user:"+userID, user, 10*time.Minute)
 	if err != nil {
 		return err
 	}
@@ -60,10 +79,21 @@ func (s *authService) RegisterUser(req *dto.RegisterRequest) error {
 		return err
 	}
 
+	err = utils.SetStringData("otp_sent:"+req.Phone, time.Now().Format(time.RFC3339), 10*time.Minute)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *authService) VerifyOTP(req *dto.VerifyOTPRequest) (*dto.UserDataResponse, error) {
+
+	isLoggedIn, err := utils.GetStringData("user_logged_in:" + req.Phone)
+	if err == nil && isLoggedIn == "true" {
+		return nil, errors.New("you are already logged in")
+	}
+
 	storedOTP, err := utils.GetStringData("otp:" + req.Phone)
 	if err != nil {
 		return nil, err
@@ -103,6 +133,11 @@ func (s *authService) VerifyOTP(req *dto.VerifyOTPRequest) (*dto.UserDataRespons
 	}
 
 	token, err := generateJWTToken(createdUser.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = utils.SetStringData("user_logged_in:"+req.Phone, "true", 0)
 	if err != nil {
 		return nil, err
 	}
