@@ -1,140 +1,142 @@
 package services
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
-	"time"
-
 	"math/rand"
-
 	"rijig/config"
 	"rijig/dto"
 	"rijig/internal/repositories"
 	"rijig/model"
+	"rijig/utils"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type AuthService interface {
-	RegisterUser(request *dto.RegisterRequest) error
-	VerifyOTP(request *dto.VerifyOTPRequest) error
+	RegisterUser(req *dto.RegisterRequest) error
+	VerifyOTP(req *dto.VerifyOTPRequest) (*dto.UserDataResponse, error)
 }
 
 type authService struct {
-	userRepo  repositories.UserRepository
-	roleRepo  repositories.RoleRepository
-	redisRepo repositories.RedisRepository
+	userRepo repositories.UserRepository
+	roleRepo repositories.RoleRepository
 }
 
-func NewAuthService(userRepo repositories.UserRepository, roleRepo repositories.RoleRepository, redisRepo repositories.RedisRepository) AuthService {
-	return &authService{
-		userRepo:  userRepo,
-		roleRepo:  roleRepo,
-		redisRepo: redisRepo,
-	}
+func NewAuthService(userRepo repositories.UserRepository, roleRepo repositories.RoleRepository) AuthService {
+	return &authService{userRepo, roleRepo}
 }
 
-func (s *authService) RegisterUser(request *dto.RegisterRequest) error {
+func (s *authService) RegisterUser(req *dto.RegisterRequest) error {
 
-	if request.RoleID == "" {
-		return fmt.Errorf("role_id cannot be empty")
+	userID := uuid.New().String()
+
+	user := &model.User{
+		Phone:  req.Phone,
+		RoleID: req.RoleID,
 	}
 
-	role, err := s.roleRepo.FindByID(request.RoleID)
+	err := utils.SetJSONData("user:"+userID, user, 10*time.Minute)
 	if err != nil {
-		return fmt.Errorf("role not found: %v", err)
-	}
-	if role == nil {
-		return fmt.Errorf("role with ID %s not found", request.RoleID)
+		return err
 	}
 
-	existingUser, err := s.userRepo.FindByPhone(request.Phone)
+	err = utils.SetStringData("user_phone:"+req.Phone, userID, 10*time.Minute)
 	if err != nil {
-		return fmt.Errorf("failed to check existing user: %v", err)
-	}
-	if existingUser != nil {
-		return fmt.Errorf("phone number already registered")
-	}
-
-	temporaryData := &model.User{
-		Phone:  request.Phone,
-		RoleID: request.RoleID,
-	}
-
-	err = s.redisRepo.StoreData(request.Phone, temporaryData, 1*time.Hour)
-	if err != nil {
-		return fmt.Errorf("failed to store registration data in Redis: %v", err)
+		return err
 	}
 
 	otp := generateOTP()
-	err = s.redisRepo.StoreData("otp:"+request.Phone, otp, 10*time.Minute)
+
+	err = config.SendWhatsAppMessage(req.Phone, fmt.Sprintf("Your OTP is: %s", otp))
 	if err != nil {
-		return fmt.Errorf("failed to store OTP in Redis: %v", err)
+		return err
 	}
 
-	err = config.SendWhatsAppMessage(request.Phone, fmt.Sprintf("Your OTP is: %s", otp))
+	err = utils.SetStringData("otp:"+req.Phone, otp, 10*time.Minute)
 	if err != nil {
-		return fmt.Errorf("failed to send OTP via WhatsApp: %v", err)
+		return err
 	}
 
-	log.Printf("OTP sent to phone number: %s", request.Phone)
 	return nil
 }
 
-func (s *authService) VerifyOTP(request *dto.VerifyOTPRequest) error {
-
-	storedOTP, err := s.redisRepo.GetData("otp:" + request.Phone)
+func (s *authService) VerifyOTP(req *dto.VerifyOTPRequest) (*dto.UserDataResponse, error) {
+	storedOTP, err := utils.GetStringData("otp:" + req.Phone)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve OTP from Redis: %v", err)
-	}
-	if storedOTP != request.OTP {
-		return fmt.Errorf("invalid OTP")
+		return nil, err
 	}
 
-	temporaryData, err := s.redisRepo.GetData(request.Phone)
+	if storedOTP == "" {
+		return nil, errors.New("OTP expired or not found")
+	}
+
+	if storedOTP != req.OTP {
+		return nil, errors.New("invalid OTP")
+	}
+
+	userID, err := utils.GetStringData("user_phone:" + req.Phone)
+	if err != nil || userID == "" {
+		return nil, errors.New("user data not found in Redis")
+	}
+
+	userData, err := utils.GetJSONData("user:" + userID)
+	if err != nil || userData == nil {
+		return nil, errors.New("user data not found in Redis")
+	}
+
+	user := &model.User{
+		Phone:  userData["phone"].(string),
+		RoleID: userData["roleId"].(string),
+	}
+
+	createdUser, err := s.userRepo.CreateUser(user)
 	if err != nil {
-		return fmt.Errorf("failed to get registration data from Redis: %v", err)
-	}
-	if temporaryData == "" {
-		return fmt.Errorf("no registration data found for phone: %s", request.Phone)
+		return nil, err
 	}
 
-	temporaryDataStr, ok := temporaryData.(string)
-	if !ok {
-		return fmt.Errorf("failed to assert data to string")
-	}
-
-	temporaryDataBytes := []byte(temporaryDataStr)
-
-	var user model.User
-	err = json.Unmarshal(temporaryDataBytes, &user)
+	role, err := s.roleRepo.FindByID(createdUser.RoleID)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal registration data: %v", err)
+		return nil, err
 	}
 
-	_, err = s.userRepo.SaveUser(&user)
+	token, err := generateJWTToken(createdUser.ID)
 	if err != nil {
-		return fmt.Errorf("failed to save user to database: %v", err)
+		return nil, err
 	}
 
-	err = s.redisRepo.DeleteData(request.Phone)
-	if err != nil {
-		return fmt.Errorf("failed to delete registration data from Redis: %v", err)
-	}
-
-	err = s.redisRepo.DeleteData("otp:" + request.Phone)
-	if err != nil {
-		return fmt.Errorf("failed to delete OTP from Redis: %v", err)
-	}
-
-	return nil
+	return &dto.UserDataResponse{
+		UserID:   createdUser.ID,
+		UserRole: role.RoleName,
+		Token:    token,
+	}, nil
 }
 
 func generateOTP() string {
-
-	return fmt.Sprintf("%06d", RandomInt(100000, 999999))
+	rand.Seed(time.Now().UnixNano())
+	otp := fmt.Sprintf("%06d", rand.Intn(1000000))
+	return otp
 }
 
-func RandomInt(min, max int) int {
-	rand.Seed(time.Now().UnixNano())
-	return rand.Intn(max-min+1) + min
+func generateJWTToken(userID string) (string, error) {
+
+	expirationTime := time.Now().Add(24 * time.Hour)
+
+	claims := &jwt.RegisteredClaims{
+		Issuer:    userID,
+		ExpiresAt: jwt.NewNumericDate(expirationTime),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	secretKey := config.GetSecretKey()
+
+	signedToken, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+
+	return signedToken, nil
 }

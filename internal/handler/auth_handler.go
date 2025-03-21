@@ -13,41 +13,37 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(authService services.AuthService) *AuthHandler {
-	return &AuthHandler{
-		authService: authService,
-	}
+	return &AuthHandler{authService}
 }
 
-func (h *AuthHandler) Register(c *fiber.Ctx) error {
-	var request dto.RegisterRequest
-
-	if err := c.BodyParser(&request); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"invalid request body"}})
+func (h *AuthHandler) RegisterUser(c *fiber.Ctx) error {
+	var req dto.RegisterRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, "Invalid request body")
 	}
 
-	if errors, valid := request.Validate(); !valid {
+	if errors, valid := req.Validate(); !valid {
 		return utils.ValidationErrorResponse(c, errors)
 	}
 
-	err := h.authService.RegisterUser(&request)
+	err := h.authService.RegisterUser(&req)
 	if err != nil {
 		return utils.ErrorResponse(c, err.Error())
 	}
 
-	return utils.SuccessResponse(c, nil, "OTP has been sent to your phone")
+	return utils.SuccessResponse(c, nil, "Kode OTP telah dikirimkan ke nomor WhatsApp anda")
 }
 
 func (h *AuthHandler) VerifyOTP(c *fiber.Ctx) error {
-	var request dto.VerifyOTPRequest
-
-	if err := c.BodyParser(&request); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"invalid request body"}})
+	var req dto.VerifyOTPRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(c, "Invalid request body")
 	}
 
-	err := h.authService.VerifyOTP(&request)
+	response, err := h.authService.VerifyOTP(&req)
 	if err != nil {
 		return utils.ErrorResponse(c, err.Error())
 	}
 
-	return utils.SuccessResponse(c, nil, "User successfully registered")
+	return utils.SuccessResponse(c, response, "Registration successful")
 }

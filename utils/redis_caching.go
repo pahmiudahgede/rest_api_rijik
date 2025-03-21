@@ -124,18 +124,43 @@ func GetStringData(key string) (string, error) {
 	return val, nil
 }
 
-func StoreOTPInRedis(phone, otpCode string, expirationTime time.Duration) error {
-	err := config.RedisClient.Set(config.Ctx, phone, otpCode, expirationTime).Err()
-	if err != nil {
-		return fmt.Errorf("failed to store OTP in Redis: %v", err)
-	}
-	return nil
-}
+// func SetStringData(key, value string, expiration time.Duration) error {
+// 	if expiration == 0 {
+// 		expiration = defaultExpiration
+// 	}
 
-func GetOTPFromRedis(phone string) (string, error) {
-	otpCode, err := config.RedisClient.Get(config.Ctx, phone).Result()
-	if err != nil {
-		return "", fmt.Errorf("failed to get OTP from Redis: %v", err)
-	}
-	return otpCode, nil
-}
+// 	err := config.RedisClient.Set(ctx, key, value, expiration).Err()
+// 	if err != nil {
+// 		return fmt.Errorf("Error setting string data in Redis with key: %s: %v", key, err)
+// 	}
+
+// 	log.Printf("String data stored in Redis with key: %s", key)
+// 	return nil
+// }
+
+// GetStringData retrieves a string value from Redis by key
+// func GetStringData(key string) (string, error) {
+// 	val, err := config.RedisClient.Get(ctx, key).Result()
+// 	if err == redis.Nil {
+// 		return "", nil
+// 	} else if err != nil {
+// 		return "", fmt.Errorf("Error retrieving string data from Redis with key: %s: %v", key, err)
+// 	}
+
+// 	return val, nil
+// }
+// func StoreOTPInRedis(phone, otpCode string, expirationTime time.Duration) error {
+// 	err := config.RedisClient.Set(config.Ctx, phone, otpCode, expirationTime).Err()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to store OTP in Redis: %v", err)
+// 	}
+// 	return nil
+// }
+
+// func GetOTPFromRedis(phone string) (string, error) {
+// 	otpCode, err := config.RedisClient.Get(config.Ctx, phone).Result()
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to get OTP from Redis: %v", err)
+// 	}
+// 	return otpCode, nil
+// }
