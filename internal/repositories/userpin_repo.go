@@ -1,7 +1,8 @@
 package repositories
 
 import (
-	"github.com/pahmiudahgede/senggoldong/model"
+	"rijig/model"
+
 	"gorm.io/gorm"
 )
 

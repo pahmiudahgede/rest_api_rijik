@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"rijig/dto"
+	"rijig/internal/repositories"
+	"rijig/model"
+	"rijig/utils"
+
 	"github.com/google/uuid"
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/model"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 type StoreService interface {
@@ -237,7 +238,7 @@ func (s *storeService) DeleteStore(storeID string) error {
 
 func (s *storeService) saveStoreImage(file *multipart.FileHeader, imageType string) (string, error) {
 
-	imageDir := fmt.Sprintf("./public%s/uploads/store/%s",os.Getenv("BASE_URL"), imageType)
+	imageDir := fmt.Sprintf("./public%s/uploads/store/%s", os.Getenv("BASE_URL"), imageType)
 	if _, err := os.Stat(imageDir); os.IsNotExist(err) {
 
 		if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {

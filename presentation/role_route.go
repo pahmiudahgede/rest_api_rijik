@@ -1,11 +1,12 @@
 package presentation
 
 import (
+	"rijig/config"
+	"rijig/internal/handler"
+	"rijig/internal/repositories"
+	"rijig/internal/services"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/config"
-	"github.com/pahmiudahgede/senggoldong/internal/handler"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/internal/services"
 )
 
 func RoleRouter(api fiber.Router) {

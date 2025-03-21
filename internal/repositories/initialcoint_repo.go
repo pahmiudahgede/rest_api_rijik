@@ -2,7 +2,8 @@ package repositories
 
 import (
 	"fmt"
-	"github.com/pahmiudahgede/senggoldong/model"
+	"rijig/model"
+
 	"gorm.io/gorm"
 )
 

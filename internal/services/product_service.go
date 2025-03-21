@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"rijig/dto"
+	"rijig/internal/repositories"
+	"rijig/model"
+	"rijig/utils"
+
 	"github.com/google/uuid"
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/model"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 type ProductService interface {

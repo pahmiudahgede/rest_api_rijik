@@ -3,8 +3,9 @@ package middleware
 import (
 	"os"
 
+	"rijig/utils"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 func APIKeyMiddleware(c *fiber.Ctx) error {

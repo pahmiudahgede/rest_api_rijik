@@ -1,7 +1,8 @@
 package repositories
 
 import (
-	"github.com/pahmiudahgede/senggoldong/model"
+	"rijig/model"
+
 	"gorm.io/gorm"
 )
 
@@ -24,7 +25,6 @@ func NewAddressRepository(db *gorm.DB) AddressRepository {
 func (r *addressRepository) CreateAddress(address *model.Address) error {
 	return r.DB.Create(address).Error
 }
-
 
 func (r *addressRepository) FindAddressByUserID(userID string) ([]model.Address, error) {
 	var addresses []model.Address

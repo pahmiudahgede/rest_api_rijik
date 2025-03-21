@@ -5,7 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/pahmiudahgede/senggoldong/model"
+	"rijig/model"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

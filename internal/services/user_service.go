@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/model"
-	"github.com/pahmiudahgede/senggoldong/utils"
+	"rijig/dto"
+	"rijig/internal/repositories"
+	"rijig/model"
+	"rijig/utils"
 	// "golang.org/x/crypto/bcrypt"
 )
 
@@ -155,12 +155,12 @@ func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.Upd
 		user.Name = updateData.Name
 	}
 
-	if updateData.Phone != "" && updateData.Phone != user.Phone {
-		if err := s.updatePhoneIfNeeded(user, updateData.Phone); err != nil {
-			return nil, err
-		}
-		user.Phone = updateData.Phone
-	}
+	// if updateData.Phone != "" && updateData.Phone != user.Phone {
+	// 	if err := s.updatePhoneIfNeeded(user, updateData.Phone); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	user.Phone = updateData.Phone
+	// }
 
 	// if updateData.Email != "" && updateData.Email != user.Email {
 	// 	if err := s.updateEmailIfNeeded(user, updateData.Email); err != nil {
@@ -188,13 +188,13 @@ func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.Upd
 	return userResponse, nil
 }
 
-func (s *userProfileService) updatePhoneIfNeeded(user *model.User, newPhone string) error {
-	existingPhone, _ := s.UserRepo.FindByPhoneAndRole(newPhone, user.RoleID)
-	if existingPhone != nil {
-		return fmt.Errorf("phone number is already used for this role")
-	}
-	return nil
-}
+// func (s *userProfileService) updatePhoneIfNeeded(user *model.User, newPhone string) error {
+// 	existingPhone, _ := s.UserRepo.FindByPhoneAndRole(newPhone, user.RoleID)
+// 	if existingPhone != nil {
+// 		return fmt.Errorf("phone number is already used for this role")
+// 	}
+// 	return nil
+// }
 
 // func (s *userProfileService) updateEmailIfNeeded(user *model.User, newEmail string) error {
 // 	existingEmail, _ := s.UserRepo.FindByEmailAndRole(newEmail, user.RoleID)

@@ -1,10 +1,11 @@
 package handler
 
 import (
+	"rijig/dto"
+	"rijig/internal/services"
+	"rijig/utils"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/services"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 type UserPinHandler struct {

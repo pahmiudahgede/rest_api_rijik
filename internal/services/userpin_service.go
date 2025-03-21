@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/model"
-	"github.com/pahmiudahgede/senggoldong/utils"
+	"rijig/internal/repositories"
+	"rijig/model"
+	"rijig/utils"
+
 	"golang.org/x/crypto/bcrypt"
 )
 

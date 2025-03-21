@@ -1,10 +1,11 @@
 package handler
 
 import (
+	"rijig/dto"
+	"rijig/internal/services"
+	"rijig/utils"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/services"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 type UserProfileHandler struct {
@@ -29,7 +30,6 @@ func (h *UserProfileHandler) GetUserProfile(c *fiber.Ctx) error {
 
 	return utils.SuccessResponse(c, userProfile, "User profile retrieved successfully")
 }
-
 
 func (h *UserProfileHandler) GetUserProfileById(c *fiber.Ctx) error {
 	userID := c.Params("userid")
@@ -118,8 +118,8 @@ func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
 // 		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
 // 	}
 
-// 	return utils.GenericResponse(c, fiber.StatusOK, message)
-// }
+//		return utils.GenericResponse(c, fiber.StatusOK, message)
+//	}
 func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
 
 	userID, ok := c.Locals("userID").(string)

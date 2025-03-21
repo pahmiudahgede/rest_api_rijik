@@ -3,9 +3,10 @@ package router
 import (
 	"os"
 
+	"rijig/middleware"
+	"rijig/presentation"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/middleware"
-	"github.com/pahmiudahgede/senggoldong/presentation"
 )
 
 func SetupRoutes(app *fiber.App) {

@@ -7,8 +7,9 @@ import (
 	"log"
 	"time"
 
+	"rijig/config"
+
 	"github.com/go-redis/redis/v8"
-	"github.com/pahmiudahgede/senggoldong/config"
 )
 
 var ctx = context.Background()

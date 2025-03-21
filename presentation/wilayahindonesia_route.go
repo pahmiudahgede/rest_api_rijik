@@ -1,13 +1,14 @@
 package presentation
 
 import (
+	"rijig/config"
+	"rijig/internal/handler"
+	"rijig/internal/repositories"
+	"rijig/internal/services"
+	"rijig/middleware"
+	"rijig/utils"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/config"
-	"github.com/pahmiudahgede/senggoldong/internal/handler"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/internal/services"
-	"github.com/pahmiudahgede/senggoldong/middleware"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 func WilayahRouter(api fiber.Router) {
@@ -16,20 +17,20 @@ func WilayahRouter(api fiber.Router) {
 	wilayahService := services.NewWilayahIndonesiaService(wilayahRepo)
 	wilayahHandler := handler.NewWilayahImportHandler(wilayahService)
 
-	api.Post("/import/data-wilayah-indonesia", middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RoleAdministrator), wilayahHandler.ImportWilayahData)
+	api.Post("/import/data-wilayah-indonesia", middleware.RoleMiddleware(utils.RoleAdministrator), wilayahHandler.ImportWilayahData)
 
 	wilayahAPI := api.Group("/wilayah-indonesia")
 
-	wilayahAPI.Get("/provinces", middleware.AuthMiddleware, wilayahHandler.GetProvinces)
-	wilayahAPI.Get("/provinces/:provinceid", middleware.AuthMiddleware, wilayahHandler.GetProvinceByID)
+	wilayahAPI.Get("/provinces", wilayahHandler.GetProvinces)
+	wilayahAPI.Get("/provinces/:provinceid", wilayahHandler.GetProvinceByID)
 
-	wilayahAPI.Get("/regencies", middleware.AuthMiddleware, wilayahHandler.GetAllRegencies)
-	wilayahAPI.Get("/regencies/:regencyid", middleware.AuthMiddleware, wilayahHandler.GetRegencyByID)
+	wilayahAPI.Get("/regencies", wilayahHandler.GetAllRegencies)
+	wilayahAPI.Get("/regencies/:regencyid", wilayahHandler.GetRegencyByID)
 
-	wilayahAPI.Get("/districts", middleware.AuthMiddleware, wilayahHandler.GetAllDistricts)
-	wilayahAPI.Get("/districts/:districtid", middleware.AuthMiddleware, wilayahHandler.GetDistrictByID)
+	wilayahAPI.Get("/districts", wilayahHandler.GetAllDistricts)
+	wilayahAPI.Get("/districts/:districtid", wilayahHandler.GetDistrictByID)
 
-	wilayahAPI.Get("/villages", middleware.AuthMiddleware, wilayahHandler.GetAllVillages)
-	wilayahAPI.Get("/villages/:villageid", middleware.AuthMiddleware, wilayahHandler.GetVillageByID)
+	wilayahAPI.Get("/villages", wilayahHandler.GetAllVillages)
+	wilayahAPI.Get("/villages/:villageid", wilayahHandler.GetVillageByID)
 
 }

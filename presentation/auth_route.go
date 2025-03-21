@@ -1,13 +1,14 @@
 package presentation
 
 import (
+	"rijig/config"
+	"rijig/internal/handler"
+	"rijig/internal/repositories"
+	"rijig/internal/services"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/config"
-	"github.com/pahmiudahgede/senggoldong/internal/handler"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/internal/services"
 	// "gorm.io/gorm"
-	// "github.com/pahmiudahgede/senggoldong/middleware"
+	// "rijig/middleware"
 )
 
 func AuthRouter(api fiber.Router) {
@@ -29,12 +30,25 @@ func AuthRouter(api fiber.Router) {
 	// authRoutes := api.Group("/auth")
 	// authRoutes.Post("/send-otp", authHandler.SendOTP)
 	// authRoutes.Post("/verify-otp", authHandler.VerifyOTP)
-	userRepo := repositories.NewUserRepository(config.DB)
-	authService := services.NewAuthService(userRepo)
+	// userRepo := repositories.NewUserRepository(config.DB)
+	// authService := services.NewAuthService(userRepo)
 
+	// authHandler := handler.NewAuthHandler(authService)
+
+	// // Routes
+	// api.Post("/register", authHandler.Register)
+	// api.Post("/verify-otp", authHandler.VerifyOTP)
+	userRepo := repositories.NewUserRepository(config.DB)
+	roleRepo := repositories.NewRoleRepository(config.DB)
+	redisRepo := repositories.NewRedisRepository(config.RedisClient)
+
+	// Setup Service
+	authService := services.NewAuthService(userRepo, roleRepo, redisRepo)
+
+	// Setup Handler
 	authHandler := handler.NewAuthHandler(authService)
 
-	// Routes
-	api.Post("/register", authHandler.Register)
+	// Define Routes
+	api.Post("/register", authHandler.Register) // Route untuk registrasi
 	api.Post("/verify-otp", authHandler.VerifyOTP)
 }

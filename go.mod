@@ -1,4 +1,4 @@
-module github.com/pahmiudahgede/senggoldong
+module rijig
 
 go 1.23.3
 

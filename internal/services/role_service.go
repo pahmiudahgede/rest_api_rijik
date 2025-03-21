@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/utils"
+	"rijig/dto"
+	"rijig/internal/repositories"
+	"rijig/utils"
 )
 
 type RoleService interface {

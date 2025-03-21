@@ -1,8 +1,9 @@
 package middleware
 
 import (
+	"rijig/utils"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 func RoleMiddleware(allowedRoles ...string) fiber.Handler {

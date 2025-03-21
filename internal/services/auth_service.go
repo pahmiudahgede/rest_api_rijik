@@ -1,103 +1,127 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/pahmiudahgede/senggoldong/config"
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/model"
+	"math/rand"
+
+	"rijig/config"
+	"rijig/dto"
+	"rijig/internal/repositories"
+	"rijig/model"
 )
 
 type AuthService interface {
-	RegisterUser(request dto.RegisterRequest) (*model.User, error)
-	VerifyOTP(phone, otp string) error
-	GetUserByPhone(phone string) (*model.User, error)
-	GenerateJWT(user *model.User) (string, error)
+	RegisterUser(request *dto.RegisterRequest) error
+	VerifyOTP(request *dto.VerifyOTPRequest) error
 }
 
 type authService struct {
-	UserRepo repositories.UserRepository
+	userRepo  repositories.UserRepository
+	roleRepo  repositories.RoleRepository
+	redisRepo repositories.RedisRepository
 }
 
-func NewAuthService(userRepo repositories.UserRepository) AuthService {
-	return &authService{UserRepo: userRepo}
+func NewAuthService(userRepo repositories.UserRepository, roleRepo repositories.RoleRepository, redisRepo repositories.RedisRepository) AuthService {
+	return &authService{
+		userRepo:  userRepo,
+		roleRepo:  roleRepo,
+		redisRepo: redisRepo,
+	}
 }
 
-func (s *authService) RegisterUser(request dto.RegisterRequest) (*model.User, error) {
+func (s *authService) RegisterUser(request *dto.RegisterRequest) error {
 
-	user, err := s.UserRepo.FindByPhone(request.Phone)
-	if err == nil && user != nil {
-		return nil, fmt.Errorf("user with phone %s already exists", request.Phone)
+	if request.RoleID == "" {
+		return fmt.Errorf("role_id cannot be empty")
 	}
 
-	user = &model.User{
-		Phone:         request.Phone,
-		RoleID:        request.RoleID,
-		EmailVerified: false,
-	}
-
-	err = s.UserRepo.CreateUser(user)
+	role, err := s.roleRepo.FindByID(request.RoleID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %v", err)
+		return fmt.Errorf("role not found: %v", err)
+	}
+	if role == nil {
+		return fmt.Errorf("role with ID %s not found", request.RoleID)
 	}
 
-	_, err = s.SendOTP(request.Phone)
+	existingUser, err := s.userRepo.FindByPhone(request.Phone)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send OTP: %v", err)
+		return fmt.Errorf("failed to check existing user: %v", err)
+	}
+	if existingUser != nil {
+		return fmt.Errorf("phone number already registered")
 	}
 
-	return user, nil
+	temporaryData := &model.User{
+		Phone:  request.Phone,
+		RoleID: request.RoleID,
+	}
+
+	err = s.redisRepo.StoreData(request.Phone, temporaryData, 1*time.Hour)
+	if err != nil {
+		return fmt.Errorf("failed to store registration data in Redis: %v", err)
+	}
+
+	otp := generateOTP()
+	err = s.redisRepo.StoreData("otp:"+request.Phone, otp, 10*time.Minute)
+	if err != nil {
+		return fmt.Errorf("failed to store OTP in Redis: %v", err)
+	}
+
+	err = config.SendWhatsAppMessage(request.Phone, fmt.Sprintf("Your OTP is: %s", otp))
+	if err != nil {
+		return fmt.Errorf("failed to send OTP via WhatsApp: %v", err)
+	}
+
+	log.Printf("OTP sent to phone number: %s", request.Phone)
+	return nil
 }
 
-func (s *authService) GetUserByPhone(phone string) (*model.User, error) {
-	user, err := s.UserRepo.FindByPhone(phone)
+func (s *authService) VerifyOTP(request *dto.VerifyOTPRequest) error {
+
+	storedOTP, err := s.redisRepo.GetData("otp:" + request.Phone)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving user by phone: %v", err)
-	}
-	if user == nil {
-		return nil, fmt.Errorf("user not found")
-	}
-	return user, nil
-}
-
-func (s *authService) SendOTP(phone string) (string, error) {
-	otpCode := generateOTP()
-
-	message := fmt.Sprintf("Your OTP code is: %s", otpCode)
-	err := config.SendWhatsAppMessage(phone, message)
-	if err != nil {
-		return "", fmt.Errorf("failed to send OTP via WhatsApp: %v", err)
-	}
-
-	expirationTime := 5 * time.Minute
-	err = config.RedisClient.Set(config.Ctx, phone, otpCode, expirationTime).Err()
-	if err != nil {
-		return "", fmt.Errorf("failed to store OTP in Redis: %v", err)
-	}
-
-	return otpCode, nil
-}
-
-func (s *authService) VerifyOTP(phone, otp string) error {
-
-	otpRecord, err := config.RedisClient.Get(config.Ctx, phone).Result()
-	if err == redis.Nil {
-
-		return fmt.Errorf("OTP not found or expired")
-	} else if err != nil {
-
 		return fmt.Errorf("failed to retrieve OTP from Redis: %v", err)
 	}
-
-	if otp != otpRecord {
+	if storedOTP != request.OTP {
 		return fmt.Errorf("invalid OTP")
 	}
 
-	err = config.RedisClient.Del(config.Ctx, phone).Err()
+	temporaryData, err := s.redisRepo.GetData(request.Phone)
+	if err != nil {
+		return fmt.Errorf("failed to get registration data from Redis: %v", err)
+	}
+	if temporaryData == "" {
+		return fmt.Errorf("no registration data found for phone: %s", request.Phone)
+	}
+
+	temporaryDataStr, ok := temporaryData.(string)
+	if !ok {
+		return fmt.Errorf("failed to assert data to string")
+	}
+
+	temporaryDataBytes := []byte(temporaryDataStr)
+
+	var user model.User
+	err = json.Unmarshal(temporaryDataBytes, &user)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal registration data: %v", err)
+	}
+
+	_, err = s.userRepo.SaveUser(&user)
+	if err != nil {
+		return fmt.Errorf("failed to save user to database: %v", err)
+	}
+
+	err = s.redisRepo.DeleteData(request.Phone)
+	if err != nil {
+		return fmt.Errorf("failed to delete registration data from Redis: %v", err)
+	}
+
+	err = s.redisRepo.DeleteData("otp:" + request.Phone)
 	if err != nil {
 		return fmt.Errorf("failed to delete OTP from Redis: %v", err)
 	}
@@ -105,30 +129,12 @@ func (s *authService) VerifyOTP(phone, otp string) error {
 	return nil
 }
 
-func (s *authService) GenerateJWT(user *model.User) (string, error) {
-	if user == nil || user.Role == nil {
-		return "", fmt.Errorf("user or user role is nil, cannot generate token")
-	}
+func generateOTP() string {
 
-	claims := jwt.MapClaims{
-		"sub":  user.ID,
-		"role": user.Role.RoleName,
-		"iat":  time.Now().Unix(),
-		"exp":  time.Now().Add(time.Hour * 24).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	secretKey := config.GetSecretKey()
-
-	tokenString, err := token.SignedString([]byte(secretKey))
-	if err != nil {
-		return "", fmt.Errorf("failed to generate JWT token: %v", err)
-	}
-
-	return tokenString, nil
+	return fmt.Sprintf("%06d", RandomInt(100000, 999999))
 }
 
-func generateOTP() string {
-	return fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+func RandomInt(min, max int) int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max-min+1) + min
 }

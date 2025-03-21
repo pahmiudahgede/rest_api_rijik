@@ -3,9 +3,10 @@ package middleware
 import (
 	"os"
 
+	"rijig/utils"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 func AuthMiddleware(c *fiber.Ctx) error {

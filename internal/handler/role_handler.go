@@ -1,9 +1,10 @@
 package handler
 
 import (
+	"rijig/internal/services"
+	"rijig/utils"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/pahmiudahgede/senggoldong/internal/services"
-	"github.com/pahmiudahgede/senggoldong/utils"
 )
 
 type RoleHandler struct {

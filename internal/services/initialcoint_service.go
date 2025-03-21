@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pahmiudahgede/senggoldong/dto"
-	"github.com/pahmiudahgede/senggoldong/internal/repositories"
-	"github.com/pahmiudahgede/senggoldong/model"
-	"github.com/pahmiudahgede/senggoldong/utils"
+	"rijig/dto"
+	"rijig/internal/repositories"
+	"rijig/model"
+	"rijig/utils"
 )
 
 type InitialCointService interface {
