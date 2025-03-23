@@ -5,6 +5,7 @@ import (
 	"rijig/internal/handler"
 	"rijig/internal/repositories"
 	"rijig/internal/services"
+	"rijig/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -16,6 +17,7 @@ func AuthRouter(api fiber.Router) {
 
 	authHandler := handler.NewAuthHandler(authService)
 
-	api.Post("/register", authHandler.RegisterUser)
-	api.Post("/verify-otp", authHandler.VerifyOTP)
+	api.Post("/auth", authHandler.RegisterOrLoginHandler)
+	api.Post("/logout", middleware.AuthMiddleware, authHandler.LogoutHandler)
+	api.Post("/verify-otp", authHandler.VerifyOTPHandler)
 }

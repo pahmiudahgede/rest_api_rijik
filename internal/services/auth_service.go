@@ -12,12 +12,14 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
+const otpCooldown = 30 * time.Second
+
 type AuthService interface {
-	RegisterUser(req *dto.RegisterRequest) error
+	RegisterOrLogin(req *dto.RegisterRequest) error
 	VerifyOTP(req *dto.VerifyOTPRequest) (*dto.UserDataResponse, error)
+	Logout(userID, phone string) error
 }
 
 type authService struct {
@@ -29,77 +31,66 @@ func NewAuthService(userRepo repositories.UserRepository, roleRepo repositories.
 	return &authService{userRepo, roleRepo}
 }
 
-const otpCooldown = 30
+func (s *authService) RegisterOrLogin(req *dto.RegisterRequest) error {
 
-func (s *authService) RegisterUser(req *dto.RegisterRequest) error {
-
-	user, err := s.userRepo.GetUserByPhone(req.Phone)
-	if err == nil && user != nil {
-		return errors.New("phone number already registered")
+	if err := s.checkOTPRequestCooldown(req.Phone); err != nil {
+		return err
 	}
 
-	lastOtpSent, err := utils.GetStringData("otp_sent:" + req.Phone)
-	if err == nil && lastOtpSent != "" {
-		lastSentTime, err := time.Parse(time.RFC3339, lastOtpSent)
-		if err != nil {
-			return errors.New("invalid OTP sent timestamp")
-		}
-
-		if time.Since(lastSentTime).Seconds() < otpCooldown {
-			return errors.New("please wait before requesting another OTP")
-		}
+	user, err := s.userRepo.GetUserByPhoneAndRole(req.Phone, req.RoleID)
+	if err != nil {
+		return fmt.Errorf("failed to check existing user: %w", err)
 	}
 
-	userID := uuid.New().String()
+	if user != nil {
+		return s.sendOTP(req.Phone)
+	}
 
 	user = &model.User{
 		Phone:  req.Phone,
 		RoleID: req.RoleID,
 	}
 
-	err = utils.SetJSONData("user:"+userID, user, 10*time.Minute)
+	createdUser, err := s.userRepo.CreateUser(user)
 	if err != nil {
+		return fmt.Errorf("failed to create new user: %w", err)
+	}
+
+	if err := s.saveUserToRedis(createdUser.ID, createdUser, req.Phone); err != nil {
 		return err
 	}
 
-	err = utils.SetStringData("user_phone:"+req.Phone, userID, 10*time.Minute)
-	if err != nil {
-		return err
+	return s.sendOTP(req.Phone)
+}
+
+func (s *authService) checkOTPRequestCooldown(phone string) error {
+	otpSentTime, err := utils.GetStringData("otp_sent:" + phone)
+	if err != nil || otpSentTime == "" {
+		return nil
 	}
-
-	otp := generateOTP()
-
-	err = config.SendWhatsAppMessage(req.Phone, fmt.Sprintf("Your OTP is: %s", otp))
-	if err != nil {
-		return err
+	lastSent, _ := time.Parse(time.RFC3339, otpSentTime)
+	if time.Since(lastSent) < otpCooldown {
+		return errors.New("please wait before requesting a new OTP")
 	}
-
-	err = utils.SetStringData("otp:"+req.Phone, otp, 10*time.Minute)
-	if err != nil {
-		return err
-	}
-
-	err = utils.SetStringData("otp_sent:"+req.Phone, time.Now().Format(time.RFC3339), 10*time.Minute)
-	if err != nil {
-		return err
-	}
-
 	return nil
+}
+
+func (s *authService) sendOTP(phone string) error {
+	otp := generateOTP()
+	if err := config.SendWhatsAppMessage(phone, fmt.Sprintf("Your OTP is: %s", otp)); err != nil {
+		return err
+	}
+
+	if err := utils.SetStringData("otp:"+phone, otp, 10*time.Minute); err != nil {
+		return err
+	}
+	return utils.SetStringData("otp_sent:"+phone, time.Now().Format(time.RFC3339), 10*time.Minute)
 }
 
 func (s *authService) VerifyOTP(req *dto.VerifyOTPRequest) (*dto.UserDataResponse, error) {
 
-	isLoggedIn, err := utils.GetStringData("user_logged_in:" + req.Phone)
-	if err == nil && isLoggedIn == "true" {
-		return nil, errors.New("you are already logged in")
-	}
-
 	storedOTP, err := utils.GetStringData("otp:" + req.Phone)
-	if err != nil {
-		return nil, err
-	}
-
-	if storedOTP == "" {
+	if err != nil || storedOTP == "" {
 		return nil, errors.New("OTP expired or not found")
 	}
 
@@ -107,71 +98,116 @@ func (s *authService) VerifyOTP(req *dto.VerifyOTPRequest) (*dto.UserDataRespons
 		return nil, errors.New("invalid OTP")
 	}
 
-	userID, err := utils.GetStringData("user_phone:" + req.Phone)
-	if err != nil || userID == "" {
-		return nil, errors.New("user data not found in Redis")
+	if err := utils.DeleteData("otp:" + req.Phone); err != nil {
+		return nil, fmt.Errorf("failed to remove OTP from Redis: %w", err)
 	}
 
-	userData, err := utils.GetJSONData("user:" + userID)
-	if err != nil || userData == nil {
-		return nil, errors.New("user data not found in Redis")
+	existingUser, err := s.userRepo.GetUserByPhoneAndRole(req.Phone, req.RoleID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
 
-	user := &model.User{
-		Phone:  userData["phone"].(string),
-		RoleID: userData["roleId"].(string),
+	var user *model.User
+	if existingUser != nil {
+		user = existingUser
+	} else {
+
+		user = &model.User{
+			Phone:  req.Phone,
+			RoleID: req.RoleID,
+		}
+		createdUser, err := s.userRepo.CreateUser(user)
+		if err != nil {
+			return nil, err
+		}
+		user = createdUser
 	}
 
-	createdUser, err := s.userRepo.CreateUser(user)
+	token, err := s.generateJWTToken(user.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	role, err := s.roleRepo.FindByID(createdUser.RoleID)
+	role, err := s.roleRepo.FindByID(user.RoleID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get role: %w", err)
 	}
 
-	token, err := generateJWTToken(createdUser.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	err = utils.SetStringData("user_logged_in:"+req.Phone, "true", 0)
-	if err != nil {
+	if err := s.saveSessionData(user.ID, user.RoleID, role.RoleName, token); err != nil {
 		return nil, err
 	}
 
 	return &dto.UserDataResponse{
-		UserID:   createdUser.ID,
+		UserID:   user.ID,
 		UserRole: role.RoleName,
 		Token:    token,
 	}, nil
 }
 
-func generateOTP() string {
-	rand.Seed(time.Now().UnixNano())
-	otp := fmt.Sprintf("%06d", rand.Intn(1000000))
-	return otp
+func (s *authService) saveUserToRedis(userID string, user *model.User, phone string) error {
+	if err := utils.SetJSONData("user:"+userID, user, 10*time.Minute); err != nil {
+		return fmt.Errorf("failed to store user data in Redis: %w", err)
+	}
+
+	if err := utils.SetStringData("user_phone:"+userID, phone, 10*time.Minute); err != nil {
+		return fmt.Errorf("failed to store user phone in Redis: %w", err)
+	}
+
+	return nil
 }
 
-func generateJWTToken(userID string) (string, error) {
-
+func (s *authService) generateJWTToken(userID string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
-
 	claims := &jwt.RegisteredClaims{
-		Issuer:    userID,
+		Subject:   userID,
 		ExpiresAt: jwt.NewNumericDate(expirationTime),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	secretKey := config.GetSecretKey()
 
-	signedToken, err := token.SignedString([]byte(secretKey))
-	if err != nil {
-		return "", err
+	return token.SignedString([]byte(secretKey))
+}
+
+func (s *authService) saveSessionData(userID string, roleID string, roleName string, token string) error {
+	sessionKey := fmt.Sprintf("session:%s", userID)
+	sessionData := map[string]interface{}{
+		"userID":   userID,
+		"roleID":   roleID,
+		"roleName": roleName,
 	}
 
-	return signedToken, nil
+	if err := utils.SetJSONData(sessionKey, sessionData, 24*time.Hour); err != nil {
+		return fmt.Errorf("failed to set session data: %w", err)
+	}
+
+	if err := utils.SetStringData("session_token:"+userID, token, 24*time.Hour); err != nil {
+		return fmt.Errorf("failed to set session token: %w", err)
+	}
+
+	return nil
+}
+
+func (s *authService) Logout(userID, phone string) error {
+	keys := []string{
+		"session:" + userID,
+		"session_token:" + userID,
+		"user_logged_in:" + userID,
+		"user:" + userID,
+		"user_phone:" + userID,
+		"otp_sent:" + phone,
+	}
+
+	for _, key := range keys {
+		if err := utils.DeleteData(key); err != nil {
+			return fmt.Errorf("failed to delete key %s from Redis: %w", key, err)
+		}
+	}
+
+	return nil
+}
+
+func generateOTP() string {
+	randGenerator := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return fmt.Sprintf("%04d", randGenerator.Intn(10000))
 }

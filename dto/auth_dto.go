@@ -11,7 +11,8 @@ type RegisterRequest struct {
 }
 
 type VerifyOTPRequest struct {
-	Phone string `json:"phone"`
+	RoleID string `json:"role_id"`
+	Phone  string `json:"phone"`
 	OTP   string `json:"otp"`
 }
 
