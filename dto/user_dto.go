@@ -37,12 +37,6 @@ func (r *UpdateUserDTO) Validate() (map[string][]string, bool) {
 		errors["phone"] = append(errors["phone"], "Invalid phone number format. Use +62 followed by 9-13 digits")
 	}
 
-	// if strings.TrimSpace(r.Email) == "" {
-	// 	errors["email"] = append(errors["email"], "Email is required")
-	// } else if !IsValidEmail(r.Email) {
-	// 	errors["email"] = append(errors["email"], "Invalid email format")
-	// }
-
 	if len(errors) > 0 {
 		return errors, false
 	}

@@ -45,12 +45,12 @@ func (s *userProfileService) prepareUserResponse(user *model.User) *dto.UserResp
 
 	return &dto.UserResponseDTO{
 		ID:            user.ID,
-		Username:      user.Username,
+		// Username:      user.Username,
 		Avatar:        user.Avatar,
 		Name:          user.Name,
 		Phone:         user.Phone,
 		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
+		// EmailVerified: user.EmailVerified,
 		RoleName:      user.Role.RoleName,
 		CreatedAt:     createdAt,
 		UpdatedAt:     updatedAt,
@@ -100,12 +100,12 @@ func (s *userProfileService) GetAllUsers() ([]dto.UserResponseDTO, error) {
 	for _, user := range users {
 		response = append(response, dto.UserResponseDTO{
 			ID:            user.ID,
-			Username:      user.Username,
+			// Username:      user.Username,
 			Avatar:        user.Avatar,
 			Name:          user.Name,
 			Phone:         user.Phone,
-			Email:         user.Email,
-			EmailVerified: user.EmailVerified,
+			// Email:         user.Email,
+			// EmailVerified: user.EmailVerified,
 			RoleName:      user.Role.RoleName,
 			CreatedAt:     user.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:     user.UpdatedAt.Format(time.RFC3339),
@@ -125,12 +125,12 @@ func (s *userProfileService) GetUsersByRoleID(roleID string) ([]dto.UserResponse
 	for _, user := range users {
 		response = append(response, dto.UserResponseDTO{
 			ID:            user.ID,
-			Username:      user.Username,
+			// Username:      user.Username,
 			Avatar:        user.Avatar,
 			Name:          user.Name,
 			Phone:         user.Phone,
-			Email:         user.Email,
-			EmailVerified: user.EmailVerified,
+			// Email:         user.Email,
+			// EmailVerified: user.EmailVerified,
 			RoleName:      user.Role.RoleName,
 			CreatedAt:     user.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:     user.UpdatedAt.Format(time.RFC3339),

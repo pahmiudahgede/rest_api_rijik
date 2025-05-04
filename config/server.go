@@ -18,8 +18,8 @@ func StartServer(app *fiber.App) {
 
 	address := fmt.Sprintf("%s:%s", host, port)
 
-	log.Printf("Server is running on http://%s", address)
+	log.Printf("server berjalan di http://%s", address)
 	if err := app.Listen(address); err != nil {
-		log.Fatalf("Error starting server: %v", err)
+		log.Fatalf("gagal saat menjalankan server: %v", err)
 	}
 }

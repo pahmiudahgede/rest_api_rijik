@@ -11,15 +11,14 @@ import (
 )
 
 func UserPinRouter(api fiber.Router) {
-
 	userPinRepo := repositories.NewUserPinRepository(config.DB)
 
 	userPinService := services.NewUserPinService(userPinRepo)
 
 	userPinHandler := handler.NewUserPinHandler(userPinService)
 
-	api.Post("/user/set-pin", middleware.AuthMiddleware, userPinHandler.CreateUserPin)
-	api.Post("/user/verif-pin", middleware.AuthMiddleware, userPinHandler.VerifyUserPin)
-	api.Get("/user/cek-pin-status", middleware.AuthMiddleware, userPinHandler.CheckPinStatus)
-	api.Patch("/user/update-pin", middleware.AuthMiddleware, userPinHandler.UpdateUserPin)
+	api.Post("/set-pin", middleware.AuthMiddleware, userPinHandler.CreateUserPin)
+	api.Post("/verif-pin", middleware.AuthMiddleware, userPinHandler.VerifyUserPin)
+	api.Get("/cek-pin-status", middleware.AuthMiddleware, userPinHandler.CheckPinStatus)
+	api.Patch("/update-pin", middleware.AuthMiddleware, userPinHandler.UpdateUserPin)
 }

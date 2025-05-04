@@ -6,14 +6,13 @@ import (
 )
 
 type RegisterRequest struct {
-	RoleID string `json:"role_id"`
-	Phone  string `json:"phone"`
+	Phone string `json:"phone"`
 }
 
 type VerifyOTPRequest struct {
-	RoleID string `json:"role_id"`
-	Phone  string `json:"phone"`
+	Phone string `json:"phone"`
 	OTP   string `json:"otp"`
+	DeviceID string `json:"device_id"`
 }
 
 type UserDataResponse struct {
@@ -24,10 +23,6 @@ type UserDataResponse struct {
 
 func (r *RegisterRequest) Validate() (map[string][]string, bool) {
 	errors := make(map[string][]string)
-
-	if strings.TrimSpace(r.RoleID) == "" {
-		errors["role_id"] = append(errors["role_id"], "Role ID is required")
-	}
 
 	if strings.TrimSpace(r.Phone) == "" {
 		errors["phone"] = append(errors["phone"], "Phone is required")

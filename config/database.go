@@ -45,6 +45,8 @@ func ConnectDatabase() {
 		&model.Role{},
 		&model.UserPin{},
 		&model.Address{},
+		&model.IdentityCard{},
+		&model.CompanyProfile{},
 		// =>user preparation<=
 
 		// =>store preparation<=

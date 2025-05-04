@@ -5,6 +5,7 @@ import (
 
 	"rijig/middleware"
 	"rijig/presentation"
+	presentationn "rijig/presentation/auth"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,7 +16,13 @@ func SetupRoutes(app *fiber.App) {
 	api := app.Group(os.Getenv("BASE_URL"))
 	api.Use(middleware.APIKeyMiddleware)
 
-	presentation.AuthRouter(api)
+	// || auth router || //
+	// presentation.AuthRouter(api)
+	presentationn.AdminAuthRouter(api)
+	presentationn.AuthPengelolaRouter(api)
+	presentationn.AuthPengepulRouter(api)
+	presentationn.AuthMasyarakatRouter(api)
+	// || auth router || //
 	presentation.UserProfileRouter(api)
 	presentation.UserPinRouter(api)
 	presentation.RoleRouter(api)
