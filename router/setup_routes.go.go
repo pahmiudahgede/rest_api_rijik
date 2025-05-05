@@ -18,12 +18,13 @@ func SetupRoutes(app *fiber.App) {
 
 	// || auth router || //
 	// presentation.AuthRouter(api)
-	presentationn.AdminAuthRouter(api)
+	presentationn.AuthAdminRouter(api)
 	presentationn.AuthPengelolaRouter(api)
 	presentationn.AuthPengepulRouter(api)
 	presentationn.AuthMasyarakatRouter(api)
 	// || auth router || //
 	presentation.IdentityCardRouter(api)
+	presentation.CompanyProfileRouter(api)
 
 	presentation.UserProfileRouter(api)
 	presentation.UserPinRouter(api)

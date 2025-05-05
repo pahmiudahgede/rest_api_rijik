@@ -13,7 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func AdminAuthRouter(api fiber.Router) {
+func AuthAdminRouter(api fiber.Router) {
 	secretKey := os.Getenv("SECRET_KEY")
 	if secretKey == "" {
 		log.Fatal("SECRET_KEY is not set in the environment variables")

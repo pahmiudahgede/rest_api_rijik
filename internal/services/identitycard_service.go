@@ -22,11 +22,13 @@ type IdentityCardService interface {
 
 type identityCardService struct {
 	identityCardRepo repositories.IdentityCardRepository
+	userRepo         repositories.UserProfileRepository
 }
 
-func NewIdentityCardService(identityCardRepo repositories.IdentityCardRepository) IdentityCardService {
+func NewIdentityCardService(identityCardRepo repositories.IdentityCardRepository, userRepo repositories.UserProfileRepository) IdentityCardService {
 	return &identityCardService{
 		identityCardRepo: identityCardRepo,
+		userRepo:         userRepo,
 	}
 }
 
@@ -156,6 +158,17 @@ func (s *identityCardService) CreateIdentityCard(userID string, request *dto.Req
 		return nil, fmt.Errorf("failed to create identity card: %v", err)
 	}
 
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failde to fint user: %v", err)
+	}
+
+	user.RegistrationStatus = "onreview"
+
+	err = s.userRepo.Update(user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user: %v", err)
+	}
 	idcardResponseDTO, _ := FormatResponseIdentityCars(identityCard)
 
 	return idcardResponseDTO, nil

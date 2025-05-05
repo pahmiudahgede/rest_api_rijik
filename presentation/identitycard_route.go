@@ -13,7 +13,8 @@ import (
 
 func IdentityCardRouter(api fiber.Router) {
 	identityCardRepo := repositories.NewIdentityCardRepository(config.DB)
-	identityCardService := services.NewIdentityCardService(identityCardRepo)
+	userRepo := repositories.NewUserProfileRepository(config.DB)
+	identityCardService := services.NewIdentityCardService(identityCardRepo, userRepo)
 	identityCardHandler := handler.NewIdentityCardHandler(identityCardService)
 
 	identityCardApi := api.Group("/identitycard")

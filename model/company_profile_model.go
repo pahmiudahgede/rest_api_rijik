@@ -12,13 +12,12 @@ type CompanyProfile struct {
 	CompanyAddress     string    `gorm:"not null" json:"company_address"`
 	CompanyPhone       string    `gorm:"not null" json:"company_phone"`
 	CompanyEmail       string    `gorm:"not null" json:"company_email"`
-	CompanyLogo        string    `gorm:"not null" json:"company_logo"`
-	CompanyWebsite     string    `json:"company_website"`
-	TaxID              string    `json:"tax_id"`
-	FoundedDate        time.Time `json:"founded_date"`
-	CompanyType        string    `gorm:"not null" json:"company_type"`
+	CompanyLogo        string    `json:"company_logo,omitempty"`
+	CompanyWebsite     string    `json:"company_website,omitempty"`
+	TaxID              string    `json:"tax_id,omitempty"`
+	FoundedDate        string    `json:"founded_date,omitempty"`
+	CompanyType        string    `json:"company_type,omitempty"`
 	CompanyDescription string    `gorm:"type:text" json:"company_description"`
-	CompanyStatus      string    `gorm:"not null" json:"company_status"`
 	CreatedAt          time.Time `gorm:"default:current_timestamp" json:"created_at"`
 	UpdatedAt          time.Time `gorm:"default:current_timestamp" json:"updated_at"`
 }
