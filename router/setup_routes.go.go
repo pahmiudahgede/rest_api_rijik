@@ -11,10 +11,10 @@ import (
 )
 
 func SetupRoutes(app *fiber.App) {
-	app.Static(os.Getenv("BASE_URL")+"/uploads", "./public"+os.Getenv("BASE_URL")+"/uploads")
 
 	api := app.Group(os.Getenv("BASE_URL"))
 	api.Use(middleware.APIKeyMiddleware)
+	api.Static("/uploads", "./public"+os.Getenv("BASE_URL")+"/uploads")
 
 	// || auth router || //
 	// presentation.AuthRouter(api)
@@ -23,6 +23,8 @@ func SetupRoutes(app *fiber.App) {
 	presentationn.AuthPengepulRouter(api)
 	presentationn.AuthMasyarakatRouter(api)
 	// || auth router || //
+	presentation.IdentityCardRouter(api)
+
 	presentation.UserProfileRouter(api)
 	presentation.UserPinRouter(api)
 	presentation.RoleRouter(api)
