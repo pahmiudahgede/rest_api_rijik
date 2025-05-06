@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"rijig/dto"
 	"rijig/internal/services"
 	"rijig/utils"
@@ -22,7 +23,13 @@ func (h *TrashHandler) CreateCategory(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
 
-	categoryResponse, err := h.TrashService.CreateCategory(request)
+	iconTrash, err := c.FormFile("icon")
+	if err != nil {
+		log.Printf("Error retrieving card photo from request: %v", err)
+		return utils.ErrorResponse(c, "Card photo is required")
+	}
+
+	categoryResponse, err := h.TrashService.CreateCategory(request, iconTrash)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Failed to create category: "+err.Error())
 	}
@@ -84,7 +91,13 @@ func (h *TrashHandler) UpdateCategory(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid request body"}})
 	}
 
-	updatedCategory, err := h.TrashService.UpdateCategory(id, request)
+	iconTrash, err := c.FormFile("icon")
+	if err != nil && err.Error() != "File not found" {
+		log.Printf("Error retrieving icon trash from request: %v", err)
+		return utils.ErrorResponse(c, "icon trash is required")
+	}
+
+	updatedCategory, err := h.TrashService.UpdateCategory(id, request, iconTrash)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, "Error updating category: "+err.Error())
 	}

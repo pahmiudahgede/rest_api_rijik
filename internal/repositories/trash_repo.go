@@ -1,7 +1,9 @@
 package repositories
 
 import (
+	"errors"
 	"fmt"
+	"log"
 
 	"rijig/model"
 
@@ -16,6 +18,7 @@ type TrashRepository interface {
 	GetTrashDetailByID(id string) (*model.TrashDetail, error)
 	GetDetailsByCategoryID(categoryID string) ([]model.TrashDetail, error)
 	UpdateCategoryName(id string, newName string) error
+	UpdateCategory(id string, updateTrashCategory *model.TrashCategory) (*model.TrashCategory, error)
 	UpdateTrashDetail(id string, description string, price float64) error
 	DeleteCategory(id string) error
 	DeleteTrashDetail(id string) error
@@ -82,6 +85,23 @@ func (r *trashRepository) UpdateCategoryName(id string, newName string) error {
 		return fmt.Errorf("failed to update category name: %v", err)
 	}
 	return nil
+}
+
+func (r *trashRepository) UpdateCategory(id string, updateTrashCategory *model.TrashCategory) (*model.TrashCategory, error) {
+	var existingtrashCtgry model.TrashCategory
+	if err := r.DB.Where("id = ?", id).First(&existingtrashCtgry).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("trashCategory with ID %s not found", id)
+		}
+		log.Printf("Error fetching trash category for update: %v", err)
+		return nil, fmt.Errorf("error fetching trash category for update: %w", err)
+	}
+
+	if err := r.DB.Save(&existingtrashCtgry).Error; err != nil {
+		log.Printf("Error updating trash category: %v", err)
+		return nil, fmt.Errorf("failed to update trash category: %w", err)
+	}
+	return &existingtrashCtgry, nil
 }
 
 func (r *trashRepository) UpdateTrashDetail(id string, description string, price float64) error {

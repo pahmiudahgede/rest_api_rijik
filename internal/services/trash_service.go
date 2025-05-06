@@ -2,23 +2,29 @@ package services
 
 import (
 	"fmt"
+	"log"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 	"time"
 
 	"rijig/dto"
 	"rijig/internal/repositories"
 	"rijig/model"
 	"rijig/utils"
+
+	"github.com/google/uuid"
 )
 
 type TrashService interface {
-	CreateCategory(request dto.RequestTrashCategoryDTO) (*dto.ResponseTrashCategoryDTO, error)
+	CreateCategory(request dto.RequestTrashCategoryDTO, iconTrash *multipart.FileHeader) (*dto.ResponseTrashCategoryDTO, error)
 	AddDetailToCategory(request dto.RequestTrashDetailDTO) (*dto.ResponseTrashDetailDTO, error)
 
 	GetCategories() ([]dto.ResponseTrashCategoryDTO, error)
 	GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO, error)
 	GetTrashDetailByID(id string) (*dto.ResponseTrashDetailDTO, error)
 
-	UpdateCategory(id string, request dto.RequestTrashCategoryDTO) (*dto.ResponseTrashCategoryDTO, error)
+	UpdateCategory(id string, request dto.RequestTrashCategoryDTO, iconPath *multipart.FileHeader) (*dto.ResponseTrashCategoryDTO, error)
 	UpdateDetail(id string, request dto.RequestTrashDetailDTO) (*dto.ResponseTrashDetailDTO, error)
 
 	DeleteCategory(id string) error
@@ -33,14 +39,81 @@ func NewTrashService(trashRepo repositories.TrashRepository) TrashService {
 	return &trashService{TrashRepo: trashRepo}
 }
 
-func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO) (*dto.ResponseTrashCategoryDTO, error) {
+func (s *trashService) saveIconOfTrash(iconTrash *multipart.FileHeader) (string, error) {
+	pathImage := "/uploads/icontrash/"
+	iconTrashDir := "./public" + os.Getenv("BASE_URL") + pathImage
+	if _, err := os.Stat(iconTrashDir); os.IsNotExist(err) {
+
+		if err := os.MkdirAll(iconTrashDir, os.ModePerm); err != nil {
+			return "", fmt.Errorf("failed to create directory for icon trash: %v", err)
+		}
+	}
+
+	allowedExtensions := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".svg": true}
+	extension := filepath.Ext(iconTrash.Filename)
+	if !allowedExtensions[extension] {
+		return "", fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
+	}
+
+	iconTrashFIleName := fmt.Sprintf("%s_icontrash%s", uuid.New().String(), extension)
+	iconTrashPath := filepath.Join(iconTrashDir, iconTrashFIleName)
+
+	src, err := iconTrash.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open uploaded file: %v", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(iconTrashPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create icon trash file: %v", err)
+	}
+	defer dst.Close()
+
+	if _, err := dst.ReadFrom(src); err != nil {
+		return "", fmt.Errorf("failed to save icon trash: %v", err)
+	}
+
+	iconTrashUrl := fmt.Sprintf("%s%s", pathImage, iconTrashFIleName)
+
+	return iconTrashUrl, nil
+}
+
+func deleteIconTrashFIle(imagePath string) error {
+	if imagePath == "" {
+		return nil
+	}
+
+	baseDir := "./public/" + os.Getenv("BASE_URL")
+	absolutePath := baseDir + imagePath
+
+	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
+		return fmt.Errorf("image file not found: %v", err)
+	}
+
+	err := os.Remove(absolutePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete image: %v", err)
+	}
+
+	log.Printf("Image deleted successfully: %s", absolutePath)
+	return nil
+}
+
+func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO, iconTrash *multipart.FileHeader) (*dto.ResponseTrashCategoryDTO, error) {
 	errors, valid := request.ValidateTrashCategoryInput()
 	if !valid {
 		return nil, fmt.Errorf("validation error: %v", errors)
 	}
 
+	icontrashPath, err := s.saveIconOfTrash(iconTrash)
+	if err != nil {
+		return nil, fmt.Errorf("gagal menyimpan ikon sampah: %v", err)
+	}
+
 	category := model.TrashCategory{
 		Name: request.Name,
+		Icon: icontrashPath,
 	}
 
 	if err := s.TrashRepo.CreateCategory(&category); err != nil {
@@ -53,6 +126,7 @@ func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO) (*dto
 	categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 		ID:        category.ID,
 		Name:      category.Name,
+		Icon:      category.Icon,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}
@@ -70,6 +144,7 @@ func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO) (*dto
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
 				ID:        c.ID,
 				Name:      c.Name,
+				Icon:      c.Icon,
 				CreatedAt: ccreatedAt,
 				UpdatedAt: cupdatedAt,
 			})
@@ -129,6 +204,7 @@ func (s *trashService) AddDetailToCategory(request dto.RequestTrashDetailDTO) (*
 		categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 			ID:        category.ID,
 			Name:      category.Name,
+			Icon:      category.Icon,
 			CreatedAt: ccreatedAt,
 			UpdatedAt: cupdatedAt,
 		}
@@ -153,6 +229,7 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
 				ID:        categoryData["id"].(string),
 				Name:      categoryData["name"].(string),
+				Icon:      categoryData["icon"].(string),
 				CreatedAt: categoryData["createdAt"].(string),
 				UpdatedAt: categoryData["updatedAt"].(string),
 			})
@@ -172,6 +249,7 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 		categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
 			ID:        category.ID,
 			Name:      category.Name,
+			Icon:      category.Icon,
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 		})
@@ -196,6 +274,7 @@ func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO
 		return &dto.ResponseTrashCategoryDTO{
 			ID:        categoryData["id"].(string),
 			Name:      categoryData["name"].(string),
+			Icon:      categoryData["icon"].(string),
 			CreatedAt: categoryData["createdAt"].(string),
 			UpdatedAt: categoryData["updatedAt"].(string),
 			Details:   details,
@@ -213,6 +292,7 @@ func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO
 	categoryDTO := &dto.ResponseTrashCategoryDTO{
 		ID:        category.ID,
 		Name:      category.Name,
+		Icon:      category.Icon,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}
@@ -220,13 +300,15 @@ func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO
 	if category.Details != nil {
 		var detailsDTO []dto.ResponseTrashDetailDTO
 		for _, detail := range category.Details {
+			createdAt, _ := utils.FormatDateToIndonesianFormat(detail.CreatedAt)
+			updatedAt, _ := utils.FormatDateToIndonesianFormat(detail.UpdatedAt)
 			detailsDTO = append(detailsDTO, dto.ResponseTrashDetailDTO{
 				ID:          detail.ID,
 				CategoryID:  detail.CategoryID,
 				Description: detail.Description,
 				Price:       detail.Price,
-				CreatedAt:   detail.CreatedAt.Format("02-01-2006 15:04"),
-				UpdatedAt:   detail.UpdatedAt.Format("02-01-2006 15:04"),
+				CreatedAt:   createdAt,
+				UpdatedAt:   updatedAt,
 			})
 		}
 		categoryDTO.Details = detailsDTO
@@ -281,19 +363,40 @@ func (s *trashService) GetTrashDetailByID(id string) (*dto.ResponseTrashDetailDT
 	return detailDTO, nil
 }
 
-func (s *trashService) UpdateCategory(id string, request dto.RequestTrashCategoryDTO) (*dto.ResponseTrashCategoryDTO, error) {
+func (s *trashService) UpdateCategory(id string, request dto.RequestTrashCategoryDTO, iconPath *multipart.FileHeader) (*dto.ResponseTrashCategoryDTO, error) {
 	errors, valid := request.ValidateTrashCategoryInput()
 	if !valid {
 		return nil, fmt.Errorf("validation error: %v", errors)
 	}
 
-	if err := s.TrashRepo.UpdateCategoryName(id, request.Name); err != nil {
-		return nil, fmt.Errorf("failed to update category: %v", err)
-	}
-
 	category, err := s.TrashRepo.GetCategoryByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("category not found: %v", err)
+	}
+
+	if category.Icon != "" {
+		err := deleteIconTrashFIle(category.Icon)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete old image: %v", err)
+		}
+	}
+
+	var iconTrashPath string
+	if iconPath != nil {
+		iconTrashPath, err = s.saveIconOfTrash(iconPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save card photo: %v", err)
+		}
+	}
+
+	if iconTrashPath != "" {
+		category.Icon = iconTrashPath
+	}
+
+	category, err = s.TrashRepo.UpdateCategory(id, category)
+	if err != nil {
+		log.Printf("Error updating trash category: %v", err)
+		return nil, fmt.Errorf("failed to update category: %v", err)
 	}
 
 	createdAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
@@ -302,6 +405,7 @@ func (s *trashService) UpdateCategory(id string, request dto.RequestTrashCategor
 	categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 		ID:        category.ID,
 		Name:      category.Name,
+		Icon:      category.Icon,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}
@@ -319,6 +423,7 @@ func (s *trashService) UpdateCategory(id string, request dto.RequestTrashCategor
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
 				ID:        c.ID,
 				Name:      c.Name,
+				Icon:      c.Icon,
 				CreatedAt: ccreatedAt,
 				UpdatedAt: cupdatedAt,
 			})
@@ -376,6 +481,7 @@ func (s *trashService) UpdateDetail(id string, request dto.RequestTrashDetailDTO
 		categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
 			ID:        category.ID,
 			Name:      category.Name,
+			Icon:      category.Icon,
 			CreatedAt: ccreatedAt,
 			UpdatedAt: cupdatedAt,
 		}

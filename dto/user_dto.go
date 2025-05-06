@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"regexp"
+	"rijig/utils"
 	"strings"
 )
 
@@ -18,13 +18,13 @@ type UserResponseDTO struct {
 	UpdatedAt     string  `json:"updatedAt"`
 }
 
-type UpdateUserDTO struct {
+type RequestUserDTO struct {
 	Name  string `json:"name"`
 	Phone string `json:"phone"`
 	Email string `json:"email"`
 }
 
-func (r *UpdateUserDTO) Validate() (map[string][]string, bool) {
+func (r *RequestUserDTO) Validate() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 
 	if strings.TrimSpace(r.Name) == "" {
@@ -33,8 +33,12 @@ func (r *UpdateUserDTO) Validate() (map[string][]string, bool) {
 
 	if strings.TrimSpace(r.Phone) == "" {
 		errors["phone"] = append(errors["phone"], "Phone number is required")
-	} else if !IsValidPhoneNumber(r.Phone) {
+	} else if !utils.IsValidPhoneNumber(r.Phone) {
 		errors["phone"] = append(errors["phone"], "Invalid phone number format. Use +62 followed by 9-13 digits")
+	}
+
+	if strings.TrimSpace(r.Email) != "" && !utils.IsValidEmail(r.Email) {
+		errors["email"] = append(errors["email"], "Invalid email format")
 	}
 
 	if len(errors) > 0 {
@@ -42,18 +46,6 @@ func (r *UpdateUserDTO) Validate() (map[string][]string, bool) {
 	}
 
 	return nil, true
-}
-
-func IsUpdateValidPhoneNumber(phone string) bool {
-
-	re := regexp.MustCompile(`^\+62\d{9,13}$`)
-	return re.MatchString(phone)
-}
-
-func IsUPdateValidEmail(email string) bool {
-
-	re := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	return re.MatchString(email)
 }
 
 type UpdatePasswordDTO struct {
@@ -71,8 +63,8 @@ func (u *UpdatePasswordDTO) Validate() (map[string][]string, bool) {
 
 	if u.NewPassword == "" {
 		errors["new_password"] = append(errors["new_password"], "New password is required")
-	} else if len(u.NewPassword) < 8 {
-		errors["new_password"] = append(errors["new_password"], "Password must be at least 8 characters long")
+	} else if !utils.IsValidPassword(u.NewPassword) {
+		errors["new_password"] = append(errors["new_password"], "Password must contain at least one uppercase letter, one digit, and one special character")
 	}
 
 	if u.ConfirmNewPassword == "" {

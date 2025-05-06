@@ -22,10 +22,10 @@ type IdentityCardService interface {
 
 type identityCardService struct {
 	identityCardRepo repositories.IdentityCardRepository
-	userRepo         repositories.UserProfileRepository
+	userRepo         repositories.UserProfilRepository
 }
 
-func NewIdentityCardService(identityCardRepo repositories.IdentityCardRepository, userRepo repositories.UserProfileRepository) IdentityCardService {
+func NewIdentityCardService(identityCardRepo repositories.IdentityCardRepository, userRepo repositories.UserProfilRepository) IdentityCardService {
 	return &identityCardService{
 		identityCardRepo: identityCardRepo,
 		userRepo:         userRepo,

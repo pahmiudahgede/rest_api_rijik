@@ -4,138 +4,98 @@ import (
 	"rijig/dto"
 	"rijig/internal/services"
 	"rijig/utils"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-type UserProfileHandler struct {
-	UserProfileService services.UserProfileService
+type UserHandler struct {
+	userService services.UserService
 }
 
-func NewUserProfileHandler(userProfileService services.UserProfileService) *UserProfileHandler {
-	return &UserProfileHandler{UserProfileService: userProfileService}
+func NewUserHandler(userService services.UserService) *UserHandler {
+	return &UserHandler{userService: userService}
 }
 
-func (h *UserProfileHandler) GetUserProfile(c *fiber.Ctx) error {
+func (h *UserHandler) UpdateUserAvatarHandler(c *fiber.Ctx) error {
 
+	userID := c.Locals("userID").(string)
+
+	avatar, err := c.FormFile("avatar")
+	if err != nil {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "No avatar file provided")
+	}
+
+	updatedUser, err := h.userService.UpdateUserAvatar(userID, avatar)
+	if err != nil {
+		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return utils.SuccessResponse(c, updatedUser, "Avatar updated successfully")
+}
+
+func (h *UserHandler) GetUserByIDHandler(c *fiber.Ctx) error {
+	// userID := c.Params("id")
 	userID, ok := c.Locals("userID").(string)
 	if !ok || userID == "" {
 		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
 	}
 
-	userProfile, err := h.UserProfileService.GetUserProfile(userID)
+	user, err := h.userService.GetUserByID(userID)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
 	}
 
-	return utils.SuccessResponse(c, userProfile, "User profile retrieved successfully")
+	return utils.SuccessResponse(c, user, "User retrieved successfully")
 }
 
-func (h *UserProfileHandler) GetUserProfileById(c *fiber.Ctx) error {
-	userID := c.Params("userid")
-	if userID == "" {
-		return utils.ValidationErrorResponse(c, map[string][]string{"userid": {"user ID is required"}})
+func (h *UserHandler) GetAllUsersHandler(c *fiber.Ctx) error {
+
+	page := 1
+	limit := 10
+
+	if p := c.Query("page"); p != "" {
+		page, _ = strconv.Atoi(p)
 	}
 
-	// userID, ok := c.Locals("userID").(string)
-	// if !ok || userID == "" {
-	// 	return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-	// }
-
-	userProfile, err := h.UserProfileService.GetUserProfile(userID)
-	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusNotFound, err.Error())
+	if l := c.Query("limit"); l != "" {
+		limit, _ = strconv.Atoi(l)
 	}
 
-	return utils.SuccessResponse(c, userProfile, "User profile retrieved successfully")
-}
-
-func (h *UserProfileHandler) GetAllUsers(c *fiber.Ctx) error {
-	users, err := h.UserProfileService.GetAllUsers()
+	users, err := h.userService.GetAllUsers(page, limit)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.SuccessResponse(c, users, "All users retrieved successfully")
+	return utils.PaginatedResponse(c, users, page, limit, len(users), "Users retrieved successfully")
 }
 
-func (h *UserProfileHandler) GetUsersByRoleID(c *fiber.Ctx) error {
-	roleID := c.Params("roleid")
-	if roleID == "" {
-		return utils.ValidationErrorResponse(c, map[string][]string{"roleId": {"Role ID is required"}})
+func (h *UserHandler) UpdateUserHandler(c *fiber.Ctx) error {
+	var request dto.RequestUserDTO
+	if err := c.BodyParser(&request); err != nil {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	users, err := h.UserProfileService.GetUsersByRoleID(roleID)
+	userID := c.Locals("userID").(string)
+	updatedUser, err := h.userService.UpdateUser(userID, &request)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.SuccessResponse(c, users, "Users retrieved successfully")
+	return utils.SuccessResponse(c, updatedUser, "User profile updated successfully")
 }
 
-func (h *UserProfileHandler) UpdateUserProfile(c *fiber.Ctx) error {
-	var updateData dto.UpdateUserDTO
-	if err := c.BodyParser(&updateData); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
+func (h *UserHandler) UpdateUserPasswordHandler(c *fiber.Ctx) error {
+	var request dto.UpdatePasswordDTO
+	if err := c.BodyParser(&request); err != nil {
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-	}
-
-	errors, valid := updateData.Validate()
-	if !valid {
-		return utils.ValidationErrorResponse(c, errors)
-	}
-
-	userResponse, err := h.UserProfileService.UpdateUserProfile(userID, updateData)
-	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusConflict, err.Error())
-	}
-
-	return utils.SuccessResponse(c, userResponse, "User profile updated successfully")
-}
-
-// func (h *UserProfileHandler) UpdateUserPassword(c *fiber.Ctx) error {
-// 	var passwordData dto.UpdatePasswordDTO
-// 	if err := c.BodyParser(&passwordData); err != nil {
-// 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
-// 	}
-
-// 	userID, ok := c.Locals("userID").(string)
-// 	if !ok || userID == "" {
-// 		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-// 	}
-
-// 	errors, valid := passwordData.Validate()
-// 	if !valid {
-// 		return utils.ValidationErrorResponse(c, errors)
-// 	}
-
-// 	message, err := h.UserProfileService.UpdateUserPassword(userID, passwordData)
-// 	if err != nil {
-// 		return utils.GenericResponse(c, fiber.StatusBadRequest, err.Error())
-// 	}
-
-//		return utils.GenericResponse(c, fiber.StatusOK, message)
-//	}
-func (h *UserProfileHandler) UpdateUserAvatar(c *fiber.Ctx) error {
-
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-	}
-
-	file, err := c.FormFile("avatar")
-	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusBadRequest, "No avatar file uploaded")
-	}
-
-	message, err := h.UserProfileService.UpdateUserAvatar(userID, file)
+	userID := c.Locals("userID").(string)
+	err := h.userService.UpdateUserPassword(userID, request.OldPassword, request.NewPassword, request.ConfirmNewPassword)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return utils.GenericResponse(c, fiber.StatusOK, message)
+	return utils.SuccessResponse(c, nil, "Password updated successfully")
 }

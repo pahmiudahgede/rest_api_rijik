@@ -2,77 +2,76 @@ package repositories
 
 import (
 	"fmt"
-
 	"rijig/model"
 
 	"gorm.io/gorm"
 )
 
-type UserProfileRepository interface {
+type UserProfilRepository interface {
 	FindByID(userID string) (*model.User, error)
+	FindAll(page, limit int) ([]model.User, error)
 	Update(user *model.User) error
 	UpdateAvatar(userID, avatarURL string) error
-
-	FindAll() ([]model.User, error)
-	FindByRoleID(roleID string) ([]model.User, error)
+	UpdatePassword(userID string, newPassword string) error
 }
 
-type userProfileRepository struct {
+type userProfilRepository struct {
 	DB *gorm.DB
 }
 
-func NewUserProfileRepository(db *gorm.DB) UserProfileRepository {
-	return &userProfileRepository{DB: db}
+func NewUserProfilRepository(db *gorm.DB) UserProfilRepository {
+	return &userProfilRepository{DB: db}
 }
 
-func (r *userProfileRepository) FindByID(userID string) (*model.User, error) {
+func (r *userProfilRepository) FindByID(userID string) (*model.User, error) {
 	var user model.User
 	err := r.DB.Preload("Role").Where("id = ?", userID).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("user with ID %s not found", userID)
 		}
-		return nil, err
+		return nil, fmt.Errorf("error finding user with ID %s: %v", userID, err)
 	}
 
 	if user.Role == nil {
-		return nil, fmt.Errorf("role not found for this user")
+		return nil, fmt.Errorf("role not found for user ID %s", userID)
 	}
 
 	return &user, nil
 }
 
-func (r *userProfileRepository) Update(user *model.User) error {
+func (r *userProfilRepository) FindAll(page, limit int) ([]model.User, error) {
+	var users []model.User
+	offset := (page - 1) * limit
+	err := r.DB.Preload("Role").Offset(offset).Limit(limit).Find(&users).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding all users: %v", err)
+	}
+	return users, nil
+}
+
+func (r *userProfilRepository) Update(user *model.User) error {
 	err := r.DB.Save(user).Error
 	if err != nil {
-		return err
+		return fmt.Errorf("error updating user: %v", err)
 	}
 	return nil
 }
 
-func (r *userProfileRepository) UpdateAvatar(userID, avatarURL string) error {
+func (r *userProfilRepository) UpdateAvatar(userID, avatarURL string) error {
 	var user model.User
 	err := r.DB.Model(&user).Where("id = ?", userID).Update("avatar", avatarURL).Error
 	if err != nil {
-		return err
+		return fmt.Errorf("error updating avatar for user ID %s: %v", userID, err)
 	}
 	return nil
 }
 
-func (r *userProfileRepository) FindAll() ([]model.User, error) {
-	var users []model.User
-	err := r.DB.Preload("Role").Find(&users).Error
+func (r *userProfilRepository) UpdatePassword(userID string, newPassword string) error {
+	var user model.User
+	err := r.DB.Model(&user).Where("id = ?", userID).Update("password", newPassword).Error
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("error updating password for user ID %s: %v", userID, err)
 	}
-	return users, nil
-}
-
-func (r *userProfileRepository) FindByRoleID(roleID string) ([]model.User, error) {
-	var users []model.User
-	err := r.DB.Preload("Role").Where("role_id = ?", roleID).Find(&users).Error
-	if err != nil {
-		return nil, err
-	}
-	return users, nil
+	return nil
 }

@@ -4,13 +4,15 @@ import "strings"
 
 type RequestTrashCategoryDTO struct {
 	Name string `json:"name"`
+	Icon string `json:"icon"`
 }
 
 type ResponseTrashCategoryDTO struct {
-	ID        string                  `json:"id"`
-	Name      string                  `json:"name"`
-	CreatedAt string                  `json:"createdAt"`
-	UpdatedAt string                  `json:"updatedAt"`
+	ID        string                   `json:"id"`
+	Name      string                   `json:"name"`
+	Icon      string                   `json:"icon"`
+	CreatedAt string                   `json:"createdAt"`
+	UpdatedAt string                   `json:"updatedAt"`
 	Details   []ResponseTrashDetailDTO `json:"details,omitempty"`
 }
 

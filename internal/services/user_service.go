@@ -1,310 +1,193 @@
 package services
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
-	"time"
-
 	"rijig/dto"
 	"rijig/internal/repositories"
 	"rijig/model"
 	"rijig/utils"
-	// "golang.org/x/crypto/bcrypt"
 )
 
-var allowedExtensions = []string{".jpg", ".jpeg", ".png"}
-
-type UserProfileService interface {
-	GetUserProfile(userID string) (*dto.UserResponseDTO, error)
-	UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error)
-	// UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error)
-	UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error)
-
-	GetAllUsers() ([]dto.UserResponseDTO, error)
-	GetUsersByRoleID(roleID string) ([]dto.UserResponseDTO, error)
+type UserService interface {
+	GetUserByID(userID string) (*dto.UserResponseDTO, error)
+	GetAllUsers(page, limit int) ([]dto.UserResponseDTO, error)
+	UpdateUser(userID string, request *dto.RequestUserDTO) (*dto.UserResponseDTO, error)
+	UpdateUserAvatar(userID string, avatar *multipart.FileHeader) (*dto.UserResponseDTO, error)
+	UpdateUserPassword(userID, oldPassword, newPassword, confirmNewPassword string) error
 }
 
-type userProfileService struct {
-	UserRepo        repositories.UserRepository
-	RoleRepo        repositories.RoleRepository
-	UserProfileRepo repositories.UserProfileRepository
+type userService struct {
+	userRepo repositories.UserProfilRepository
 }
 
-func NewUserProfileService(userProfileRepo repositories.UserProfileRepository) UserProfileService {
-	return &userProfileService{UserProfileRepo: userProfileRepo}
+func NewUserService(userRepo repositories.UserProfilRepository) UserService {
+	return &userService{userRepo: userRepo}
 }
 
-func (s *userProfileService) prepareUserResponse(user *model.User) *dto.UserResponseDTO {
+func (s *userService) GetUserByID(userID string) (*dto.UserResponseDTO, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving user by ID: %v", err)
+	}
+
+	userDTO, err := s.formatUserResponse(user)
+	if err != nil {
+		return nil, fmt.Errorf("error formatting user response: %v", err)
+	}
+
+	return userDTO, nil
+}
+
+func (s *userService) GetAllUsers(page, limit int) ([]dto.UserResponseDTO, error) {
+	users, err := s.userRepo.FindAll(page, limit)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving all users: %v", err)
+	}
+
+	var userDTOs []dto.UserResponseDTO
+	for _, user := range users {
+		userDTO, err := s.formatUserResponse(&user)
+		if err != nil {
+			log.Printf("Error formatting user response for userID %s: %v", user.ID, err)
+			continue
+		}
+		userDTOs = append(userDTOs, *userDTO)
+	}
+
+	return userDTOs, nil
+}
+
+func (s *userService) UpdateUser(userID string, request *dto.RequestUserDTO) (*dto.UserResponseDTO, error) {
+
+	errors, valid := request.Validate()
+	if !valid {
+		return nil, fmt.Errorf("validation failed: %v", errors)
+	}
+
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %v", err)
+	}
+
+	user.Name = request.Name
+	user.Phone = request.Phone
+	user.Email = request.Email
+
+	err = s.userRepo.Update(user)
+	if err != nil {
+		return nil, fmt.Errorf("error updating user: %v", err)
+	}
+
+	userDTO, err := s.formatUserResponse(user)
+	if err != nil {
+		return nil, fmt.Errorf("error formatting updated user response: %v", err)
+	}
+
+	return userDTO, nil
+}
+
+func (s *userService) UpdateUserAvatar(userID string, avatar *multipart.FileHeader) (*dto.UserResponseDTO, error) {
+
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %v", err)
+	}
+
+	if *user.Avatar != "" {
+		err := s.deleteAvatarImage(*user.Avatar)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete old image: %v", err)
+		}
+	}
+
+	avatarURL, err := s.saveAvatarImage(userID, avatar)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save avatar image: %v", err)
+	}
+
+	err = s.userRepo.UpdateAvatar(userID, avatarURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update avatar in the database: %v", err)
+	}
+
+	userDTO, err := s.formatUserResponse(user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format user response: %v", err)
+	}
+
+	return userDTO, nil
+}
+
+func (s *userService) UpdateUserPassword(userID, oldPassword, newPassword, confirmNewPassword string) error {
+
+	// errors, valid := utils.ValidatePasswordUpdate(oldPassword, newPassword, confirmNewPassword)
+	// if !valid {
+	// 	return fmt.Errorf("password validation error: %v", errors)
+	// }
+
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %v", err)
+	}
+
+	if user.Password != oldPassword {
+		return fmt.Errorf("old password is incorrect")
+	}
+
+	err = s.userRepo.UpdatePassword(userID, newPassword)
+	if err != nil {
+		return fmt.Errorf("error updating password: %v", err)
+	}
+
+	return nil
+}
+
+func (s *userService) formatUserResponse(user *model.User) (*dto.UserResponseDTO, error) {
+
 	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
 
-	return &dto.UserResponseDTO{
+	userDTO := &dto.UserResponseDTO{
 		ID:            user.ID,
-		// Username:      user.Username,
+		Username:      user.Name,
 		Avatar:        user.Avatar,
 		Name:          user.Name,
 		Phone:         user.Phone,
 		Email:         user.Email,
-		// EmailVerified: user.EmailVerified,
+		EmailVerified: user.PhoneVerified,
 		RoleName:      user.Role.RoleName,
 		CreatedAt:     createdAt,
 		UpdatedAt:     updatedAt,
 	}
+
+	return userDTO, nil
 }
 
-func (s *userProfileService) GetUserProfile(userID string) (*dto.UserResponseDTO, error) {
+func (s *userService) saveAvatarImage(userID string, avatar *multipart.FileHeader) (string, error) {
 
-	cacheKey := fmt.Sprintf("userProfile:%s", userID)
-	cachedData, err := utils.GetJSONData(cacheKey)
-	if err == nil && cachedData != nil {
+	pathImage := "/uploads/avatars/"
+	avatarDir := "./public" + os.Getenv("BASE_URL") + pathImage
 
-		userResponse := &dto.UserResponseDTO{}
-		if data, ok := cachedData["data"].(string); ok {
-			if err := json.Unmarshal([]byte(data), userResponse); err != nil {
-				return nil, err
-			}
-			return userResponse, nil
-		}
-	}
-
-	user, err := s.UserProfileRepo.FindByID(userID)
-	if err != nil {
-		return nil, errors.New("user not found")
-	}
-
-	userResponse := s.prepareUserResponse(user)
-
-	cacheData := map[string]interface{}{
-		"data": userResponse,
-	}
-	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
-	if err != nil {
-		fmt.Printf("Error caching user profile to Redis: %v\n", err)
-	}
-
-	return userResponse, nil
-}
-
-func (s *userProfileService) GetAllUsers() ([]dto.UserResponseDTO, error) {
-	users, err := s.UserProfileRepo.FindAll()
-	if err != nil {
-		return nil, err
-	}
-
-	var response []dto.UserResponseDTO
-	for _, user := range users {
-		response = append(response, dto.UserResponseDTO{
-			ID:            user.ID,
-			// Username:      user.Username,
-			Avatar:        user.Avatar,
-			Name:          user.Name,
-			Phone:         user.Phone,
-			// Email:         user.Email,
-			// EmailVerified: user.EmailVerified,
-			RoleName:      user.Role.RoleName,
-			CreatedAt:     user.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:     user.UpdatedAt.Format(time.RFC3339),
-		})
-	}
-
-	return response, nil
-}
-
-func (s *userProfileService) GetUsersByRoleID(roleID string) ([]dto.UserResponseDTO, error) {
-	users, err := s.UserProfileRepo.FindByRoleID(roleID)
-	if err != nil {
-		return nil, err
-	}
-
-	var response []dto.UserResponseDTO
-	for _, user := range users {
-		response = append(response, dto.UserResponseDTO{
-			ID:            user.ID,
-			// Username:      user.Username,
-			Avatar:        user.Avatar,
-			Name:          user.Name,
-			Phone:         user.Phone,
-			// Email:         user.Email,
-			// EmailVerified: user.EmailVerified,
-			RoleName:      user.Role.RoleName,
-			CreatedAt:     user.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:     user.UpdatedAt.Format(time.RFC3339),
-		})
-	}
-
-	return response, nil
-}
-
-func (s *userProfileService) UpdateUserProfile(userID string, updateData dto.UpdateUserDTO) (*dto.UserResponseDTO, error) {
-	user, err := s.UserProfileRepo.FindByID(userID)
-	if err != nil {
-		return nil, errors.New("user not found")
-	}
-
-	validationErrors, valid := updateData.Validate()
-	if !valid {
-		return nil, fmt.Errorf("validation failed: %v", validationErrors)
-	}
-
-	if updateData.Name != "" {
-		user.Name = updateData.Name
-	}
-
-	// if updateData.Phone != "" && updateData.Phone != user.Phone {
-	// 	if err := s.updatePhoneIfNeeded(user, updateData.Phone); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	user.Phone = updateData.Phone
-	// }
-
-	// if updateData.Email != "" && updateData.Email != user.Email {
-	// 	if err := s.updateEmailIfNeeded(user, updateData.Email); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	user.Email = updateData.Email
-	// }
-
-	err = s.UserProfileRepo.Update(user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update user: %v", err)
-	}
-
-	userResponse := s.prepareUserResponse(user)
-
-	cacheKey := fmt.Sprintf("userProfile:%s", userID)
-	cacheData := map[string]interface{}{
-		"data": userResponse,
-	}
-	err = utils.SetJSONData(cacheKey, cacheData, time.Hour*24)
-	if err != nil {
-		fmt.Printf("Error updating cached user profile in Redis: %v\n", err)
-	}
-
-	return userResponse, nil
-}
-
-// func (s *userProfileService) updatePhoneIfNeeded(user *model.User, newPhone string) error {
-// 	existingPhone, _ := s.UserRepo.FindByPhoneAndRole(newPhone, user.RoleID)
-// 	if existingPhone != nil {
-// 		return fmt.Errorf("phone number is already used for this role")
-// 	}
-// 	return nil
-// }
-
-// func (s *userProfileService) updateEmailIfNeeded(user *model.User, newEmail string) error {
-// 	existingEmail, _ := s.UserRepo.FindByEmailAndRole(newEmail, user.RoleID)
-// 	if existingEmail != nil {
-// 		return fmt.Errorf("email is already used for this role")
-// 	}
-// 	return nil
-// }
-
-// func (s *userProfileService) UpdateUserPassword(userID string, passwordData dto.UpdatePasswordDTO) (string, error) {
-
-// 	validationErrors, valid := passwordData.Validate()
-// 	if !valid {
-// 		return "", fmt.Errorf("validation failed: %v", validationErrors)
-// 	}
-
-// 	user, err := s.UserProfileRepo.FindByID(userID)
-// 	if err != nil {
-// 		return "", errors.New("user not found")
-// 	}
-
-// 	if !CheckPasswordHash(passwordData.OldPassword, user.Password) {
-// 		return "", errors.New("old password is incorrect")
-// 	}
-
-// 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordData.NewPassword), bcrypt.DefaultCost)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to hash new password: %v", err)
-// 	}
-
-// 	user.Password = string(hashedPassword)
-// 	err = s.UserProfileRepo.Update(user)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to update password: %v", err)
-// 	}
-
-// 	return "Password berhasil diupdate", nil
-// }
-
-func (s *userProfileService) UpdateUserAvatar(userID string, file *multipart.FileHeader) (string, error) {
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		return "", fmt.Errorf("BASE_URL is not set in environment variables")
-	}
-
-	avatarDir := filepath.Join("./public", baseURL, "/uploads/avatars")
-	if err := ensureAvatarDirectoryExists(avatarDir); err != nil {
-		return "", err
-	}
-
-	if err := validateAvatarFile(file); err != nil {
-		return "", err
-	}
-
-	updatedUser, err := s.UserProfileRepo.FindByID(userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve user data: %v", err)
-	}
-
-	if updatedUser.Avatar != nil && *updatedUser.Avatar != "" {
-		oldAvatarPath := filepath.Join("./public", *updatedUser.Avatar)
-		if _, err := os.Stat(oldAvatarPath); err == nil {
-
-			if err := os.Remove(oldAvatarPath); err != nil {
-				return "", fmt.Errorf("failed to remove old avatar: %v", err)
-			}
-		} else {
-
-			log.Printf("Old avatar file not found: %s", oldAvatarPath)
-		}
-	}
-
-	avatarURL, err := saveAvatarFile(file, userID, avatarDir)
-	if err != nil {
-		return "", err
-	}
-
-	err = s.UserProfileRepo.UpdateAvatar(userID, avatarURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to update avatar in the database: %v", err)
-	}
-
-	return "Foto profil berhasil diupdate", nil
-}
-
-func ensureAvatarDirectoryExists(avatarDir string) error {
 	if _, err := os.Stat(avatarDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(avatarDir, os.ModePerm); err != nil {
-			return fmt.Errorf("failed to create avatar directory: %v", err)
+			return "", fmt.Errorf("failed to create directory for avatar: %v", err)
 		}
 	}
-	return nil
-}
 
-func validateAvatarFile(file *multipart.FileHeader) error {
-	extension := filepath.Ext(file.Filename)
-	for _, ext := range allowedExtensions {
-		if extension == ext {
-			return nil
-		}
+	allowedExtensions := map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+	extension := filepath.Ext(avatar.Filename)
+	if !allowedExtensions[extension] {
+		return "", fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
 	}
-	return fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
-}
 
-func saveAvatarFile(file *multipart.FileHeader, userID, avatarDir string) (string, error) {
-	extension := filepath.Ext(file.Filename)
 	avatarFileName := fmt.Sprintf("%s_avatar%s", userID, extension)
 	avatarPath := filepath.Join(avatarDir, avatarFileName)
 
-	src, err := file.Open()
+	src, err := avatar.Open()
 	if err != nil {
 		return "", fmt.Errorf("failed to open uploaded file: %v", err)
 	}
@@ -312,15 +195,37 @@ func saveAvatarFile(file *multipart.FileHeader, userID, avatarDir string) (strin
 
 	dst, err := os.Create(avatarPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to create file: %v", err)
+		return "", fmt.Errorf("failed to create avatar file: %v", err)
 	}
 	defer dst.Close()
 
-	_, err = dst.ReadFrom(src)
-	if err != nil {
-		return "", fmt.Errorf("failed to save avatar file: %v", err)
+	if _, err := dst.ReadFrom(src); err != nil {
+		return "", fmt.Errorf("failed to save avatar: %v", err)
 	}
 
-	relativePath := filepath.Join("/uploads/avatars", avatarFileName)
-	return relativePath, nil
+	avatarURL := fmt.Sprintf("%s%s", pathImage, avatarFileName)
+
+	return avatarURL, nil
+}
+
+func (s *userService) deleteAvatarImage(avatarPath string) error {
+
+	if avatarPath == "" {
+		return nil
+	}
+
+	baseDir := "./public/" + os.Getenv("BASE_URL")
+	absolutePath := baseDir + avatarPath
+
+	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
+		return fmt.Errorf("image file not found: %v", err)
+	}
+
+	err := os.Remove(absolutePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete avatar image: %v", err)
+	}
+
+	log.Printf("Avatar image deleted successfully: %s", absolutePath)
+	return nil
 }
