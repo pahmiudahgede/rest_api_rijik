@@ -60,6 +60,8 @@ func ConnectDatabase() {
 		&model.Article{},
 		&model.Banner{},
 		&model.InitialCoint{},
+		&model.About{},
+		&model.AboutDetail{},
 
 		// =>Trash Model<=
 		&model.TrashCategory{},
