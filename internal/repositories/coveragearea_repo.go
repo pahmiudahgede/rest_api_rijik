@@ -8,6 +8,7 @@ import (
 )
 
 type CoverageAreaRepository interface {
+	FindCoverageByProvinceAndRegency(province, regency string) (*model.CoverageArea, error)
 	CreateCoverage(coverage *model.CoverageArea) error
 	FindCoverageById(id string) (*model.CoverageArea, error)
 	FindAllCoverage() ([]model.CoverageArea, error)
@@ -21,6 +22,18 @@ type coverageAreaRepository struct {
 
 func NewCoverageAreaRepository(db *gorm.DB) CoverageAreaRepository {
 	return &coverageAreaRepository{DB: db}
+}
+
+func (r *coverageAreaRepository) FindCoverageByProvinceAndRegency(province, regency string) (*model.CoverageArea, error) {
+	var coverage model.CoverageArea
+	err := r.DB.Where("province = ? AND regency = ?", province, regency).First(&coverage).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &coverage, nil
 }
 
 func (r *coverageAreaRepository) CreateCoverage(coverage *model.CoverageArea) error {

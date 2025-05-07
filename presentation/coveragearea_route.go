@@ -11,7 +11,8 @@ import (
 
 func CoverageAreaRouter(api fiber.Router) {
 	coverageAreaRepo := repositories.NewCoverageAreaRepository(config.DB)
-	coverageAreaService := services.NewCoverageAreaService(coverageAreaRepo)
+	wilayahRepo := repositories.NewWilayahIndonesiaRepository(config.DB)
+	coverageAreaService := services.NewCoverageAreaService(coverageAreaRepo, wilayahRepo)
 	coverageAreaHandler := handler.NewCoverageAreaHandler(coverageAreaService)
 
 	coverage := api.Group("/coveragearea")

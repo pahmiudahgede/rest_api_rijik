@@ -18,11 +18,12 @@ type CoverageAreaService interface {
 }
 
 type coverageAreaService struct {
-	repo repositories.CoverageAreaRepository
+	repo        repositories.CoverageAreaRepository
+	WilayahRepo repositories.WilayahIndonesiaRepository
 }
 
-func NewCoverageAreaService(repo repositories.CoverageAreaRepository) CoverageAreaService {
-	return &coverageAreaService{repo: repo}
+func NewCoverageAreaService(repo repositories.CoverageAreaRepository, WilayahRepo repositories.WilayahIndonesiaRepository) CoverageAreaService {
+	return &coverageAreaService{repo: repo, WilayahRepo: WilayahRepo}
 }
 
 func ConvertCoverageAreaToResponse(coverage *model.CoverageArea) *dto.ResponseCoverageArea {
@@ -44,9 +45,24 @@ func (s *coverageAreaService) CreateCoverageArea(request dto.RequestCoverageArea
 		return nil, fmt.Errorf("validation errors: %v", errors)
 	}
 
+	province, _, err := s.WilayahRepo.FindProvinceByID(request.Province, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid province_id")
+	}
+
+	regency, _, err := s.WilayahRepo.FindRegencyByID(request.Regency, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regency_id")
+	}
+
+	existingCoverage, err := s.repo.FindCoverageByProvinceAndRegency(province.Name, regency.Name)
+	if err == nil && existingCoverage != nil {
+		return nil, fmt.Errorf("coverage area with province %s and regency %s already exists", province.Name, regency.Name)
+	}
+
 	coverage := model.CoverageArea{
-		Province: request.Province,
-		Regency:  request.Regency,
+		Province: province.Name,
+		Regency:  regency.Name,
 	}
 
 	if err := s.repo.CreateCoverage(&coverage); err != nil {
@@ -96,8 +112,23 @@ func (s *coverageAreaService) UpdateCoverageArea(id string, request dto.RequestC
 		return nil, fmt.Errorf("coverage area with ID %s not found: %v", id, err)
 	}
 
-	coverage.Province = request.Province
-	coverage.Regency = request.Regency
+	province, _, err := s.WilayahRepo.FindProvinceByID(request.Province, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid province_id")
+	}
+
+	regency, _, err := s.WilayahRepo.FindRegencyByID(request.Regency, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regency_id")
+	}
+
+	existingCoverage, err := s.repo.FindCoverageByProvinceAndRegency(province.Name, regency.Name)
+	if err == nil && existingCoverage != nil {
+		return nil, fmt.Errorf("coverage area with province %s and regency %s already exists", province.Name, regency.Name)
+	}
+
+	coverage.Province = province.Name
+	coverage.Regency = regency.Name
 
 	if err := s.repo.UpdateCoverage(id, coverage); err != nil {
 		return nil, fmt.Errorf("failed to update coverage area: %v", err)
