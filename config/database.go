@@ -47,7 +47,12 @@ func ConnectDatabase() {
 		&model.Address{},
 		&model.IdentityCard{},
 		&model.CompanyProfile{},
+
 		// =>user preparation<=
+		// =>requestpickup preparation<=
+		&model.RequestPickup{},
+		&model.RequestPickupItem{},
+		// =>requestpickup preparation<=
 
 		// =>store preparation<=
 		&model.Store{},
