@@ -22,7 +22,7 @@ func (h *AddressHandler) CreateAddress(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
 
-	errors, valid := requestAddressDTO.Validate()
+	errors, valid := requestAddressDTO.ValidateAddress()
 	if !valid {
 		return utils.ValidationErrorResponse(c, errors)
 	}
@@ -67,7 +67,7 @@ func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
 	}
 
-	errors, valid := addressDTO.Validate()
+	errors, valid := addressDTO.ValidateAddress()
 	if !valid {
 		return utils.ValidationErrorResponse(c, errors)
 	}

@@ -26,7 +26,7 @@ type CreateAddressDTO struct {
 	Geography  string `json:"geography"`
 }
 
-func (r *CreateAddressDTO) Validate() (map[string][]string, bool) {
+func (r *CreateAddressDTO) ValidateAddress() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 
 	if strings.TrimSpace(r.Province) == "" {

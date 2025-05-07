@@ -36,6 +36,7 @@ func SetupRoutes(app *fiber.App) {
 	presentation.InitialCointRoute(api)
 	presentation.AboutRouter(api)
 	presentation.TrashRouter(api)
+	presentation.CoverageAreaRouter(api)
 	presentation.StoreRouter(api)
 	presentation.ProductRouter(api)
 }

@@ -62,6 +62,7 @@ func ConnectDatabase() {
 		&model.InitialCoint{},
 		&model.About{},
 		&model.AboutDetail{},
+		&model.CoverageArea{},
 
 		// =>Trash Model<=
 		&model.TrashCategory{},
