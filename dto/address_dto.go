@@ -11,7 +11,8 @@ type AddressResponseDTO struct {
 	Village    string `json:"village"`
 	PostalCode string `json:"postalCode"`
 	Detail     string `json:"detail"`
-	Geography  string `json:"geography"`
+	Latitude   string `json:"latitude"`
+	Longitude  string `json:"longitude"`
 	CreatedAt  string `json:"createdAt"`
 	UpdatedAt  string `json:"updatedAt"`
 }
@@ -23,7 +24,8 @@ type CreateAddressDTO struct {
 	Village    string `json:"village_id"`
 	PostalCode string `json:"postalCode"`
 	Detail     string `json:"detail"`
-	Geography  string `json:"geography"`
+	Latitude   string `json:"latitude"`
+	Longitude  string `json:"longitude"`
 }
 
 func (r *CreateAddressDTO) ValidateAddress() (map[string][]string, bool) {
@@ -49,8 +51,11 @@ func (r *CreateAddressDTO) ValidateAddress() (map[string][]string, bool) {
 	if strings.TrimSpace(r.Detail) == "" {
 		errors["detail"] = append(errors["detail"], "Detail address is required")
 	}
-	if strings.TrimSpace(r.Geography) == "" {
-		errors["geography"] = append(errors["geography"], "Geographic coordinates are required")
+	if strings.TrimSpace(r.Latitude) == "" {
+		errors["latitude"] = append(errors["latitude"], "Geographic coordinates are required")
+	}
+	if strings.TrimSpace(r.Longitude) == "" {
+		errors["longitude"] = append(errors["longitude"], "Geographic coordinates are required")
 	}
 
 	if len(errors) > 0 {

@@ -60,7 +60,8 @@ func (s *addressService) CreateAddress(userID string, addressDTO dto.CreateAddre
 		Village:    village.Name,
 		PostalCode: addressDTO.PostalCode,
 		Detail:     addressDTO.Detail,
-		Geography:  addressDTO.Geography,
+		Latitude:   addressDTO.Latitude,
+		Longitude:  addressDTO.Longitude,
 	}
 
 	err = s.AddressRepo.CreateAddress(&address)
@@ -83,7 +84,8 @@ func (s *addressService) CreateAddress(userID string, addressDTO dto.CreateAddre
 		Village:    address.Village,
 		PostalCode: address.PostalCode,
 		Detail:     address.Detail,
-		Geography:  address.Geography,
+		Latitude:   address.Latitude,
+		Longitude:  address.Longitude,
 		CreatedAt:  createdAt,
 		UpdatedAt:  updatedAt,
 	}
@@ -116,7 +118,8 @@ func (s *addressService) CreateAddress(userID string, addressDTO dto.CreateAddre
 			Village:    addr.Village,
 			PostalCode: addr.PostalCode,
 			Detail:     addr.Detail,
-			Geography:  addr.Geography,
+			Latitude:   addr.Latitude,
+			Longitude:  addr.Longitude,
 			CreatedAt:  createdAt,
 			UpdatedAt:  updatedAt,
 		})
@@ -152,7 +155,8 @@ func (s *addressService) GetAddressByUserID(userID string) ([]dto.AddressRespons
 						Village:    addressData["village"].(string),
 						PostalCode: addressData["postalCode"].(string),
 						Detail:     addressData["detail"].(string),
-						Geography:  addressData["geography"].(string),
+						Latitude:   addressData["latitude"].(string),
+						Longitude:  addressData["longitude"].(string),
 						CreatedAt:  addressData["createdAt"].(string),
 						UpdatedAt:  addressData["updatedAt"].(string),
 					})
@@ -181,7 +185,8 @@ func (s *addressService) GetAddressByUserID(userID string) ([]dto.AddressRespons
 			Village:    address.Village,
 			PostalCode: address.PostalCode,
 			Detail:     address.Detail,
-			Geography:  address.Geography,
+			Latitude:   address.Latitude,
+			Longitude:  address.Longitude,
 			CreatedAt:  createdAt,
 			UpdatedAt:  updatedAt,
 		})
@@ -222,7 +227,8 @@ func (s *addressService) GetAddressByID(userID, id string) (*dto.AddressResponse
 				Village:    addressData["village"].(string),
 				PostalCode: addressData["postalCode"].(string),
 				Detail:     addressData["detail"].(string),
-				Geography:  addressData["geography"].(string),
+				Latitude:   addressData["latitude"].(string),
+				Longitude:  addressData["longitude"].(string),
 				CreatedAt:  addressData["createdAt"].(string),
 				UpdatedAt:  addressData["updatedAt"].(string),
 			}
@@ -242,7 +248,8 @@ func (s *addressService) GetAddressByID(userID, id string) (*dto.AddressResponse
 		Village:    address.Village,
 		PostalCode: address.PostalCode,
 		Detail:     address.Detail,
-		Geography:  address.Geography,
+		Latitude:   address.Latitude,
+		Longitude:  address.Longitude,
 		CreatedAt:  createdAt,
 		UpdatedAt:  updatedAt,
 	}
@@ -295,7 +302,8 @@ func (s *addressService) UpdateAddress(userID, id string, addressDTO dto.CreateA
 	address.Village = village.Name
 	address.PostalCode = addressDTO.PostalCode
 	address.Detail = addressDTO.Detail
-	address.Geography = addressDTO.Geography
+	address.Latitude = addressDTO.Latitude
+	address.Longitude = addressDTO.Longitude
 	address.UpdatedAt = time.Now()
 
 	err = s.AddressRepo.UpdateAddress(address)
@@ -321,7 +329,8 @@ func (s *addressService) UpdateAddress(userID, id string, addressDTO dto.CreateA
 		Village:    address.Village,
 		PostalCode: address.PostalCode,
 		Detail:     address.Detail,
-		Geography:  address.Geography,
+		Latitude:   address.Latitude,
+		Longitude:  address.Longitude,
 		CreatedAt:  createdAt,
 		UpdatedAt:  updatedAt,
 	}
@@ -353,7 +362,8 @@ func (s *addressService) UpdateAddress(userID, id string, addressDTO dto.CreateA
 			Village:    addr.Village,
 			PostalCode: addr.PostalCode,
 			Detail:     addr.Detail,
-			Geography:  addr.Geography,
+			Latitude:   addr.Latitude,
+			Longitude:  addr.Longitude,
 			CreatedAt:  createdAt,
 			UpdatedAt:  updatedAt,
 		})
