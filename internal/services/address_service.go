@@ -155,8 +155,8 @@ func (s *addressService) GetAddressByUserID(userID string) ([]dto.AddressRespons
 						Village:    addressData["village"].(string),
 						PostalCode: addressData["postalCode"].(string),
 						Detail:     addressData["detail"].(string),
-						Latitude:   addressData["latitude"].(string),
-						Longitude:  addressData["longitude"].(string),
+						Latitude:   addressData["latitude"].(float64),
+						Longitude:  addressData["longitude"].(float64),
 						CreatedAt:  addressData["createdAt"].(string),
 						UpdatedAt:  addressData["updatedAt"].(string),
 					})
@@ -227,8 +227,8 @@ func (s *addressService) GetAddressByID(userID, id string) (*dto.AddressResponse
 				Village:    addressData["village"].(string),
 				PostalCode: addressData["postalCode"].(string),
 				Detail:     addressData["detail"].(string),
-				Latitude:   addressData["latitude"].(string),
-				Longitude:  addressData["longitude"].(string),
+				Latitude:   addressData["latitude"].(float64),
+				Longitude:  addressData["longitude"].(float64),
 				CreatedAt:  addressData["createdAt"].(string),
 				UpdatedAt:  addressData["updatedAt"].(string),
 			}

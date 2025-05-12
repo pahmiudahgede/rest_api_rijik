@@ -26,6 +26,7 @@ func SetupRoutes(app *fiber.App) {
 	presentation.IdentityCardRouter(api)
 	presentation.CompanyProfileRouter(api)
 	presentation.RequestPickupRouter(api)
+	presentation.CollectorRouter(api)
 
 	presentation.UserProfileRouter(api)
 	presentation.UserPinRouter(api)

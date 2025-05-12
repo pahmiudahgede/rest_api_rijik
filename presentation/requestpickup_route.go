@@ -15,8 +15,12 @@ func RequestPickupRouter(api fiber.Router) {
 	requestRepo := repositories.NewRequestPickupRepository(config.DB)
 	repoTrash := repositories.NewTrashRepository(config.DB)
 	repoAddress := repositories.NewAddressRepository(config.DB)
+	// collectorRepo := repositories.NewCollectorRepository(config.DB)
 
 	requestPickupServices := services.NewRequestPickupService(requestRepo, repoAddress, repoTrash)
+	// collectorService := services.NewCollectorService(collectorRepo, requestRepo, repoAddress)
+	// service services.RequestPickupService,
+	// collectorService services.CollectorService
 
 	requestPickupHandler := handler.NewRequestPickupHandler(requestPickupServices)
 
@@ -24,6 +28,8 @@ func RequestPickupRouter(api fiber.Router) {
 	requestPickupAPI.Use(middleware.AuthMiddleware)
 
 	requestPickupAPI.Post("/", requestPickupHandler.CreateRequestPickup)
+	// requestPickupAPI.Get("/get", middleware.AuthMiddleware, requestPickupHandler.GetAutomaticRequestByUser)
+	requestPickupAPI.Get("/get-allrequest", requestPickupHandler.GetRequestPickups)
 	// requestPickupAPI.Get("/:id", requestPickupHandler.GetRequestPickupByID)
 	// requestPickupAPI.Get("/", requestPickupHandler.GetAllRequestPickups)
 	// requestPickupAPI.Put("/:id", requestPickupHandler.UpdateRequestPickup)

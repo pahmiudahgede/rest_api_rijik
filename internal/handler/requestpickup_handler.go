@@ -53,49 +53,32 @@ func (h *RequestPickupHandler) GetRequestPickupByID(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, response, "Request pickup retrieved successfully")
 }
 
-func (h *RequestPickupHandler) GetAllRequestPickups(c *fiber.Ctx) error {
+// func (h *RequestPickupHandler) GetAutomaticRequestByUser(c *fiber.Ctx) error {
 
-	response, err := h.service.GetAllRequestPickups()
+// 	collectorId, ok := c.Locals("userID").(string)
+// 	if !ok || collectorId == "" {
+// 		return utils.ErrorResponse(c, "Unauthorized: User session not found")
+// 	}
+
+// 	requestPickups, err := h.service.GetAllAutomaticRequestPickup(collectorId)
+// 	if err != nil {
+
+// 		return utils.ErrorResponse(c, err.Error())
+// 	}
+
+// 	return utils.SuccessResponse(c, requestPickups, "Request pickups fetched successfully")
+// }
+
+func (h *RequestPickupHandler) GetRequestPickups(c *fiber.Ctx) error {
+	// Get userID from Locals
+	collectorId := c.Locals("userID").(string)
+
+	// Call service layer to get the request pickups
+	requests, err := h.service.GetRequestPickupsForCollector(collectorId)
 	if err != nil {
-		return utils.InternalServerErrorResponse(c, fmt.Sprintf("Error fetching all request pickups: %v", err))
+		return utils.ErrorResponse(c, err.Error())
 	}
 
-	return utils.SuccessResponse(c, response, "All request pickups retrieved successfully")
-}
-
-func (h *RequestPickupHandler) UpdateRequestPickup(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
-	}
-
-	id := c.Params("id")
-	var request dto.RequestPickup
-
-	if err := c.BodyParser(&request); err != nil {
-		return utils.GenericResponse(c, fiber.StatusBadRequest, "Invalid request body")
-	}
-
-	errors, valid := request.ValidateRequestPickup()
-	if !valid {
-		return utils.ValidationErrorResponse(c, errors)
-	}
-
-	response, err := h.service.UpdateRequestPickup(id, request)
-	if err != nil {
-		return utils.InternalServerErrorResponse(c, fmt.Sprintf("Error updating request pickup: %v", err))
-	}
-
-	return utils.SuccessResponse(c, response, "Request pickup updated successfully")
-}
-
-func (h *RequestPickupHandler) DeleteRequestPickup(c *fiber.Ctx) error {
-	id := c.Params("id")
-
-	err := h.service.DeleteRequestPickup(id)
-	if err != nil {
-		return utils.GenericResponse(c, fiber.StatusNotFound, fmt.Sprintf("Request pickup with ID %s not found: %v", id, err))
-	}
-
-	return utils.GenericResponse(c, fiber.StatusOK, "Request pickup deleted successfully")
+	// Return response
+	return utils.SuccessResponse(c, requests, "Automatic request pickups retrieved successfully")
 }

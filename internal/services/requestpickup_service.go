@@ -5,18 +5,22 @@ import (
 	"rijig/dto"
 	"rijig/internal/repositories"
 	"rijig/model"
+	"rijig/utils"
 )
 
 type RequestPickupService interface {
 	CreateRequestPickup(request dto.RequestPickup, UserId string) (*dto.ResponseRequestPickup, error)
 	GetRequestPickupByID(id string) (*dto.ResponseRequestPickup, error)
-	GetAllRequestPickups() ([]dto.ResponseRequestPickup, error)
-	UpdateRequestPickup(id string, request dto.RequestPickup) (*dto.ResponseRequestPickup, error)
-	DeleteRequestPickup(id string) error
+	GetAllRequestPickups(userid string) ([]dto.ResponseRequestPickup, error)
+	// GetAllAutomaticRequestPickups(collector_id string) ([]dto.ResponseRequestPickup, error)
+	// GetAllAutomaticRequestPickup(collectorId string) ([]dto.ResponseRequestPickup, error)
+
+	GetRequestPickupsForCollector(collectorId string) ([]dto.ResponseRequestPickup, error)
 }
 
 type requestPickupService struct {
 	repo        repositories.RequestPickupRepository
+	repoReq     repositories.CollectorRepository
 	repoAddress repositories.AddressRepository
 	repoTrash   repositories.TrashRepository
 }
@@ -34,12 +38,12 @@ func (s *requestPickupService) CreateRequestPickup(request dto.RequestPickup, Us
 		return nil, fmt.Errorf("validation errors: %v", errors)
 	}
 
-	findAddress, err := s.repoAddress.FindAddressByID(request.AddressID)
+	_, err := s.repoAddress.FindAddressByID(request.AddressID)
 	if err != nil {
 		return nil, fmt.Errorf("address with ID %s not found", request.AddressID)
 	}
 
-	existingRequest, err := s.repo.FindRequestPickupByAddressAndStatus(UserId, "waiting_pengepul")
+	existingRequest, err := s.repo.FindRequestPickupByAddressAndStatus(UserId, "waiting_collector")
 	if err != nil {
 		return nil, fmt.Errorf("error checking for existing request pickup: %v", err)
 	}
@@ -49,8 +53,9 @@ func (s *requestPickupService) CreateRequestPickup(request dto.RequestPickup, Us
 
 	modelRequest := model.RequestPickup{
 		UserId:        UserId,
-		AddressId:     findAddress.ID,
+		AddressId:     request.AddressID,
 		EvidenceImage: request.EvidenceImage,
+		RequestMethod: request.RequestMethod,
 	}
 
 	err = s.repo.CreateRequestPickup(&modelRequest)
@@ -58,14 +63,17 @@ func (s *requestPickupService) CreateRequestPickup(request dto.RequestPickup, Us
 		return nil, fmt.Errorf("failed to create request pickup: %v", err)
 	}
 
+	createdAt, _ := utils.FormatDateToIndonesianFormat(modelRequest.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(modelRequest.UpdatedAt)
+
 	response := &dto.ResponseRequestPickup{
 		ID:            modelRequest.ID,
 		UserId:        UserId,
 		AddressID:     modelRequest.AddressId,
 		EvidenceImage: modelRequest.EvidenceImage,
 		StatusPickup:  modelRequest.StatusPickup,
-		CreatedAt:     modelRequest.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:     modelRequest.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
 	}
 
 	for _, item := range request.RequestItems {
@@ -102,80 +110,94 @@ func (s *requestPickupService) GetRequestPickupByID(id string) (*dto.ResponseReq
 		return nil, fmt.Errorf("error fetching request pickup with ID %s: %v", id, err)
 	}
 
+	createdAt, _ := utils.FormatDateToIndonesianFormat(request.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(request.UpdatedAt)
+
 	response := &dto.ResponseRequestPickup{
 		ID:            request.ID,
 		UserId:        request.UserId,
 		AddressID:     request.AddressId,
 		EvidenceImage: request.EvidenceImage,
 		StatusPickup:  request.StatusPickup,
-		CreatedAt:     request.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:     request.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
 	}
 
 	return response, nil
 }
 
-func (s *requestPickupService) GetAllRequestPickups() ([]dto.ResponseRequestPickup, error) {
+func (s *requestPickupService) GetAllRequestPickups(userid string) ([]dto.ResponseRequestPickup, error) {
 
-	requests, err := s.repo.FindAllRequestPickups()
+	requests, err := s.repo.FindAllRequestPickups(userid)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching all request pickups: %v", err)
 	}
 
 	var response []dto.ResponseRequestPickup
 	for _, request := range requests {
+		createdAt, _ := utils.FormatDateToIndonesianFormat(request.CreatedAt)
+		updatedAt, _ := utils.FormatDateToIndonesianFormat(request.UpdatedAt)
 		response = append(response, dto.ResponseRequestPickup{
 			ID:            request.ID,
 			UserId:        request.UserId,
 			AddressID:     request.AddressId,
 			EvidenceImage: request.EvidenceImage,
 			StatusPickup:  request.StatusPickup,
-			CreatedAt:     request.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:     request.UpdatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:     createdAt,
+			UpdatedAt:     updatedAt,
 		})
 	}
 
 	return response, nil
 }
 
-func (s *requestPickupService) UpdateRequestPickup(id string, request dto.RequestPickup) (*dto.ResponseRequestPickup, error) {
+func (s *requestPickupService) GetRequestPickupsForCollector(collectorId string) ([]dto.ResponseRequestPickup, error) {
 
-	errors, valid := request.ValidateRequestPickup()
-	if !valid {
-		return nil, fmt.Errorf("validation errors: %v", errors)
-	}
-
-	existingRequest, err := s.repo.FindRequestPickupByID(id)
+	requests, err := s.repo.GetAutomaticRequestPickupsForCollector(collectorId)
 	if err != nil {
-		return nil, fmt.Errorf("request pickup with ID %s not found: %v", id, err)
+		return nil, fmt.Errorf("error retrieving automatic pickup requests: %v", err)
 	}
 
-	existingRequest.EvidenceImage = request.EvidenceImage
+	var response []dto.ResponseRequestPickup
 
-	err = s.repo.UpdateRequestPickup(id, existingRequest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update request pickup: %v", err)
-	}
+	for _, req := range requests {
 
-	response := &dto.ResponseRequestPickup{
-		ID:            existingRequest.ID,
-		UserId:        existingRequest.UserId,
-		AddressID:     existingRequest.AddressId,
-		EvidenceImage: existingRequest.EvidenceImage,
-		StatusPickup:  existingRequest.StatusPickup,
-		CreatedAt:     existingRequest.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:     existingRequest.UpdatedAt.Format("2006-01-02 15:04:05"),
+		_, distance := utils.Distance(
+			utils.Coord{Lat: req.Address.Latitude, Lon: req.Address.Longitude},
+			utils.Coord{Lat: req.Address.Latitude, Lon: req.Address.Longitude},
+		)
+
+		if distance <= 20 {
+
+			mappedRequest := dto.ResponseRequestPickup{
+				ID:            req.ID,
+				UserId:        req.UserId,
+				AddressID:     req.AddressId,
+				EvidenceImage: req.EvidenceImage,
+				StatusPickup:  req.StatusPickup,
+				CreatedAt:     req.CreatedAt.Format("2006-01-02 15:04:05"),
+				UpdatedAt:     req.UpdatedAt.Format("2006-01-02 15:04:05"),
+			}
+
+			requestItems, err := s.repo.GetRequestPickupItems(req.ID)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching request items: %v", err)
+			}
+
+			var mappedRequestItems []dto.ResponseRequestPickupItem
+			for _, item := range requestItems {
+				mappedRequestItems = append(mappedRequestItems, dto.ResponseRequestPickupItem{
+					ID:                item.ID,
+					TrashCategoryName: item.TrashCategory.Name,
+					EstimatedAmount:   item.EstimatedAmount,
+				})
+			}
+
+			mappedRequest.RequestItems = mappedRequestItems
+
+			response = append(response, mappedRequest)
+		}
 	}
 
 	return response, nil
-}
-
-func (s *requestPickupService) DeleteRequestPickup(id string) error {
-
-	err := s.repo.DeleteRequestPickup(id)
-	if err != nil {
-		return fmt.Errorf("failed to delete request pickup with ID %s: %v", id, err)
-	}
-
-	return nil
 }

@@ -42,6 +42,7 @@ func ConnectDatabase() {
 		// ==============main feature==============
 		// =>user preparation<=
 		&model.User{},
+		&model.Collector{},
 		&model.Role{},
 		&model.UserPin{},
 		&model.Address{},

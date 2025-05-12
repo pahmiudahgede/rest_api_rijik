@@ -11,11 +11,13 @@ type RequestPickupRepository interface {
 	CreateRequestPickup(request *model.RequestPickup) error
 	CreateRequestPickupItem(item *model.RequestPickupItem) error
 	FindRequestPickupByID(id string) (*model.RequestPickup, error)
-	FindAllRequestPickups() ([]model.RequestPickup, error)
+	FindAllRequestPickups(userId string) ([]model.RequestPickup, error)
+	FindAllAutomaticMethodRequest(requestMethod, statuspickup string) ([]model.RequestPickup, error)
+	FindRequestPickupByAddressAndStatus(userId, status string) (*model.RequestPickup, error)
+	GetRequestPickupItems(requestPickupId string) ([]model.RequestPickupItem, error)
+	GetAutomaticRequestPickupsForCollector(collectorId string) ([]model.RequestPickup, error)
 	UpdateRequestPickup(id string, request *model.RequestPickup) error
 	DeleteRequestPickup(id string) error
-	FindRequestPickupByAddressAndCategory(addressID string, trashCategoryID string) (*model.RequestPickup, error)
-	FindRequestPickupByAddressAndStatus(userId, status string) (*model.RequestPickup, error)
 }
 
 type requestPickupRepository struct {
@@ -57,13 +59,35 @@ func (r *requestPickupRepository) FindRequestPickupByID(id string) (*model.Reque
 	return &request, nil
 }
 
-func (r *requestPickupRepository) FindAllRequestPickups() ([]model.RequestPickup, error) {
+func (r *requestPickupRepository) FindAllRequestPickups(userId string) ([]model.RequestPickup, error) {
 	var requests []model.RequestPickup
-	err := r.DB.Preload("RequestItems").Find(&requests).Error
+	err := r.DB.Preload("RequestItems").Where("user_id = ?", userId).Find(&requests).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all request pickups: %v", err)
 	}
 	return requests, nil
+}
+
+func (r *requestPickupRepository) FindAllAutomaticMethodRequest(requestMethod, statuspickup string) ([]model.RequestPickup, error) {
+	var requests []model.RequestPickup
+	err := r.DB.Preload("RequestItems").Where("request_method = ? AND status_pickup = ?", requestMethod, statuspickup).Find(&requests).Error
+	if err != nil {
+		return nil, fmt.Errorf("error fetching request pickups with request_method %s: %v", requestMethod, err)
+	}
+
+	return requests, nil
+}
+
+func (r *requestPickupRepository) FindRequestPickupByAddressAndStatus(userId, status string) (*model.RequestPickup, error) {
+	var request model.RequestPickup
+	err := r.DB.Where("user_id = ? AND status_pickup = ?", userId, status).First(&request).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to check existing request pickup: %v", err)
+	}
+	return &request, nil
 }
 
 func (r *requestPickupRepository) UpdateRequestPickup(id string, request *model.RequestPickup) error {
@@ -71,6 +95,7 @@ func (r *requestPickupRepository) UpdateRequestPickup(id string, request *model.
 	if err != nil {
 		return fmt.Errorf("failed to update request pickup: %v", err)
 	}
+
 	return nil
 }
 
@@ -87,28 +112,25 @@ func (r *requestPickupRepository) DeleteRequestPickup(id string) error {
 	return nil
 }
 
-func (r *requestPickupRepository) FindRequestPickupByAddressAndCategory(addressID string, trashCategoryID string) (*model.RequestPickup, error) {
-	var request model.RequestPickup
-	err := r.DB.Joins("JOIN request_pickup_items ON request_pickups.id = request_pickup_items.request_pickup_id").
-		Where("request_pickups.address_id = ? AND request_pickup_items.trash_category_id = ?", addressID, trashCategoryID).
-		First(&request).Error
+func (r *requestPickupRepository) GetAutomaticRequestPickupsForCollector(collectorId string) ([]model.RequestPickup, error) {
+	var requests []model.RequestPickup
+
+	err := r.DB.Preload("Address").
+		Where("request_method = ? AND status_pickup = ?", "otomatis", "waiting_collector").
+		Find(&requests).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("error checking request pickup for address %s and category %s: %v", addressID, trashCategoryID, err)
+		return nil, fmt.Errorf("error fetching pickup requests: %v", err)
 	}
-	return &request, nil
+
+	return requests, nil
 }
 
-func (r *requestPickupRepository) FindRequestPickupByAddressAndStatus(userId, status string) (*model.RequestPickup, error) {
-	var request model.RequestPickup
-	err := r.DB.Where("user_id = ? AND status_pickup = ?", userId, status).First(&request).Error
+func (r *requestPickupRepository) GetRequestPickupItems(requestPickupId string) ([]model.RequestPickupItem, error) {
+	var items []model.RequestPickupItem
+
+	err := r.DB.Preload("TrashCategory").Where("request_pickup_id = ?", requestPickupId).Find(&items).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to check existing request pickup: %v", err)
+		return nil, fmt.Errorf("error fetching request pickup items: %v", err)
 	}
-	return &request, nil
+	return items, nil
 }

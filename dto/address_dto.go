@@ -3,29 +3,29 @@ package dto
 import "strings"
 
 type AddressResponseDTO struct {
-	UserID     string `json:"user_id"`
-	ID         string `json:"address_id"`
-	Province   string `json:"province"`
-	Regency    string `json:"regency"`
-	District   string `json:"district"`
-	Village    string `json:"village"`
-	PostalCode string `json:"postalCode"`
-	Detail     string `json:"detail"`
-	Latitude   string `json:"latitude"`
-	Longitude  string `json:"longitude"`
-	CreatedAt  string `json:"createdAt"`
-	UpdatedAt  string `json:"updatedAt"`
+	UserID     string  `json:"user_id"`
+	ID         string  `json:"address_id"`
+	Province   string  `json:"province"`
+	Regency    string  `json:"regency"`
+	District   string  `json:"district"`
+	Village    string  `json:"village"`
+	PostalCode string  `json:"postalCode"`
+	Detail     string  `json:"detail"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
+	CreatedAt  string  `json:"createdAt"`
+	UpdatedAt  string  `json:"updatedAt"`
 }
 
 type CreateAddressDTO struct {
-	Province   string `json:"province_id"`
-	Regency    string `json:"regency_id"`
-	District   string `json:"district_id"`
-	Village    string `json:"village_id"`
-	PostalCode string `json:"postalCode"`
-	Detail     string `json:"detail"`
-	Latitude   string `json:"latitude"`
-	Longitude  string `json:"longitude"`
+	Province   string  `json:"province_id"`
+	Regency    string  `json:"regency_id"`
+	District   string  `json:"district_id"`
+	Village    string  `json:"village_id"`
+	PostalCode string  `json:"postalCode"`
+	Detail     string  `json:"detail"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
 }
 
 func (r *CreateAddressDTO) ValidateAddress() (map[string][]string, bool) {
@@ -34,28 +34,35 @@ func (r *CreateAddressDTO) ValidateAddress() (map[string][]string, bool) {
 	if strings.TrimSpace(r.Province) == "" {
 		errors["province_id"] = append(errors["province_id"], "Province ID is required")
 	}
+
 	if strings.TrimSpace(r.Regency) == "" {
 		errors["regency_id"] = append(errors["regency_id"], "Regency ID is required")
 	}
+
 	if strings.TrimSpace(r.District) == "" {
 		errors["district_id"] = append(errors["district_id"], "District ID is required")
 	}
+
 	if strings.TrimSpace(r.Village) == "" {
 		errors["village_id"] = append(errors["village_id"], "Village ID is required")
 	}
+
 	if strings.TrimSpace(r.PostalCode) == "" {
-		errors["postalCode"] = append(errors["village_id"], "PostalCode ID is required")
+		errors["postalCode"] = append(errors["postalCode"], "PostalCode is required")
 	} else if len(r.PostalCode) < 5 {
-		errors["postalCode"] = append(errors["postalCode"], "kode pos belum sesuai")
+		errors["postalCode"] = append(errors["postalCode"], "PostalCode must be at least 5 characters")
 	}
+
 	if strings.TrimSpace(r.Detail) == "" {
 		errors["detail"] = append(errors["detail"], "Detail address is required")
 	}
-	if strings.TrimSpace(r.Latitude) == "" {
-		errors["latitude"] = append(errors["latitude"], "Geographic coordinates are required")
+
+	if r.Latitude == 0 {
+		errors["latitude"] = append(errors["latitude"], "Latitude is required")
 	}
-	if strings.TrimSpace(r.Longitude) == "" {
-		errors["longitude"] = append(errors["longitude"], "Geographic coordinates are required")
+
+	if r.Longitude == 0 {
+		errors["longitude"] = append(errors["longitude"], "Longitude is required")
 	}
 
 	if len(errors) > 0 {

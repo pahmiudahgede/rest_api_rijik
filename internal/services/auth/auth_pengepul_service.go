@@ -67,9 +67,10 @@ func (s *authPengepulService) checkOTPRequestCooldown(phone string) error {
 
 func (s *authPengepulService) sendOTP(phone string) error {
 	otp := generateOTP()
-	if err := config.SendWhatsAppMessage(phone, fmt.Sprintf("Your OTP is: %s", otp)); err != nil {
-		return err
-	}
+	fmt.Printf("ur otp is:%s", otp)
+	// if err := config.SendWhatsAppMessage(phone, fmt.Sprintf("Your OTP is: %s", otp)); err != nil {
+	// 	return err
+	// }
 
 	if err := utils.SetStringData("otp:"+phone, otp, 10*time.Minute); err != nil {
 		return err

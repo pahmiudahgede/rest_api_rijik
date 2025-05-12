@@ -12,8 +12,8 @@ type Address struct {
 	Village    string    `gorm:"not null" json:"village"`
 	PostalCode string    `gorm:"not null" json:"postalCode"`
 	Detail     string    `gorm:"not null" json:"detail"`
-	Latitude   string    `gorm:"not null" json:"latitude"`
-	Longitude  string    `gorm:"not null" json:"longitude"`
+	Latitude   float64   `gorm:"not null" json:"latitude"`
+	Longitude  float64   `gorm:"not null" json:"longitude"`
 	CreatedAt  time.Time `gorm:"default:current_timestamp" json:"createdAt"`
 	UpdatedAt  time.Time `gorm:"default:current_timestamp" json:"updatedAt"`
 }

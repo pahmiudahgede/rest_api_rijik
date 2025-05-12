@@ -9,6 +9,7 @@ type RequestPickup struct {
 	RequestItems  []RequestPickupItem `json:"request_items"`
 	EvidenceImage string              `json:"evidence_image"`
 	AddressID     string              `json:"address_id"`
+	RequestMethod string              `json:"request_method"`
 }
 
 type RequestPickupItem struct {
@@ -17,18 +18,20 @@ type RequestPickupItem struct {
 }
 
 type ResponseRequestPickup struct {
-	ID            string                      `json:"id"`
-	UserId        string                      `json:"user_id"`
-	AddressID     string                      `json:"address_id"`
-	EvidenceImage string                      `json:"evidence_image"`
-	StatusPickup  string                      `json:"status_pickup"`
-	CreatedAt     string                      `json:"created_at"`
-	UpdatedAt     string                      `json:"updated_at"`
-	RequestItems  []ResponseRequestPickupItem `json:"request_items"`
+	ID                     string                      `json:"id,omitempty"`
+	UserId                 string                      `json:"user_id,omitempty"`
+	AddressID              string                      `json:"address_id,omitempty"`
+	EvidenceImage          string                      `json:"evidence_image,omitempty"`
+	StatusPickup           string                      `json:"status_pickup,omitempty"`
+	CollectorID            string                      `json:"collectorid,omitempty"`
+	ConfirmedByCollectorAt string                      `json:"confirmedat,omitempty"`
+	CreatedAt              string                      `json:"created_at,omitempty"`
+	UpdatedAt              string                      `json:"updated_at,omitempty"`
+	RequestItems           []ResponseRequestPickupItem `json:"request_items,omitempty"`
 }
 
 type ResponseRequestPickupItem struct {
-	ID                string  `json:"id"`
+	ID string `json:"id"`
 	// TrashCategoryID   string  `json:"trash_category_id"`
 	TrashCategoryName string  `json:"trash_category_name"`
 	EstimatedAmount   float64 `json:"estimated_amount"`
