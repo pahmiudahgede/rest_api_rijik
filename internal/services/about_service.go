@@ -107,7 +107,7 @@ func (s *aboutService) saveCoverImageAbout(coverImageAbout *multipart.FileHeader
 }
 
 func (s *aboutService) saveCoverImageAboutDetail(coverImageAbout *multipart.FileHeader) (string, error) {
-	pathImage := "/uploads/coverabout/coveraboutdetail"
+	pathImage := "/uploads/coverabout/coveraboutdetail/"
 	coverImageAboutDir := "./public" + os.Getenv("BASE_URL") + pathImage
 	if _, err := os.Stat(coverImageAboutDir); os.IsNotExist(err) {
 
