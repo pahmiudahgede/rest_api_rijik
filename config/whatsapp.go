@@ -25,7 +25,7 @@ func InitWhatsApp() {
 	dbLog := waLog.Stdout("Database", "DEBUG", true)
 
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",	
+		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_HOST"),
@@ -80,7 +80,6 @@ func generateQRCode(qrString string) {
 	qrterminal.GenerateHalfBlock(qrString, qrterminal.M, os.Stdout)
 }
 
-
 func handleShutdown() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -107,5 +106,42 @@ func SendWhatsAppMessage(phone, message string) error {
 	}
 
 	log.Printf("WhatsApp message sent successfully to: %s", phone)
+	return nil
+}
+
+func LogoutWhatsApp() error {
+	if WhatsAppClient == nil {
+		return fmt.Errorf("WhatsApp client is not initialized")
+	}
+
+	WhatsAppClient.Disconnect()
+
+	err := removeWhatsAppDeviceFromContainer()
+	if err != nil {
+		return fmt.Errorf("failed to remove device from container: %v", err)
+	}
+
+	err = container.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close database connection: %v", err)
+	}
+
+	log.Println("WhatsApp client disconnected and session cleared successfully.")
+	return nil
+}
+
+func removeWhatsAppDeviceFromContainer() error {
+	deviceStore, err := container.GetFirstDevice()
+	if err != nil {
+		return fmt.Errorf("failed to get WhatsApp device: %v", err)
+	}
+
+	if deviceStore != nil {
+		err := deviceStore.Delete()
+		if err != nil {
+			return fmt.Errorf("failed to remove device from store: %v", err)
+		}
+	}
+
 	return nil
 }

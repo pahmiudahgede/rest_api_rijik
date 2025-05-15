@@ -42,5 +42,6 @@ func SetupRoutes(app *fiber.App) {
 	presentation.CoverageAreaRouter(api)
 	presentation.StoreRouter(api)
 	presentation.ProductRouter(api)
+	presentation.WhatsAppRouter(api)
 
 }
