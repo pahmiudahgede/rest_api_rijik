@@ -5,23 +5,27 @@ import (
 	"rijig/dto"
 	"rijig/internal/repositories"
 	"rijig/utils"
+	"time"
 )
 
 type CollectorService interface {
 	FindCollectorsNearby(userId string) ([]dto.ResponseCollectorDTO, error)
 	ConfirmRequestPickup(requestId, collectorId string) (*dto.ResponseRequestPickup, error)
+	ConfirmRequestManualPickup(requestId, collectorId string) (any, error)
 }
 
 type collectorService struct {
 	repo        repositories.CollectorRepository
-	repoReq     repositories.RequestPickupRepository
+	repoColl    repositories.RequestPickupRepository
 	repoAddress repositories.AddressRepository
+	repoUser    repositories.UserProfilRepository
 }
 
 func NewCollectorService(repo repositories.CollectorRepository,
-	repoReq repositories.RequestPickupRepository,
-	repoAddress repositories.AddressRepository) CollectorService {
-	return &collectorService{repo: repo, repoReq: repoReq, repoAddress: repoAddress}
+	repoColl repositories.RequestPickupRepository,
+	repoAddress repositories.AddressRepository,
+	repoUser repositories.UserProfilRepository) CollectorService {
+	return &collectorService{repo: repo, repoColl: repoColl, repoAddress: repoAddress, repoUser: repoUser}
 }
 
 func (s *collectorService) FindCollectorsNearby(userId string) ([]dto.ResponseCollectorDTO, error) {
@@ -30,51 +34,62 @@ func (s *collectorService) FindCollectorsNearby(userId string) ([]dto.ResponseCo
 		return nil, fmt.Errorf("error fetching active collectors: %v", err)
 	}
 
-	request, err := s.repoReq.FindRequestPickupByAddressAndStatus(userId, "waiting_collector")
-	if err != nil {
-		return nil, fmt.Errorf("gagal mendapatkan data request pickup dengan userid: %v", err)
-	}
-
-	reqpickaddress, err := s.repoAddress.FindAddressByID(request.AddressId)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching address for request pickup %s: %v", request.ID, err)
-	}
-
-	var nearbyCollectorsResponse []dto.ResponseCollectorDTO
-	var maxDistance = 10.0
+	var avaibleCollectResp []dto.ResponseCollectorDTO
 
 	for _, collector := range collectors {
 
-		address, err := s.repoAddress.FindAddressByID(collector.AddressId)
+		request, err := s.repoColl.FindRequestPickupByAddressAndStatus(userId, "waiting_collector", "otomatis")
 		if err != nil {
-			return nil, fmt.Errorf("error fetching address for collector %s: %v", collector.ID, err)
+			return nil, fmt.Errorf("gagal mendapatkan data request pickup dengan userid: %v", err)
 		}
 
-		collectorCoord := utils.Coord{Lat: reqpickaddress.Latitude, Lon: reqpickaddress.Longitude}
-		userCoord := utils.Coord{Lat: address.Latitude, Lon: address.Longitude}
+		_, distance := utils.Distance(
+			utils.Coord{Lat: request.Address.Latitude, Lon: request.Address.Longitude},
+			utils.Coord{Lat: collector.Address.Latitude, Lon: collector.Address.Longitude},
+		)
 
-		_, km := utils.Distance(collectorCoord, userCoord)
+		if distance <= 20 {
 
-		if km <= maxDistance {
-
-			nearbyCollectorsResponse = append(nearbyCollectorsResponse, dto.ResponseCollectorDTO{
+			mappedRequest := dto.ResponseCollectorDTO{
 				ID:        collector.ID,
-				AddressId: collector.User.Name,
-				Rating:    collector.Rating,
-			})
+				UserId:    collector.UserID,
+				AddressId: collector.AddressId,
+
+				Rating: collector.Rating,
+			}
+
+			user, err := s.repoUser.FindByID(collector.UserID)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching user data: %v", err)
+			}
+			mappedRequest.User = []dto.UserResponseDTO{
+				{
+					Name:  user.Name,
+					Phone: user.Phone,
+				},
+			}
+
+			address, err := s.repoAddress.FindAddressByID(collector.AddressId)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching address data: %v", err)
+			}
+			mappedRequest.Address = []dto.AddressResponseDTO{
+				{
+					District: address.District,
+					Village:  address.Village,
+					Detail:   address.Detail,
+				},
+			}
+
+			avaibleCollectResp = append(avaibleCollectResp, mappedRequest)
 		}
 	}
 
-	if len(nearbyCollectorsResponse) == 0 {
-		return nil, fmt.Errorf("no request pickups found within %v km", maxDistance)
-	}
-
-	return nearbyCollectorsResponse, nil
+	return avaibleCollectResp, nil
 }
 
 func (s *collectorService) ConfirmRequestPickup(requestId, collectorId string) (*dto.ResponseRequestPickup, error) {
-
-	request, err := s.repoReq.FindRequestPickupByID(requestId)
+	request, err := s.repoColl.FindRequestPickupByID(requestId)
 	if err != nil {
 		return nil, fmt.Errorf("request pickup not found: %v", err)
 	}
@@ -90,13 +105,14 @@ func (s *collectorService) ConfirmRequestPickup(requestId, collectorId string) (
 
 	request.StatusPickup = "confirmed"
 	request.CollectorID = &collector.ID
+	*request.ConfirmedByCollectorAt = time.Now()
 
-	err = s.repoReq.UpdateRequestPickup(requestId, request)
+	err = s.repoColl.UpdateRequestPickup(requestId, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update request pickup: %v", err)
 	}
 
-	confirmedAt, _ := utils.FormatDateToIndonesianFormat(request.ConfirmedByCollectorAt)
+	confirmedAt, _ := utils.FormatDateToIndonesianFormat(*request.ConfirmedByCollectorAt)
 
 	response := dto.ResponseRequestPickup{
 		StatusPickup:           request.StatusPickup,
@@ -105,4 +121,31 @@ func (s *collectorService) ConfirmRequestPickup(requestId, collectorId string) (
 	}
 
 	return &response, nil
+}
+
+func (s *collectorService) ConfirmRequestManualPickup(requestId, collectorId string) (any, error) {
+
+	request, err := s.repoColl.FindRequestPickupByID(requestId)
+	if err != nil {
+		return nil, fmt.Errorf("collector tidak ditemukan: %v", err)
+	}
+
+	coll, err := s.repo.FindCollectorByIdWithoutAddr(collectorId)
+	if err != nil {
+		return nil, fmt.Errorf("%v", err)
+	}
+
+	if coll.ID != *request.CollectorID {
+		return nil, fmt.Errorf("collectorid tidak sesuai dengan request")
+	}
+
+	request.StatusPickup = "confirmed"
+	*request.ConfirmedByCollectorAt = time.Now()
+
+	err = s.repoColl.UpdateRequestPickup(requestId, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update request pickup: %v", err)
+	}
+
+	return "berhasil konfirmasi request pickup", nil
 }

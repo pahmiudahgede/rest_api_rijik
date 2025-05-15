@@ -53,32 +53,40 @@ func (h *RequestPickupHandler) GetRequestPickupByID(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, response, "Request pickup retrieved successfully")
 }
 
-// func (h *RequestPickupHandler) GetAutomaticRequestByUser(c *fiber.Ctx) error {
-
-// 	collectorId, ok := c.Locals("userID").(string)
-// 	if !ok || collectorId == "" {
-// 		return utils.ErrorResponse(c, "Unauthorized: User session not found")
-// 	}
-
-// 	requestPickups, err := h.service.GetAllAutomaticRequestPickup(collectorId)
-// 	if err != nil {
-
-// 		return utils.ErrorResponse(c, err.Error())
-// 	}
-
-// 	return utils.SuccessResponse(c, requestPickups, "Request pickups fetched successfully")
-// }
-
 func (h *RequestPickupHandler) GetRequestPickups(c *fiber.Ctx) error {
-	// Get userID from Locals
+
 	collectorId := c.Locals("userID").(string)
 
-	// Call service layer to get the request pickups
 	requests, err := h.service.GetRequestPickupsForCollector(collectorId)
 	if err != nil {
 		return utils.ErrorResponse(c, err.Error())
 	}
 
-	// Return response
 	return utils.SuccessResponse(c, requests, "Automatic request pickups retrieved successfully")
 }
+
+func (h *RequestPickupHandler) AssignCollectorToRequest(c *fiber.Ctx) error {
+	userId, ok := c.Locals("userID").(string)
+	if !ok || userId == "" {
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: User session not found")
+	}
+
+	var request dto.SelectCollectorRequest
+	errors, valid := request.ValidateSelectCollectorRequest()
+	if !valid {
+		return utils.ValidationErrorResponse(c, errors)
+	}
+
+	if err := c.BodyParser(&request); err != nil {
+		return fmt.Errorf("error parsing request body: %v", err)
+	}
+
+	err := h.service.SelectCollectorInRequest(userId, request.Collector_id)
+	if err != nil {
+
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Error assigning collector: %v", err))
+	}
+
+	return utils.GenericResponse(c, fiber.StatusOK, "berhasil memilih collector")
+}
+

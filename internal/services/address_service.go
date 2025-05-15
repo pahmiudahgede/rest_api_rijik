@@ -304,7 +304,7 @@ func (s *addressService) UpdateAddress(userID, id string, addressDTO dto.CreateA
 	address.Detail = addressDTO.Detail
 	address.Latitude = addressDTO.Latitude
 	address.Longitude = addressDTO.Longitude
-	address.UpdatedAt = time.Now()
+	// address.UpdatedAt = time.Now()
 
 	err = s.AddressRepo.UpdateAddress(address)
 	if err != nil {

@@ -244,6 +244,7 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 
 	var categoriesDTO []dto.ResponseTrashCategoryDTO
 	for _, category := range categories {
+		// path := os.Getenv("BASE_URL")
 		createdAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
 		updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
 		categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
@@ -254,6 +255,7 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 			UpdatedAt: updatedAt,
 		})
 	}
+
 
 	cacheData := map[string]interface{}{
 		"data": categoriesDTO,

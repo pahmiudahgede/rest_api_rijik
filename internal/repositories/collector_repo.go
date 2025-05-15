@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"rijig/model"
-	"rijig/utils"
 
 	"gorm.io/gorm"
 )
@@ -13,9 +12,10 @@ import (
 type CollectorRepository interface {
 	FindActiveCollectors() ([]model.Collector, error)
 	FindCollectorById(collector_id string) (*model.Collector, error)
+	FindCollectorByIdWithoutAddr(collector_id string) (*model.Collector, error)
 	CreateCollector(collector *model.Collector) error
 	UpdateCollector(userId string, jobStatus string) (*model.Collector, error)
-	FindAllAutomaticMethodRequestWithDistance(requestMethod, statuspickup string, collectorLat, collectorLon float64, maxDistance float64) ([]model.RequestPickup, error)
+	// FindAllAutomaticMethodRequestWithDistance(requestMethod, statuspickup string, collectorLat, collectorLon float64, maxDistance float64) ([]model.RequestPickup, error)
 }
 
 type collectorRepository struct {
@@ -29,7 +29,7 @@ func NewCollectorRepository(db *gorm.DB) CollectorRepository {
 func (r *collectorRepository) FindActiveCollectors() ([]model.Collector, error) {
 	var collectors []model.Collector
 
-	err := r.DB.Where("job_status = ?", "active").First(&collectors).Error
+	err := r.DB.Preload("Address").Where("job_status = ?", "active").First(&collectors).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch active collectors: %v", err)
 	}
@@ -38,6 +38,16 @@ func (r *collectorRepository) FindActiveCollectors() ([]model.Collector, error) 
 }
 
 func (r *collectorRepository) FindCollectorById(collector_id string) (*model.Collector, error) {
+	var collector model.Collector
+	err := r.DB.Preload("Address").Where("user_id = ?", collector_id).First(&collector).Error
+	if err != nil {
+		return nil, fmt.Errorf("error fetching collector: %v", err)
+	}
+	fmt.Printf("menampilkan data collector %v", &collector)
+	return &collector, nil
+}
+
+func (r *collectorRepository) FindCollectorByIdWithoutAddr(collector_id string) (*model.Collector, error) {
 	var collector model.Collector
 	err := r.DB.Where("user_id = ?", collector_id).First(&collector).Error
 	if err != nil {
@@ -77,29 +87,29 @@ func (r *collectorRepository) UpdateCollector(userId string, jobStatus string) (
 	return &existingCollector, nil
 }
 
-// #====experimen====#
-func (r *collectorRepository) FindAllAutomaticMethodRequestWithDistance(requestMethod, statuspickup string, collectorLat, collectorLon float64, maxDistance float64) ([]model.RequestPickup, error) {
-	var requests []model.RequestPickup
+// // #====experimen====#
+// func (r *collectorRepository) FindAllAutomaticMethodRequestWithDistance(requestMethod, statuspickup string, collectorLat, collectorLon float64, maxDistance float64) ([]model.RequestPickup, error) {
+// 	var requests []model.RequestPickup
 
-	err := r.DB.Preload("RequestItems").
-		Where("request_method = ? AND status_pickup = ?", requestMethod, statuspickup).
-		Find(&requests).Error
-	if err != nil {
-		return nil, fmt.Errorf("error fetching request pickups with request_method '%s' and status '%s': %v", requestMethod, statuspickup, err)
-	}
+// 	err := r.DB.Preload("RequestItems").
+// 		Where("request_method = ? AND status_pickup = ?", requestMethod, statuspickup).
+// 		Find(&requests).Error
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error fetching request pickups with request_method '%s' and status '%s': %v", requestMethod, statuspickup, err)
+// 	}
 
-	var nearbyRequests []model.RequestPickup
-	for _, request := range requests {
-		address := request.Address
+// 	var nearbyRequests []model.RequestPickup
+// 	for _, request := range requests {
+// 		address := request.Address
 
-		requestCoord := utils.Coord{Lat: address.Latitude, Lon: address.Longitude}
-		collectorCoord := utils.Coord{Lat: collectorLat, Lon: collectorLon}
-		_, km := utils.Distance(requestCoord, collectorCoord)
+// 		requestCoord := utils.Coord{Lat: address.Latitude, Lon: address.Longitude}
+// 		collectorCoord := utils.Coord{Lat: collectorLat, Lon: collectorLon}
+// 		_, km := utils.Distance(requestCoord, collectorCoord)
 
-		if km <= maxDistance {
-			nearbyRequests = append(nearbyRequests, request)
-		}
-	}
+// 		if km <= maxDistance {
+// 			nearbyRequests = append(nearbyRequests, request)
+// 		}
+// 	}
 
-	return nearbyRequests, nil
-}
+// 	return nearbyRequests, nil
+// }

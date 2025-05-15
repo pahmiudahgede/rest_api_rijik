@@ -11,13 +11,20 @@ import (
 )
 
 func RequestPickupRouter(api fiber.Router) {
+	// repo        repositories.RequestPickupRepository
+	// repoColl    repositories.CollectorRepository
+	// repoAddress repositories.AddressRepository
+	// repoTrash   repositories.TrashRepository
+	// repoUser    repositories.UserProfilRepository
 
 	requestRepo := repositories.NewRequestPickupRepository(config.DB)
-	repoTrash := repositories.NewTrashRepository(config.DB)
+	repoColl := repositories.NewCollectorRepository(config.DB)
 	repoAddress := repositories.NewAddressRepository(config.DB)
+	Trashrepo := repositories.NewTrashRepository(config.DB)
+	repouser := repositories.NewUserProfilRepository(config.DB)
 	// collectorRepo := repositories.NewCollectorRepository(config.DB)
 
-	requestPickupServices := services.NewRequestPickupService(requestRepo, repoAddress, repoTrash)
+	requestPickupServices := services.NewRequestPickupService(requestRepo, repoColl, repoAddress, Trashrepo, repouser)
 	// collectorService := services.NewCollectorService(collectorRepo, requestRepo, repoAddress)
 	// service services.RequestPickupService,
 	// collectorService services.CollectorService
@@ -30,6 +37,7 @@ func RequestPickupRouter(api fiber.Router) {
 	requestPickupAPI.Post("/", requestPickupHandler.CreateRequestPickup)
 	// requestPickupAPI.Get("/get", middleware.AuthMiddleware, requestPickupHandler.GetAutomaticRequestByUser)
 	requestPickupAPI.Get("/get-allrequest", requestPickupHandler.GetRequestPickups)
+	requestPickupAPI.Patch("/select-collector", requestPickupHandler.AssignCollectorToRequest)
 	// requestPickupAPI.Get("/:id", requestPickupHandler.GetRequestPickupByID)
 	// requestPickupAPI.Get("/", requestPickupHandler.GetAllRequestPickups)
 	// requestPickupAPI.Put("/:id", requestPickupHandler.UpdateRequestPickup)

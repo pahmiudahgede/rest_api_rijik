@@ -3,18 +3,18 @@ package dto
 import "strings"
 
 type AddressResponseDTO struct {
-	UserID     string  `json:"user_id"`
-	ID         string  `json:"address_id"`
-	Province   string  `json:"province"`
-	Regency    string  `json:"regency"`
-	District   string  `json:"district"`
-	Village    string  `json:"village"`
-	PostalCode string  `json:"postalCode"`
-	Detail     string  `json:"detail"`
-	Latitude   float64 `json:"latitude"`
-	Longitude  float64 `json:"longitude"`
-	CreatedAt  string  `json:"createdAt"`
-	UpdatedAt  string  `json:"updatedAt"`
+	UserID     string  `json:"user_id,omitempty"`
+	ID         string  `json:"address_id,omitempty"`
+	Province   string  `json:"province,omitempty"`
+	Regency    string  `json:"regency,omitempty"`
+	District   string  `json:"district,omitempty"`
+	Village    string  `json:"village,omitempty"`
+	PostalCode string  `json:"postalCode,omitempty"`
+	Detail     string  `json:"detail,omitempty"`
+	Latitude   float64 `json:"latitude,omitempty"`
+	Longitude  float64 `json:"longitude,omitempty"`
+	CreatedAt  string  `json:"createdAt,omitempty"`
+	UpdatedAt  string  `json:"updatedAt,omitempty"`
 }
 
 type CreateAddressDTO struct {

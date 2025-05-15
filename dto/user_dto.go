@@ -6,16 +6,16 @@ import (
 )
 
 type UserResponseDTO struct {
-	ID            string  `json:"id"`
-	Username      string  `json:"username"`
+	ID            string  `json:"id,omitempty"`
+	Username      string  `json:"username,omitempty"`
 	Avatar        *string `json:"photoprofile,omitempty"`
-	Name          string  `json:"name"`
-	Phone         string  `json:"phone"`
-	Email         string  `json:"email"`
-	EmailVerified bool    `json:"emailVerified"`
-	RoleName      string  `json:"role"`
-	CreatedAt     string  `json:"createdAt"`
-	UpdatedAt     string  `json:"updatedAt"`
+	Name          string  `json:"name,omitempty"`
+	Phone         string  `json:"phone,omitempty"`
+	Email         string  `json:"email,omitempty"`
+	EmailVerified bool    `json:"emailVerified,omitempty"`
+	RoleName      string  `json:"role,omitempty"`
+	CreatedAt     string  `json:"createdAt,omitempty"`
+	UpdatedAt     string  `json:"updatedAt,omitempty"`
 }
 
 type RequestUserDTO struct {

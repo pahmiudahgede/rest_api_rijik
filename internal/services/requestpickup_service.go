@@ -12,23 +12,24 @@ type RequestPickupService interface {
 	CreateRequestPickup(request dto.RequestPickup, UserId string) (*dto.ResponseRequestPickup, error)
 	GetRequestPickupByID(id string) (*dto.ResponseRequestPickup, error)
 	GetAllRequestPickups(userid string) ([]dto.ResponseRequestPickup, error)
-	// GetAllAutomaticRequestPickups(collector_id string) ([]dto.ResponseRequestPickup, error)
-	// GetAllAutomaticRequestPickup(collectorId string) ([]dto.ResponseRequestPickup, error)
-
 	GetRequestPickupsForCollector(collectorId string) ([]dto.ResponseRequestPickup, error)
+	SelectCollectorInRequest(userId, collectorId string) error
 }
 
 type requestPickupService struct {
 	repo        repositories.RequestPickupRepository
-	repoReq     repositories.CollectorRepository
+	repoColl    repositories.CollectorRepository
 	repoAddress repositories.AddressRepository
 	repoTrash   repositories.TrashRepository
+	repoUser    repositories.UserProfilRepository
 }
 
 func NewRequestPickupService(repo repositories.RequestPickupRepository,
+	repoColl repositories.CollectorRepository,
 	repoAddress repositories.AddressRepository,
-	repoTrash repositories.TrashRepository) RequestPickupService {
-	return &requestPickupService{repo: repo, repoAddress: repoAddress, repoTrash: repoTrash}
+	repoTrash repositories.TrashRepository,
+	repoUser repositories.UserProfilRepository) RequestPickupService {
+	return &requestPickupService{repo: repo, repoColl: repoColl, repoAddress: repoAddress, repoTrash: repoTrash, repoUser: repoUser}
 }
 
 func (s *requestPickupService) CreateRequestPickup(request dto.RequestPickup, UserId string) (*dto.ResponseRequestPickup, error) {
@@ -43,7 +44,7 @@ func (s *requestPickupService) CreateRequestPickup(request dto.RequestPickup, Us
 		return nil, fmt.Errorf("address with ID %s not found", request.AddressID)
 	}
 
-	existingRequest, err := s.repo.FindRequestPickupByAddressAndStatus(UserId, "waiting_collector")
+	existingRequest, err := s.repo.FindRequestPickupByAddressAndStatus(UserId, "waiting_collector", "otomatis")
 	if err != nil {
 		return nil, fmt.Errorf("error checking for existing request pickup: %v", err)
 	}
@@ -94,9 +95,9 @@ func (s *requestPickupService) CreateRequestPickup(request dto.RequestPickup, Us
 		}
 
 		response.RequestItems = append(response.RequestItems, dto.ResponseRequestPickupItem{
-			ID:                modelItem.ID,
-			TrashCategoryName: findTrashCategory.Name,
-			EstimatedAmount:   modelItem.EstimatedAmount,
+			ID:              modelItem.ID,
+			TrashCategory:   []dto.ResponseTrashCategoryDTO{{Name: findTrashCategory.Name, Icon: findTrashCategory.Icon}},
+			EstimatedAmount: modelItem.EstimatedAmount,
 		})
 	}
 
@@ -152,8 +153,7 @@ func (s *requestPickupService) GetAllRequestPickups(userid string) ([]dto.Respon
 }
 
 func (s *requestPickupService) GetRequestPickupsForCollector(collectorId string) ([]dto.ResponseRequestPickup, error) {
-
-	requests, err := s.repo.GetAutomaticRequestPickupsForCollector(collectorId)
+	requests, err := s.repo.GetAutomaticRequestPickupsForCollector()
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving automatic pickup requests: %v", err)
 	}
@@ -162,8 +162,13 @@ func (s *requestPickupService) GetRequestPickupsForCollector(collectorId string)
 
 	for _, req := range requests {
 
+		collector, err := s.repoColl.FindCollectorById(collectorId)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching collector data: %v", err)
+		}
+
 		_, distance := utils.Distance(
-			utils.Coord{Lat: req.Address.Latitude, Lon: req.Address.Longitude},
+			utils.Coord{Lat: collector.Address.Latitude, Lon: collector.Address.Longitude},
 			utils.Coord{Lat: req.Address.Latitude, Lon: req.Address.Longitude},
 		)
 
@@ -179,17 +184,49 @@ func (s *requestPickupService) GetRequestPickupsForCollector(collectorId string)
 				UpdatedAt:     req.UpdatedAt.Format("2006-01-02 15:04:05"),
 			}
 
+			user, err := s.repoUser.FindByID(req.UserId)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching user data: %v", err)
+			}
+			mappedRequest.User = []dto.UserResponseDTO{
+				{
+					Name:  user.Name,
+					Phone: user.Phone,
+				},
+			}
+
+			address, err := s.repoAddress.FindAddressByID(req.AddressId)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching address data: %v", err)
+			}
+			mappedRequest.Address = []dto.AddressResponseDTO{
+				{
+					District: address.District,
+					Village:  address.Village,
+					Detail:   address.Detail,
+				},
+			}
+
 			requestItems, err := s.repo.GetRequestPickupItems(req.ID)
 			if err != nil {
 				return nil, fmt.Errorf("error fetching request items: %v", err)
 			}
 
 			var mappedRequestItems []dto.ResponseRequestPickupItem
+
 			for _, item := range requestItems {
+				trashCategory, err := s.repoTrash.GetCategoryByID(item.TrashCategoryId)
+				if err != nil {
+					return nil, fmt.Errorf("error fetching trash category: %v", err)
+				}
+
 				mappedRequestItems = append(mappedRequestItems, dto.ResponseRequestPickupItem{
-					ID:                item.ID,
-					TrashCategoryName: item.TrashCategory.Name,
-					EstimatedAmount:   item.EstimatedAmount,
+					ID: item.ID,
+					TrashCategory: []dto.ResponseTrashCategoryDTO{{
+						Name: trashCategory.Name,
+						Icon: trashCategory.Icon,
+					}},
+					EstimatedAmount: item.EstimatedAmount,
 				})
 			}
 
@@ -200,4 +237,113 @@ func (s *requestPickupService) GetRequestPickupsForCollector(collectorId string)
 	}
 
 	return response, nil
+}
+
+func (s *requestPickupService) GetManualRequestPickupsForCollector(collectorId string) ([]dto.ResponseRequestPickup, error) {
+
+	collector, err := s.repoColl.FindCollectorById(collectorId)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching collector data: %v", err)
+	}
+	requests, err := s.repo.GetManualReqMethodforCollect(collector.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving manual pickup requests: %v", err)
+	}
+
+	var response []dto.ResponseRequestPickup
+
+	for _, req := range requests {
+
+		createdAt, _ := utils.FormatDateToIndonesianFormat(req.CreatedAt)
+		updatedAt, _ := utils.FormatDateToIndonesianFormat(req.UpdatedAt)
+
+		mappedRequest := dto.ResponseRequestPickup{
+			ID:            req.ID,
+			UserId:        req.UserId,
+			AddressID:     req.AddressId,
+			EvidenceImage: req.EvidenceImage,
+			StatusPickup:  req.StatusPickup,
+			CreatedAt:     createdAt,
+			UpdatedAt:     updatedAt,
+		}
+
+		user, err := s.repoUser.FindByID(req.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching user data: %v", err)
+		}
+		mappedRequest.User = []dto.UserResponseDTO{
+			{
+				Name:  user.Name,
+				Phone: user.Phone,
+			},
+		}
+
+		address, err := s.repoAddress.FindAddressByID(req.AddressId)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching address data: %v", err)
+		}
+		mappedRequest.Address = []dto.AddressResponseDTO{
+			{
+				District: address.District,
+				Village:  address.Village,
+				Detail:   address.Detail,
+			},
+		}
+
+		requestItems, err := s.repo.GetRequestPickupItems(req.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching request items: %v", err)
+		}
+
+		var mappedRequestItems []dto.ResponseRequestPickupItem
+
+		for _, item := range requestItems {
+
+			trashCategory, err := s.repoTrash.GetCategoryByID(item.TrashCategoryId)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching trash category: %v", err)
+			}
+
+			mappedRequestItems = append(mappedRequestItems, dto.ResponseRequestPickupItem{
+				ID: item.ID,
+				TrashCategory: []dto.ResponseTrashCategoryDTO{{
+					Name: trashCategory.Name,
+					Icon: trashCategory.Icon,
+				}},
+				EstimatedAmount: item.EstimatedAmount,
+			})
+		}
+
+		mappedRequest.RequestItems = mappedRequestItems
+
+		response = append(response, mappedRequest)
+	}
+
+	return response, nil
+}
+
+func (s *requestPickupService) SelectCollectorInRequest(userId, collectorId string) error {
+
+	request, err := s.repo.FindRequestPickupByStatus(userId, "waiting_collector", "manual")
+	if err != nil {
+		return fmt.Errorf("request pickup not found: %v", err)
+	}
+
+	if request.StatusPickup != "waiting_collector" && request.RequestMethod != "manual" {
+		return fmt.Errorf("pickup request is not in 'waiting_collector' status and not 'manual' method")
+	}
+
+	collector, err := s.repoColl.FindCollectorByIdWithoutAddr(collectorId)
+	if err != nil {
+		return fmt.Errorf("collector tidak ditemukan: %v", err)
+	}
+
+	request.CollectorID = &collector.ID
+
+	err = s.repo.UpdateRequestPickup(request.ID, request)
+	if err != nil {
+		return fmt.Errorf("failed to update request pickup: %v", err)
+	}
+
+	return nil
 }

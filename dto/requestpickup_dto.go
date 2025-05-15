@@ -6,10 +6,11 @@ import (
 )
 
 type RequestPickup struct {
-	RequestItems  []RequestPickupItem `json:"request_items"`
-	EvidenceImage string              `json:"evidence_image"`
 	AddressID     string              `json:"address_id"`
 	RequestMethod string              `json:"request_method"`
+	EvidenceImage string              `json:"evidence_image"`
+	Notes         string              `json:"notes"`
+	RequestItems  []RequestPickupItem `json:"request_items"`
 }
 
 type RequestPickupItem struct {
@@ -20,10 +21,14 @@ type RequestPickupItem struct {
 type ResponseRequestPickup struct {
 	ID                     string                      `json:"id,omitempty"`
 	UserId                 string                      `json:"user_id,omitempty"`
+	User                   []UserResponseDTO           `json:"user,omitempty"`
 	AddressID              string                      `json:"address_id,omitempty"`
+	Address                []AddressResponseDTO        `json:"address,omitempty"`
 	EvidenceImage          string                      `json:"evidence_image,omitempty"`
+	Notes                  string                      `json:"notes,omitempty"`
 	StatusPickup           string                      `json:"status_pickup,omitempty"`
 	CollectorID            string                      `json:"collectorid,omitempty"`
+	Collector              []ResponseCollectorDTO      `json:"collector,omitempty"`
 	ConfirmedByCollectorAt string                      `json:"confirmedat,omitempty"`
 	CreatedAt              string                      `json:"created_at,omitempty"`
 	UpdatedAt              string                      `json:"updated_at,omitempty"`
@@ -31,10 +36,10 @@ type ResponseRequestPickup struct {
 }
 
 type ResponseRequestPickupItem struct {
-	ID string `json:"id"`
-	// TrashCategoryID   string  `json:"trash_category_id"`
-	TrashCategoryName string  `json:"trash_category_name"`
-	EstimatedAmount   float64 `json:"estimated_amount"`
+	ID              string                     `json:"id,omitempty"`
+	TrashCategoryID string                     `json:"trash_category_id,omitempty"`
+	TrashCategory   []ResponseTrashCategoryDTO `json:"trash_category,omitempty"`
+	EstimatedAmount float64                    `json:"estimated_amount,omitempty"`
 }
 
 func (r *RequestPickup) ValidateRequestPickup() (map[string][]string, bool) {

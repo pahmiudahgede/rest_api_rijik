@@ -8,11 +8,11 @@ type RequestTrashCategoryDTO struct {
 }
 
 type ResponseTrashCategoryDTO struct {
-	ID        string                   `json:"id"`
-	Name      string                   `json:"name"`
-	Icon      string                   `json:"icon"`
-	CreatedAt string                   `json:"createdAt"`
-	UpdatedAt string                   `json:"updatedAt"`
+	ID        string                   `json:"id,omitempty"`
+	Name      string                   `json:"name,omitempty"`
+	Icon      string                   `json:"icon,omitempty"`
+	CreatedAt string                   `json:"createdAt,omitempty"`
+	UpdatedAt string                   `json:"updatedAt,omitempty"`
 	Details   []ResponseTrashDetailDTO `json:"details,omitempty"`
 }
 

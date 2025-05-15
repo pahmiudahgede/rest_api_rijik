@@ -6,7 +6,8 @@ import (
 	"rijig/internal/repositories"
 	"rijig/internal/services"
 	"rijig/middleware"
-	"rijig/utils"
+
+	// "rijig/utils"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,12 +16,15 @@ func CollectorRouter(api fiber.Router) {
 	repo := repositories.NewCollectorRepository(config.DB)
 	repoReq := repositories.NewRequestPickupRepository(config.DB)
 	repoAddress := repositories.NewAddressRepository(config.DB)
-	colectorService := services.NewCollectorService(repo, repoReq, repoAddress)
+	repoUser := repositories.NewUserProfilRepository(config.DB)
+	colectorService := services.NewCollectorService(repo, repoReq, repoAddress, repoUser)
 	collectorHandler := handler.NewCollectorHandler(colectorService)
 
 	collector := api.Group("/collector")
-	collector.Use(middleware.AuthMiddleware, middleware.RoleMiddleware(utils.RolePengepul))
+	collector.Use(middleware.AuthMiddleware)
 
 	collector.Put("confirmrequest/:id", collectorHandler.ConfirmRequestPickup)
+	collector.Put("confirm-manual/request/:request_id", collectorHandler.ConfirmRequestManualPickup)
+	collector.Get("/avaible", collectorHandler.GetAvaibleCollector)
 
 }

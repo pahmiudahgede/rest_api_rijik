@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+	"rijig/dto"
 	"rijig/internal/services"
 	"rijig/utils"
 
@@ -33,4 +35,36 @@ func (h *CollectorHandler) ConfirmRequestPickup(c *fiber.Ctx) error {
 	}
 
 	return utils.SuccessResponse(c, req, "Request pickup confirmed successfully")
+}
+
+func (h *CollectorHandler) GetAvaibleCollector(c *fiber.Ctx) error {
+
+	userId := c.Locals("userID").(string)
+
+	requests, err := h.service.FindCollectorsNearby(userId)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error())
+	}
+
+	return utils.SuccessResponse(c, requests, "menampilkan data collector terdekat")
+}
+
+func (h *CollectorHandler) ConfirmRequestManualPickup(c *fiber.Ctx) error {
+	userId := c.Locals("userID").(string)
+	requestId := c.Params("request_id")
+	if requestId == "" {
+		fmt.Println("requestid dibutuhkan")
+	}
+
+	var request dto.SelectCollectorRequest
+	if err := c.BodyParser(&request); err != nil {
+		return fmt.Errorf("error parsing request body: %v", err)
+	}
+
+	message, err := h.service.ConfirmRequestManualPickup(requestId, userId)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Error confirming pickup: %v", err))
+	}
+
+	return utils.SuccessResponse(c, message, "berhasil konfirmasi request")
 }

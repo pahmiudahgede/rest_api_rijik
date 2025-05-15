@@ -12,9 +12,11 @@ type RequestPickup struct {
 	Address                Address             `gorm:"foreignKey:AddressId;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"address"`
 	RequestItems           []RequestPickupItem `gorm:"foreignKey:RequestPickupId;constraint:OnDelete:CASCADE;" json:"request_items"`
 	EvidenceImage          string              `json:"evidence_image"`
+	Notes                  string              `json:"notes"`
 	StatusPickup           string              `gorm:"default:'waiting_collector'" json:"status_pickup"`
 	CollectorID            *string             `gorm:"type:uuid" json:"collector_id,omitempty"`
-	ConfirmedByCollectorAt time.Time           `gorm:"default:current_timestamp" json:"confirmed_by_collector_at,omitempty"`
+	Collector              Collector           `gorm:"foreignKey:CollectorID;constraint:OnDelete:CASCADE;" json:"collector"`
+	ConfirmedByCollectorAt *time.Time          `json:"confirmed_by_collector_at,omitempty"`
 	RequestMethod          string              `gorm:"not null" json:"request_method"`
 	CreatedAt              time.Time           `gorm:"default:current_timestamp" json:"created_at"`
 	UpdatedAt              time.Time           `gorm:"default:current_timestamp" json:"updated_at"`
@@ -25,6 +27,19 @@ type RequestPickupItem struct {
 	RequestPickupId string        `gorm:"not null" json:"request_pickup_id"`
 	RequestPickup   RequestPickup `gorm:"foreignKey:RequestPickupId;constraint:OnDelete:CASCADE;"`
 	TrashCategoryId string        `gorm:"not null" json:"trash_category_id"`
-	TrashCategory   TrashCategory `gorm:"foreignKey:TrashCategoryId;constraint:OnDelete:CASCADE;"`
+	TrashCategory   TrashCategory `gorm:"foreignKey:TrashCategoryId;constraint:OnDelete:CASCADE;" json:"trash_category"`
 	EstimatedAmount float64       `gorm:"not null" json:"estimated_amount"`
 }
+
+// request_method {
+// 	"otomatis",
+// 	"manual"
+// }
+
+// status_pickup {
+// 	"waiting_collector",
+// 	"confirmed",
+// 	"collector_picking",
+// 	"completed"
+// 	"canceled"
+// }
