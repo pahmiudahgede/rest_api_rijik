@@ -119,6 +119,11 @@ func (h *AboutHandler) CreateAboutDetail(c *fiber.Ctx) error {
 		return utils.ErrorResponse(c, "Invalid input data")
 	}
 
+	errors, valid := request.ValidateAboutDetail()
+	if !valid {
+		return utils.ValidationErrorResponse(c, errors)
+	}
+
 	aboutDetailImage, err := c.FormFile("image_detail")
 	if err != nil {
 		log.Printf("Error retrieving image detail from request: %v", err)
