@@ -7,7 +7,6 @@ import (
 type RequestAboutDTO struct {
 	Title      string `json:"title"`
 	CoverImage string `json:"cover_image"`
-	// AboutDetail []RequestAboutDetailDTO `json:"about_detail"`
 }
 
 func (r *RequestAboutDTO) ValidateAbout() (map[string][]string, bool) {
@@ -43,11 +42,7 @@ func (r *RequestAboutDetailDTO) ValidateAboutDetail() (map[string][]string, bool
 	errors := make(map[string][]string)
 
 	if strings.TrimSpace(r.AboutId) == "" {
-		errors["about_id"] = append(errors["about_id"], "About ID is required")
-	}
-
-	if strings.TrimSpace(r.ImageDetail) == "" {
-		errors["image_detail"] = append(errors["image_detail"], "Image detail is required")
+		errors["about_id"] = append(errors["about_id"], "about_id is required")
 	}
 
 	if strings.TrimSpace(r.Description) == "" {

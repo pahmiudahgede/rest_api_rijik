@@ -272,6 +272,17 @@ func (s *aboutService) GetAboutByID(id string) (*dto.ResponseAboutDTO, error) {
 		return nil, fmt.Errorf("error formatting About response: %v", err)
 	}
 
+	var responseDetails []dto.ResponseAboutDetailDTO
+	for _, detail := range about.AboutDetail {
+		formattedDetail, err := formatResponseAboutDetailDTO(&detail)
+		if err != nil {
+			return nil, fmt.Errorf("error formatting AboutDetail response: %v", err)
+		}
+		responseDetails = append(responseDetails, *formattedDetail)
+	}
+
+	response.AboutDetail = &responseDetails
+
 	return response, nil
 }
 
@@ -317,9 +328,8 @@ func (s *aboutService) CreateAboutDetail(request dto.RequestAboutDetailDTO, cove
 		return nil, fmt.Errorf("validation error: %v", errors)
 	}
 
-	_, err := s.aboutRepo.GetAboutByID(request.AboutId)
+	_, err := s.aboutRepo.GetAboutByIDWithoutPrel(request.AboutId)
 	if err != nil {
-
 		return nil, fmt.Errorf("about_id tidak ditemukan: %v", err)
 	}
 

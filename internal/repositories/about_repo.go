@@ -12,6 +12,7 @@ type AboutRepository interface {
 	CreateAboutDetail(aboutDetail *model.AboutDetail) error
 	GetAllAbout() ([]model.About, error)
 	GetAboutByID(id string) (*model.About, error)
+	GetAboutByIDWithoutPrel(id string) (*model.About, error)
 	GetAboutDetailByID(id string) (*model.AboutDetail, error)
 	UpdateAbout(id string, about *model.About) (*model.About, error)
 	UpdateAboutDetail(id string, aboutDetail *model.AboutDetail) (*model.AboutDetail, error)
@@ -52,6 +53,17 @@ func (r *aboutRepository) GetAllAbout() ([]model.About, error) {
 func (r *aboutRepository) GetAboutByID(id string) (*model.About, error) {
 	var about model.About
 	if err := r.DB.Preload("AboutDetail").Where("id = ?", id).First(&about).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("about with ID %s not found", id)
+		}
+		return nil, fmt.Errorf("failed to fetch About by ID: %v", err)
+	}
+	return &about, nil
+}
+
+func (r *aboutRepository) GetAboutByIDWithoutPrel(id string) (*model.About, error) {
+	var about model.About
+	if err := r.DB.Where("id = ?", id).First(&about).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("about with ID %s not found", id)
 		}
