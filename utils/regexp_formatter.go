@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -41,4 +43,21 @@ func IsValidPassword(password string) bool {
 func isSpecialCharacter(char rune) bool {
 	specialChars := "!@#$%^&*()-_=+[]{}|;:'\",.<>?/`~"
 	return strings.ContainsRune(specialChars, char)
+}
+
+func ValidateFloatPrice(price string) (float64, error) {
+
+	// price = strings.Trim(price, `"`)
+	// price = strings.TrimSpace(price)
+
+	parsedPrice, err := strconv.ParseFloat(price, 64)
+	if err != nil {
+		return 0, fmt.Errorf("harga tidak valid. Format harga harus angka desimal.")
+	}
+
+	if parsedPrice <= 0 {
+		return 0, fmt.Errorf("harga harus lebih besar dari 0.")
+	}
+
+	return parsedPrice, nil
 }

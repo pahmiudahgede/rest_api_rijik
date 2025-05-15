@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"rijig/dto"
@@ -101,9 +102,13 @@ func deleteIconTrashFIle(imagePath string) error {
 }
 
 func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO, iconTrash *multipart.FileHeader) (*dto.ResponseTrashCategoryDTO, error) {
-	errors, valid := request.ValidateTrashCategoryInput()
-	if !valid {
-		return nil, fmt.Errorf("validation error: %v", errors)
+
+	parsedPrice, err := strconv.ParseFloat(request.EstimatedPrice, 64)
+	fmt.Println("Received estimatedprice:", request.EstimatedPrice)
+	if err != nil {
+		return nil, fmt.Errorf("gagal memvalidasi harga: %v", err)
+	} else {
+		fmt.Printf("hasil parsing%v", parsedPrice)
 	}
 
 	icontrashPath, err := s.saveIconOfTrash(iconTrash)
@@ -113,7 +118,9 @@ func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO, iconT
 
 	category := model.TrashCategory{
 		Name: request.Name,
-		Icon: icontrashPath,
+
+		EstimatedPrice: parsedPrice,
+		Icon:           icontrashPath,
 	}
 
 	if err := s.TrashRepo.CreateCategory(&category); err != nil {
@@ -124,11 +131,12 @@ func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO, iconT
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
 
 	categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
-		ID:        category.ID,
-		Name:      category.Name,
-		Icon:      category.Icon,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		ID:             category.ID,
+		Name:           category.Name,
+		EstimatedPrice: float64(category.EstimatedPrice),
+		Icon:           category.Icon,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
 	}
 
 	if err := s.CacheCategoryAndDetails(category.ID, categoryResponseDTO, nil, time.Hour*6); err != nil {
@@ -142,11 +150,12 @@ func (s *trashService) CreateCategory(request dto.RequestTrashCategoryDTO, iconT
 			ccreatedAt, _ := utils.FormatDateToIndonesianFormat(c.CreatedAt)
 			cupdatedAt, _ := utils.FormatDateToIndonesianFormat(c.UpdatedAt)
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
-				ID:        c.ID,
-				Name:      c.Name,
-				Icon:      c.Icon,
-				CreatedAt: ccreatedAt,
-				UpdatedAt: cupdatedAt,
+				ID:             c.ID,
+				Name:           c.Name,
+				EstimatedPrice: float64(c.EstimatedPrice),
+				Icon:           c.Icon,
+				CreatedAt:      ccreatedAt,
+				UpdatedAt:      cupdatedAt,
 			})
 		}
 
@@ -227,11 +236,12 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 		for _, category := range cachedCategories["data"].([]interface{}) {
 			categoryData := category.(map[string]interface{})
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
-				ID:        categoryData["id"].(string),
-				Name:      categoryData["name"].(string),
-				Icon:      categoryData["icon"].(string),
-				CreatedAt: categoryData["createdAt"].(string),
-				UpdatedAt: categoryData["updatedAt"].(string),
+				ID:             categoryData["id"].(string),
+				Name:           categoryData["name"].(string),
+				EstimatedPrice: categoryData["estimatedprice"].(float64),
+				Icon:           categoryData["icon"].(string),
+				CreatedAt:      categoryData["createdAt"].(string),
+				UpdatedAt:      categoryData["updatedAt"].(string),
 			})
 		}
 		return categoriesDTO, nil
@@ -244,18 +254,18 @@ func (s *trashService) GetCategories() ([]dto.ResponseTrashCategoryDTO, error) {
 
 	var categoriesDTO []dto.ResponseTrashCategoryDTO
 	for _, category := range categories {
-		// path := os.Getenv("BASE_URL")
+
 		createdAt, _ := utils.FormatDateToIndonesianFormat(category.CreatedAt)
 		updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
 		categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
-			ID:        category.ID,
-			Name:      category.Name,
-			Icon:      category.Icon,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
+			ID:             category.ID,
+			Name:           category.Name,
+			EstimatedPrice: category.EstimatedPrice,
+			Icon:           category.Icon,
+			CreatedAt:      createdAt,
+			UpdatedAt:      updatedAt,
 		})
 	}
-
 
 	cacheData := map[string]interface{}{
 		"data": categoriesDTO,
@@ -274,12 +284,13 @@ func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO
 		categoryData := cachedCategory["data"].(map[string]interface{})
 		details := mapDetails(cachedCategory["details"])
 		return &dto.ResponseTrashCategoryDTO{
-			ID:        categoryData["id"].(string),
-			Name:      categoryData["name"].(string),
-			Icon:      categoryData["icon"].(string),
-			CreatedAt: categoryData["createdAt"].(string),
-			UpdatedAt: categoryData["updatedAt"].(string),
-			Details:   details,
+			ID:             categoryData["id"].(string),
+			Name:           categoryData["name"].(string),
+			EstimatedPrice: categoryData["estimatedprice"].(float64),
+			Icon:           categoryData["icon"].(string),
+			CreatedAt:      categoryData["createdAt"].(string),
+			UpdatedAt:      categoryData["updatedAt"].(string),
+			Details:        details,
 		}, nil
 	}
 
@@ -292,11 +303,12 @@ func (s *trashService) GetCategoryByID(id string) (*dto.ResponseTrashCategoryDTO
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
 
 	categoryDTO := &dto.ResponseTrashCategoryDTO{
-		ID:        category.ID,
-		Name:      category.Name,
-		Icon:      category.Icon,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		ID:             category.ID,
+		Name:           category.Name,
+		EstimatedPrice: category.EstimatedPrice,
+		Icon:           category.Icon,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
 	}
 
 	if category.Details != nil {
@@ -405,11 +417,12 @@ func (s *trashService) UpdateCategory(id string, request dto.RequestTrashCategor
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(category.UpdatedAt)
 
 	categoryResponseDTO := &dto.ResponseTrashCategoryDTO{
-		ID:        category.ID,
-		Name:      category.Name,
-		Icon:      category.Icon,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		ID:             category.ID,
+		Name:           category.Name,
+		EstimatedPrice: category.EstimatedPrice,
+		Icon:           category.Icon,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
 	}
 
 	if err := s.CacheCategoryAndDetails(category.ID, categoryResponseDTO, category.Details, time.Hour*6); err != nil {
@@ -423,11 +436,12 @@ func (s *trashService) UpdateCategory(id string, request dto.RequestTrashCategor
 			ccreatedAt, _ := utils.FormatDateToIndonesianFormat(c.CreatedAt)
 			cupdatedAt, _ := utils.FormatDateToIndonesianFormat(c.UpdatedAt)
 			categoriesDTO = append(categoriesDTO, dto.ResponseTrashCategoryDTO{
-				ID:        c.ID,
-				Name:      c.Name,
-				Icon:      c.Icon,
-				CreatedAt: ccreatedAt,
-				UpdatedAt: cupdatedAt,
+				ID:             c.ID,
+				Name:           c.Name,
+				EstimatedPrice: c.EstimatedPrice,
+				Icon:           c.Icon,
+				CreatedAt:      ccreatedAt,
+				UpdatedAt:      cupdatedAt,
 			})
 		}
 
@@ -510,6 +524,15 @@ func (s *trashService) DeleteCategory(id string) error {
 		if err := s.deleteCache(detailCacheKey); err != nil {
 			return fmt.Errorf("error clearing cache for deleted detail: %v", err)
 		}
+	}
+
+	category, err := s.TrashRepo.GetCategoryByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch category for deletion: %v", err)
+	}
+
+	if err := deleteIconTrashFIle(category.Icon); err != nil {
+		return fmt.Errorf("error deleting icon for category %s: %v", id, err)
 	}
 
 	if err := s.TrashRepo.DeleteCategory(id); err != nil {

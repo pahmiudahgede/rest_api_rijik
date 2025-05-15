@@ -19,8 +19,14 @@ func NewTrashHandler(trashService services.TrashService) *TrashHandler {
 
 func (h *TrashHandler) CreateCategory(c *fiber.Ctx) error {
 	var request dto.RequestTrashCategoryDTO
+
 	if err := c.BodyParser(&request); err != nil {
 		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"Invalid body"}})
+	}
+
+	errors, valid := request.ValidateTrashCategoryInput()
+	if !valid {
+		return utils.ValidationErrorResponse(c, errors)
 	}
 
 	iconTrash, err := c.FormFile("icon")
