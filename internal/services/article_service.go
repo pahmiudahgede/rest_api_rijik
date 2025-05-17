@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -32,41 +33,77 @@ func NewArticleService(articleRepo repositories.ArticleRepository) ArticleServic
 	return &articleService{ArticleRepo: articleRepo}
 }
 
-func (s *articleService) CreateArticle(request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error) {
+func (s *articleService) saveCoverArticle(coverArticle *multipart.FileHeader) (string, error) {
+	pathImage := "/uploads/articles/"
+	coverArticleDir := "./public" + os.Getenv("BASE_URL") + pathImage
+	if _, err := os.Stat(coverArticleDir); os.IsNotExist(err) {
 
-	coverImageDir := "./public" + os.Getenv("BASE_URL") + "/uploads/articles"
-	if err := os.MkdirAll(coverImageDir, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("failed to create directory for cover image: %v", err)
+		if err := os.MkdirAll(coverArticleDir, os.ModePerm); err != nil {
+			return "", fmt.Errorf("failed to create directory for cover article: %v", err)
+		}
 	}
 
-	allowedExtensions := map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
-	extension := filepath.Ext(coverImage.Filename)
+	allowedExtensions := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".svg": true}
+	extension := filepath.Ext(coverArticle.Filename)
 	if !allowedExtensions[extension] {
-		return nil, fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
+		return "", fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
 	}
 
-	coverImageFileName := fmt.Sprintf("%s_cover%s", uuid.New().String(), extension)
-	coverImagePath := filepath.Join(coverImageDir, coverImageFileName)
+	coverArticleFileName := fmt.Sprintf("%s_coverarticle%s", uuid.New().String(), extension)
+	coverArticlePath := filepath.Join(coverArticleDir, coverArticleFileName)
 
-	src, err := coverImage.Open()
+	src, err := coverArticle.Open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to open uploaded file: %v", err)
+		return "", fmt.Errorf("failed to open uploaded file: %v", err)
 	}
 	defer src.Close()
 
-	dst, err := os.Create(coverImagePath)
+	dst, err := os.Create(coverArticlePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cover image file: %v", err)
+		return "", fmt.Errorf("failed to create cover article file: %v", err)
 	}
 	defer dst.Close()
 
 	if _, err := dst.ReadFrom(src); err != nil {
-		return nil, fmt.Errorf("failed to save cover image: %v", err)
+		return "", fmt.Errorf("failed to save cover article: %v", err)
+	}
+
+	iconTrashUrl := fmt.Sprintf("%s%s", pathImage, coverArticleFileName)
+
+	return iconTrashUrl, nil
+}
+
+func deleteCoverArticle(imagePath string) error {
+	if imagePath == "" {
+		return nil
+	}
+
+	baseDir := "./public/" + os.Getenv("BASE_URL")
+	absolutePath := baseDir + imagePath
+
+	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
+		return fmt.Errorf("image file not found: %v", err)
+	}
+
+	err := os.Remove(absolutePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete image: %v", err)
+	}
+
+	log.Printf("Image deleted successfully: %s", absolutePath)
+	return nil
+}
+
+func (s *articleService) CreateArticle(request dto.RequestArticleDTO, coverImage *multipart.FileHeader) (*dto.ArticleResponseDTO, error) {
+
+	coverArticlePath, err := s.saveCoverArticle(coverImage)
+	if err != nil {
+		return nil, fmt.Errorf("gagal menyimpan ikon sampah: %v", err)
 	}
 
 	article := model.Article{
 		Title:      request.Title,
-		CoverImage: coverImagePath,
+		CoverImage: coverArticlePath,
 		Author:     request.Author,
 		Heading:    request.Heading,
 		Content:    request.Content,
@@ -254,20 +291,29 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 		return nil, fmt.Errorf("article not found: %v", id)
 	}
 
+	if article.CoverImage != "" {
+		err := deleteCoverArticle(article.CoverImage)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete old image: %v", err)
+		}
+	}
+
+	var coverArticlePath string
+	if coverImage != nil {
+		coverArticlePath, err = s.saveCoverArticle(coverImage)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save card photo: %v", err)
+		}
+	}
+
+	if coverArticlePath != "" {
+		article.CoverImage = coverArticlePath
+	}
+
 	article.Title = request.Title
 	article.Heading = request.Heading
 	article.Content = request.Content
 	article.Author = request.Author
-
-	var coverImagePath string
-	if coverImage != nil {
-
-		coverImagePath, err = s.saveCoverImage(coverImage, article.CoverImage)
-		if err != nil {
-			return nil, fmt.Errorf("failed to save cover image: %v", err)
-		}
-		article.CoverImage = coverImagePath
-	}
 
 	err = s.ArticleRepo.UpdateArticle(id, article)
 	if err != nil {
@@ -338,64 +384,14 @@ func (s *articleService) UpdateArticle(id string, request dto.RequestArticleDTO,
 	return articleResponseDTO, nil
 }
 
-func (s *articleService) saveCoverImage(coverImage *multipart.FileHeader, oldImagePath string) (string, error) {
-	coverImageDir := "/uploads/articles"
-	if _, err := os.Stat(coverImageDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(coverImageDir, os.ModePerm); err != nil {
-			return "", fmt.Errorf("failed to create directory for cover image: %v", err)
-		}
-	}
-
-	extension := filepath.Ext(coverImage.Filename)
-	if extension != ".jpg" && extension != ".jpeg" && extension != ".png" {
-		return "", fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
-	}
-
-	coverImageFileName := fmt.Sprintf("%s_cover%s", uuid.New().String(), extension)
-	coverImagePath := filepath.Join(coverImageDir, coverImageFileName)
-
-	if oldImagePath != "" {
-		err := os.Remove(oldImagePath)
-		if err != nil {
-			fmt.Printf("Failed to delete old cover image: %v\n", err)
-		} else {
-			fmt.Printf("Successfully deleted old cover image: %s\n", oldImagePath)
-		}
-	}
-
-	src, err := coverImage.Open()
-	if err != nil {
-		return "", fmt.Errorf("failed to open uploaded file: %v", err)
-	}
-	defer src.Close()
-
-	dst, err := os.Create(coverImagePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create cover image file: %v", err)
-	}
-	defer dst.Close()
-
-	_, err = dst.ReadFrom(src)
-	if err != nil {
-		return "", fmt.Errorf("failed to save cover image: %v", err)
-	}
-
-	return coverImagePath, nil
-}
-
 func (s *articleService) DeleteArticle(id string) error {
 	article, err := s.ArticleRepo.FindArticleByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find article: %v", id)
 	}
 
-	if article.CoverImage != "" {
-		err := os.Remove(article.CoverImage)
-		if err != nil {
-			fmt.Printf("Failed to delete cover image: %v\n", err)
-		} else {
-			fmt.Printf("Successfully deleted cover image: %s\n", article.CoverImage)
-		}
+	if err := deleteCoverArticle(article.CoverImage); err != nil {
+		return fmt.Errorf("error waktu menghapus cover image article %s: %v", id, err)
 	}
 
 	err = s.ArticleRepo.DeleteArticle(id)
