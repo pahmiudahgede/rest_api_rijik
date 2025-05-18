@@ -9,88 +9,88 @@ import (
 )
 
 type CartHandler struct {
-	CartService services.CartService
+	Service *services.CartService
 }
 
-func NewCartHandler(service services.CartService) *CartHandler {
-	return &CartHandler{
-		CartService: service,
-	}
+func NewCartHandler(service *services.CartService) *CartHandler {
+	return &CartHandler{Service: service}
 }
 
-// GET /cart - Get cart by user ID
-func (h *CartHandler) GetCart(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		return utils.ErrorResponse(c, "unauthorized or invalid user")
+func (h *CartHandler) AddOrUpdateCartItem(c *fiber.Ctx) error {
+	var body dto.BulkRequestCartItems
+	if err := c.BodyParser(&body); err != nil {
+		return utils.ValidationErrorResponse(c, map[string][]string{
+			"body": {"Invalid JSON body"},
+		})
 	}
 
-	cart, err := h.CartService.GetCartByUserID(userID)
+	if errors, ok := body.Validate(); !ok {
+		return utils.ValidationErrorResponse(c, errors)
+	}
+
+	userID := c.Locals("userID").(string)
+	for _, item := range body.Items {
+		if err := services.AddOrUpdateCartItem(userID, item); err != nil {
+			return utils.InternalServerErrorResponse(c, "Failed to update one or more items")
+		}
+	}
+
+	return utils.SuccessResponse(c, nil, "Cart updated successfully")
+}
+
+func (h *CartHandler) DeleteCartItem(c *fiber.Ctx) error {
+	trashID := c.Params("trashid")
+	userID := c.Locals("userID").(string)
+
+	err := services.DeleteCartItem(userID, trashID)
 	if err != nil {
-		return utils.InternalServerErrorResponse(c, "failed to retrieve cart")
+		if err.Error() == "no cart found" || err.Error() == "trashid not found" {
+			return utils.GenericResponse(c, fiber.StatusNotFound, "Trash item not found in cart")
+		}
+		return utils.InternalServerErrorResponse(c, "Failed to delete item")
 	}
 
-	if cart == nil {
-		return utils.SuccessResponse(c, nil, "Cart is empty")
+	return utils.SuccessResponse(c, nil, "Item deleted")
+}
+
+func (h *CartHandler) ClearCart(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+	if err := services.ClearCart(userID); err != nil {
+		return utils.InternalServerErrorResponse(c, "Failed to clear cart")
+	}
+	return utils.SuccessResponse(c, nil, "Cart cleared")
+}
+
+func (h *CartHandler) GetCart(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+
+	cart, err := h.Service.GetCart(userID)
+	if err != nil {
+		return utils.InternalServerErrorResponse(c, "Failed to fetch cart")
 	}
 
 	return utils.SuccessResponse(c, cart, "User cart data successfully fetched")
 }
 
-// POST /cart - Create new cart
-func (h *CartHandler) CreateCart(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		return utils.ErrorResponse(c, "unauthorized or invalid user")
-	}
-
-	var reqItems []dto.RequestCartItems
-	if err := c.BodyParser(&reqItems); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{
-			"body": {"invalid JSON format"},
-		})
-	}
-
-	// Logic dipindahkan ke service
-	if err := h.CartService.CreateCartFromDTO(userID, reqItems); err != nil {
-		if ve, ok := err.(dto.ValidationErrors); ok {
-			return utils.ValidationErrorResponse(c, ve.Errors)
-		}
-		return utils.InternalServerErrorResponse(c, "failed to create cart")
-	}
-
-	return utils.CreateResponse(c, nil, "Cart created successfully")
-}
-
-
-// DELETE /cart/:id - Delete cart by cartID
-func (h *CartHandler) DeleteCart(c *fiber.Ctx) error {
-	cartID := c.Params("id")
-	if cartID == "" {
-		return utils.ErrorResponse(c, "Cart ID is required")
-	}
-
-	if err := h.CartService.DeleteCart(cartID); err != nil {
-		return utils.InternalServerErrorResponse(c, "failed to delete cart")
-	}
-
-	return utils.SuccessResponse(c, nil, "Cart deleted successfully")
-}
-
-// POST /cart/commit - Simpan cart dari Redis ke DB
 func (h *CartHandler) CommitCart(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok || userID == "" {
-		return utils.ErrorResponse(c, "unauthorized or invalid user")
-	}
+	userID := c.Locals("userID").(string)
 
-	err := h.CartService.CommitCartFromRedis(userID)
+	err := h.Service.CommitCartToDatabase(userID)
 	if err != nil {
-		if err.Error() == "cart not found in redis" {
-			return utils.ErrorResponse(c, "Cart tidak ditemukan atau sudah expired")
-		}
-		return utils.InternalServerErrorResponse(c, "Gagal menyimpan cart ke database")
+		return utils.InternalServerErrorResponse(c, "Failed to commit cart to database")
 	}
 
-	return utils.SuccessResponse(c, nil, "Cart berhasil disimpan ke database")
+	return utils.SuccessResponse(c, nil, "Cart committed to database")
+}
+
+// PUT /cart/refresh → refresh TTL Redis
+func (h *CartHandler) RefreshCartTTL(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+
+	err := services.RefreshCartTTL(userID)
+	if err != nil {
+		return utils.InternalServerErrorResponse(c, "Failed to refresh cart TTL")
+	}
+
+	return utils.SuccessResponse(c, nil, "Cart TTL refreshed")
 }

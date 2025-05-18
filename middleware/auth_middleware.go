@@ -35,6 +35,10 @@ func AuthMiddleware(c *fiber.Ctx) error {
 		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: Invalid token claims")
 	}
 
+	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		return utils.GenericResponse(c, fiber.StatusUnauthorized, "Unauthorized: Unexpected signing method")
+	}
+
 	userID := claims["sub"].(string)
 	deviceID := claims["device_id"].(string)
 

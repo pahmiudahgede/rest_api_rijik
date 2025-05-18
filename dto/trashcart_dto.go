@@ -1,8 +1,8 @@
 package dto
 
 import (
+	"fmt"
 	"strings"
-	"time"
 )
 
 type ValidationErrors struct {
@@ -19,8 +19,8 @@ type CartResponse struct {
 	CartItems           []CartItemResponse `json:"cartitems"`
 	TotalAmount         float32            `json:"totalamount"`
 	EstimatedTotalPrice float32            `json:"estimated_totalprice"`
-	CreatedAt           time.Time          `json:"createdAt"`
-	UpdatedAt           time.Time          `json:"updatedAt"`
+	CreatedAt           string             `json:"createdAt"`
+	UpdatedAt           string             `json:"updatedAt"`
 }
 
 type CartItemResponse struct {
@@ -46,5 +46,22 @@ func (r *RequestCartItems) ValidateRequestCartItem() (map[string][]string, bool)
 		return errors, false
 	}
 
+	return nil, true
+}
+
+type BulkRequestCartItems struct {
+	Items []RequestCartItems `json:"items"`
+}
+
+func (b *BulkRequestCartItems) Validate() (map[string][]string, bool) {
+	errors := make(map[string][]string)
+	for i, item := range b.Items {
+		if strings.TrimSpace(item.TrashID) == "" {
+			errors[fmt.Sprintf("items[%d].trashid", i)] = append(errors[fmt.Sprintf("items[%d].trashid", i)], "trashid is required")
+		}
+	}
+	if len(errors) > 0 {
+		return errors, false
+	}
 	return nil, true
 }

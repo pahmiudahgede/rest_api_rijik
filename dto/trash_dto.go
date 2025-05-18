@@ -42,10 +42,6 @@ func (r *RequestTrashCategoryDTO) ValidateTrashCategoryInput() (map[string][]str
 		errors["name"] = append(errors["name"], "name is required")
 	}
 
-	// if valid, msg := utils.ValidateFloatPrice(fmt.Sprintf("%f", r.EstimatedPrice)); !valid {
-	// 	errors["estimated_price"] = append(errors["estimated_price"], msg)
-	// }
-
 	if len(errors) > 0 {
 		return errors, false
 	}
@@ -59,10 +55,6 @@ func (r *RequestTrashDetailDTO) ValidateTrashDetailInput() (map[string][]string,
 	if strings.TrimSpace(r.Description) == "" {
 		errors["description"] = append(errors["description"], "description is required")
 	}
-
-	// if valid, msg := utils.ValidateFloatPrice(fmt.Sprintf("%f", r.Price)); !valid {
-	// 	errors["price"] = append(errors["price"], msg)
-	// }
 
 	if len(errors) > 0 {
 		return errors, false

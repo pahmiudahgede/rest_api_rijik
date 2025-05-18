@@ -1,130 +1,135 @@
 package services
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
 	"time"
 
 	"rijig/dto"
 	"rijig/internal/repositories"
 	"rijig/model"
-	"rijig/utils"
+
+	"github.com/google/uuid"
 )
 
-type CartService interface {
-	CreateCartFromDTO(userID string, items []dto.RequestCartItems) error
-	GetCartByUserID(userID string) (*dto.CartResponse, error)
-	CommitCartFromRedis(userID string) error
-	DeleteCart(cartID string) error
+type CartService struct {
+	Repo repositories.CartRepository
 }
 
-type cartService struct {
-	repo      repositories.CartRepository
-	repoTrash repositories.TrashRepository
+func NewCartService(repo repositories.CartRepository) *CartService {
+	return &CartService{Repo: repo}
 }
 
-func NewCartService(repo repositories.CartRepository, repoTrash repositories.TrashRepository) CartService {
-	return &cartService{repo: repo, repoTrash: repoTrash}
-}
+func (s *CartService) CommitCartToDatabase(userID string) error {
+	items, err := GetCartItems(userID)
+	if err != nil || len(items) == 0 {
+		log.Printf("No items to commit for user: %s", userID)
+		return err
+	}
 
-func redisCartKey(userID string) string {
-	return fmt.Sprintf("cart:user:%s", userID)
-}
+	var cartItems []model.CartItem
+	var totalAmount float32
+	var estimatedTotal float32
 
-func (s *cartService) CreateCartFromDTO(userID string, items []dto.RequestCartItems) error {
-	// Validasi semua item
 	for _, item := range items {
-		if errMap, valid := item.ValidateRequestCartItem(); !valid {
-			return dto.ValidationErrors{Errors: errMap}
-		}
-	}
-
-	// Ambil cart yang sudah ada dari Redis (jika ada)
-	var existingCart dto.CartResponse
-	val, err := utils.GetData(redisCartKey(userID))
-	if err == nil && val != "" {
-		if err := json.Unmarshal([]byte(val), &existingCart); err != nil {
-			log.Printf("Failed to unmarshal existing cart: %v", err)
-		}
-	}
-
-	// Buat map dari existing items untuk mempermudah update
-	itemMap := make(map[string]dto.CartItemResponse)
-	for _, item := range existingCart.CartItems {
-		itemMap[item.TrashName] = item
-	}
-
-	// Proses input baru
-	for _, input := range items {
-		trash, err := s.repoTrash.GetCategoryByID(input.TrashID)
+		trash, err := s.Repo.GetTrashCategoryByID(item.TrashID)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve trash category for id %s: %v", input.TrashID, err)
-		}
-
-		if input.Amount == 0 {
-			delete(itemMap, trash.Name) // hapus item
+			log.Printf("Trash category not found for trashID: %s", item.TrashID)
 			continue
 		}
 
-		subtotal := float32(trash.EstimatedPrice) * input.Amount
-
-		itemMap[trash.Name] = dto.CartItemResponse{
-			TrashIcon:              trash.Icon,
-			TrashName:              trash.Name,
-			Amount:                 input.Amount,
-			EstimatedSubTotalPrice: subtotal,
-		}
-	}
-
-	// Rekonstruksi cart
-	var finalItems []dto.CartItemResponse
-	var totalAmount float32
-	var totalPrice float32
-	for _, item := range itemMap {
-		finalItems = append(finalItems, item)
+		subTotal := float32(trash.EstimatedPrice) * item.Amount
 		totalAmount += item.Amount
-		totalPrice += item.EstimatedSubTotalPrice
+		estimatedTotal += subTotal
+
+		cartItems = append(cartItems, model.CartItem{
+			ID:                     uuid.NewString(),
+			TrashID:                item.TrashID,
+			Amount:                 item.Amount,
+			SubTotalEstimatedPrice: subTotal,
+		})
 	}
 
-	cart := dto.CartResponse{
-		ID:                  existingCart.ID,
+	cart := &model.Cart{
+		ID:                  uuid.NewString(),
 		UserID:              userID,
+		CartItems:           cartItems,
 		TotalAmount:         totalAmount,
-		EstimatedTotalPrice: totalPrice,
-		CartItems:           finalItems,
+		EstimatedTotalPrice: estimatedTotal,
 		CreatedAt:           time.Now(),
 		UpdatedAt:           time.Now(),
 	}
 
-	// Simpan ulang ke Redis dengan TTL 10 menit
-	return utils.SetData(redisCartKey(userID), cart, 1*time.Minute)
+	if err := s.Repo.DeleteCartByUserID(userID); err != nil {
+		log.Printf("Failed to delete old cart: %v", err)
+	}
+
+	if err := s.Repo.CreateCart(cart); err != nil {
+		log.Printf("Failed to create cart: %v", err)
+		return err
+	}
+
+	if err := ClearCart(userID); err != nil {
+		log.Printf("Failed to clear Redis cart: %v", err)
+	}
+
+	log.Printf("Cart committed successfully for user: %s", userID)
+	return nil
 }
 
-
-func (s *cartService) GetCartByUserID(userID string) (*dto.CartResponse, error) {
-	val, err := utils.GetData(redisCartKey(userID))
-	if err != nil {
-		log.Printf("Redis get error: %v", err)
+func (s *CartService) GetCartFromRedis(userID string) (*dto.CartResponse, error) {
+	items, err := GetCartItems(userID)
+	if err != nil || len(items) == 0 {
+		return nil, err
 	}
-	if val != "" {
-		var cached dto.CartResponse
-		if err := json.Unmarshal([]byte(val), &cached); err == nil {
-			return &cached, nil
+
+	var totalAmount float32
+	var estimatedTotal float32
+	var cartItemDTOs []dto.CartItemResponse
+
+	for _, item := range items {
+		trash, err := s.Repo.GetTrashCategoryByID(item.TrashID)
+		if err != nil {
+			continue
 		}
+
+		subtotal := float32(trash.EstimatedPrice) * item.Amount
+		totalAmount += item.Amount
+		estimatedTotal += subtotal
+
+		cartItemDTOs = append(cartItemDTOs, dto.CartItemResponse{
+			TrashIcon:              trash.Icon,
+			TrashName:              trash.Name,
+			Amount:                 item.Amount,
+			EstimatedSubTotalPrice: subtotal,
+		})
 	}
 
-	cart, err := s.repo.GetByUserID(userID)
+	resp := &dto.CartResponse{
+		ID:                  "N/A",
+		UserID:              userID,
+		TotalAmount:         totalAmount,
+		EstimatedTotalPrice: estimatedTotal,
+		CreatedAt:           time.Now().Format(time.RFC3339),
+		UpdatedAt:           time.Now().Format(time.RFC3339),
+		CartItems:           cartItemDTOs,
+	}
+	return resp, nil
+}
+
+func (s *CartService) GetCart(userID string) (*dto.CartResponse, error) {
+
+	cartRedis, err := s.GetCartFromRedis(userID)
+	if err == nil && len(cartRedis.CartItems) > 0 {
+		return cartRedis, nil
+	}
+
+	cartDB, err := s.Repo.GetCartByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
-	if cart == nil {
-		return nil, nil
-	}
 
 	var items []dto.CartItemResponse
-	for _, item := range cart.CartItems {
+	for _, item := range cartDB.CartItems {
 		items = append(items, dto.CartItemResponse{
 			TrashIcon:              item.TrashCategory.Icon,
 			TrashName:              item.TrashCategory.Name,
@@ -133,108 +138,14 @@ func (s *cartService) GetCartByUserID(userID string) (*dto.CartResponse, error) 
 		})
 	}
 
-	response := &dto.CartResponse{
-		ID:                  cart.ID,
-		UserID:              cart.UserID,
-		TotalAmount:         cart.TotalAmount,
-		EstimatedTotalPrice: cart.EstimatedTotalPrice,
+	resp := &dto.CartResponse{
+		ID:                  cartDB.ID,
+		UserID:              cartDB.UserID,
+		TotalAmount:         cartDB.TotalAmount,
+		EstimatedTotalPrice: cartDB.EstimatedTotalPrice,
+		CreatedAt:           cartDB.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:           cartDB.UpdatedAt.Format(time.RFC3339),
 		CartItems:           items,
-		CreatedAt:           cart.CreatedAt,
-		UpdatedAt:           cart.UpdatedAt,
 	}
-
-	return response, nil
-}
-
-func (s *cartService) CommitCartFromRedis(userID string) error {
-	val, err := utils.GetData(redisCartKey(userID))
-	if err != nil || val == "" {
-		return errors.New("no cart found in redis")
-	}
-
-	var cartDTO dto.CartResponse
-	if err := json.Unmarshal([]byte(val), &cartDTO); err != nil {
-		return errors.New("invalid cart data in Redis")
-	}
-
-	existingCart, err := s.repo.GetByUserID(userID)
-	if err != nil {
-		return fmt.Errorf("failed to get cart from db: %v", err)
-	}
-
-	if existingCart == nil {
-		// buat cart baru jika belum ada
-		var items []model.CartItem
-		for _, item := range cartDTO.CartItems {
-			trash, err := s.repoTrash.GetTrashCategoryByName(item.TrashName)
-			if err != nil {
-				continue
-			}
-
-			items = append(items, model.CartItem{
-				TrashID:                trash.ID,
-				Amount:                 item.Amount,
-				SubTotalEstimatedPrice: item.EstimatedSubTotalPrice,
-			})
-		}
-
-		newCart := model.Cart{
-			UserID:              userID,
-			TotalAmount:         cartDTO.TotalAmount,
-			EstimatedTotalPrice: cartDTO.EstimatedTotalPrice,
-			CartItems:           items,
-		}
-
-		return s.repo.Create(&newCart)
-	}
-
-	// buat map item lama (by trash_name)
-	existingItemMap := make(map[string]*model.CartItem)
-	for i := range existingCart.CartItems {
-		trashName := existingCart.CartItems[i].TrashCategory.Name
-		existingItemMap[trashName] = &existingCart.CartItems[i]
-	}
-
-	// proses update/hapus/tambah
-	for _, newItem := range cartDTO.CartItems {
-		if newItem.Amount == 0 {
-			if existing, ok := existingItemMap[newItem.TrashName]; ok {
-				_ = s.repo.DeleteCartItemByID(existing.ID)
-			}
-			continue
-		}
-
-		trash, err := s.repoTrash.GetTrashCategoryByName(newItem.TrashName)
-		if err != nil {
-			continue
-		}
-
-		if existing, ok := existingItemMap[newItem.TrashName]; ok {
-			existing.Amount = newItem.Amount
-			existing.SubTotalEstimatedPrice = newItem.EstimatedSubTotalPrice
-			_ = s.repo.UpdateCartItem(existing)
-		} else {
-			newModelItem := model.CartItem{
-				CartID:                 existingCart.ID,
-				TrashID:                trash.ID,
-				Amount:                 newItem.Amount,
-				SubTotalEstimatedPrice: newItem.EstimatedSubTotalPrice,
-			}
-			_ = s.repo.InsertCartItem(&newModelItem)
-		}
-	}
-
-	// update cart total amount & price
-	existingCart.TotalAmount = cartDTO.TotalAmount
-	existingCart.EstimatedTotalPrice = cartDTO.EstimatedTotalPrice
-	if err := s.repo.Update(existingCart); err != nil {
-		return err
-	}
-
-	return utils.DeleteData(redisCartKey(userID))
-}
-
-
-func (s *cartService) DeleteCart(cartID string) error {
-	return s.repo.Delete(cartID)
+	return resp, nil
 }

@@ -15,6 +15,7 @@ type TrashRepository interface {
 	AddDetailToCategory(detail *model.TrashDetail) error
 	GetCategories() ([]model.TrashCategory, error)
 	GetCategoryByID(id string) (*model.TrashCategory, error)
+	FindCategoryId(id string) (*model.TrashCategory, error)
 	GetTrashCategoryByName(name string) (*model.TrashCategory, error)
 	GetTrashDetailByID(id string) (*model.TrashDetail, error)
 	GetDetailsByCategoryID(categoryID string) ([]model.TrashDetail, error)
@@ -59,6 +60,15 @@ func (r *trashRepository) GetCategoryByID(id string) (*model.TrashCategory, erro
 	var category model.TrashCategory
 
 	if err := r.DB.Preload("Details").First(&category, "id = ?", id).Error; err != nil {
+		return nil, fmt.Errorf("category not found: %v", err)
+	}
+	return &category, nil
+}
+
+func (r *trashRepository) FindCategoryId(id string) (*model.TrashCategory, error) {
+	var category model.TrashCategory
+
+	if err := r.DB.First(&category, "id = ?", id).Error; err != nil {
 		return nil, fmt.Errorf("category not found: %v", err)
 	}
 	return &category, nil
