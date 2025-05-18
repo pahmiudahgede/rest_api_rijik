@@ -53,6 +53,9 @@ func ConnectDatabase() {
 		// =>requestpickup preparation<=
 		&model.RequestPickup{},
 		&model.RequestPickupItem{},
+
+		&model.Cart{},
+		&model.CartItem{},
 		// =>requestpickup preparation<=
 
 		// =>store preparation<=
