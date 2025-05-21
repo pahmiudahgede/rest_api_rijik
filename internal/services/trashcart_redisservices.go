@@ -30,6 +30,7 @@ func GetCartItems(userID string) ([]dto.RequestCartItems, error) {
 	if err != nil {
 		return nil, err
 	}
+	
 	return items, nil
 }
 

@@ -97,6 +97,7 @@ func (s *CartService) GetCartFromRedis(userID string) (*dto.CartResponse, error)
 		estimatedTotal += subtotal
 
 		cartItemDTOs = append(cartItemDTOs, dto.CartItemResponse{
+			TrashId:                trash.ID,
 			TrashIcon:              trash.Icon,
 			TrashName:              trash.Name,
 			Amount:                 item.Amount,
@@ -131,6 +132,8 @@ func (s *CartService) GetCart(userID string) (*dto.CartResponse, error) {
 	var items []dto.CartItemResponse
 	for _, item := range cartDB.CartItems {
 		items = append(items, dto.CartItemResponse{
+			ItemId:                 item.ID,
+			TrashId:                item.TrashID,
 			TrashIcon:              item.TrashCategory.Icon,
 			TrashName:              item.TrashCategory.Name,
 			Amount:                 item.Amount,

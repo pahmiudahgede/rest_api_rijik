@@ -24,6 +24,8 @@ type CartResponse struct {
 }
 
 type CartItemResponse struct {
+	ItemId                 string  `json:"item_id"`
+	TrashId                string  `json:"trashid"`
 	TrashIcon              string  `json:"trashicon"`
 	TrashName              string  `json:"trashname"`
 	Amount                 float32 `json:"amount"`
