@@ -1,10 +1,12 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 
+	"rijig/config"
 	"rijig/model"
 
 	"gorm.io/gorm"
@@ -22,6 +24,7 @@ type TrashRepository interface {
 	UpdateCategoryName(id string, newName string) error
 	UpdateCategory(id string, updateTrashCategory *model.TrashCategory) (*model.TrashCategory, error)
 	UpdateTrashDetail(id string, description string, price float64) error
+	UpdateEstimatedPrice(ctx context.Context, trashCategoryID string) error
 	DeleteCategory(id string) error
 	DeleteTrashDetail(id string) error
 }
@@ -129,6 +132,23 @@ func (r *trashRepository) UpdateTrashDetail(id string, description string, price
 		return fmt.Errorf("failed to update trash detail: %v", err)
 	}
 	return nil
+}
+
+func (r *trashRepository) UpdateEstimatedPrice(ctx context.Context, trashCategoryID string) error {
+	var avg float64
+
+	err := config.DB.WithContext(ctx).
+		Model(&model.AvaibleTrashByCollector{}).
+		Where("trash_category_id = ?", trashCategoryID).
+		Select("AVG(price)").Scan(&avg).Error
+	if err != nil {
+		return err
+	}
+
+	return config.DB.WithContext(ctx).
+		Model(&model.TrashCategory{}).
+		Where("id = ?", trashCategoryID).
+		Update("estimated_price", avg).Error
 }
 
 func (r *trashRepository) DeleteCategory(id string) error {

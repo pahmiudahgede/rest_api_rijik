@@ -43,6 +43,7 @@ func ConnectDatabase() {
 		// =>user preparation<=
 		&model.User{},
 		&model.Collector{},
+		&model.AvaibleTrashByCollector{},
 		&model.Role{},
 		&model.UserPin{},
 		&model.Address{},

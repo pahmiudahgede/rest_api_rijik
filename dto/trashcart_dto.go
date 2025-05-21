@@ -33,14 +33,14 @@ type CartItemResponse struct {
 }
 
 type RequestCartItems struct {
-	TrashID string  `json:"trashid"`
-	Amount  float32 `json:"amount"`
+	TrashCategoryID string  `json:"trashid"`
+	Amount          float32 `json:"amount"`
 }
 
 func (r *RequestCartItems) ValidateRequestCartItem() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 
-	if strings.TrimSpace(r.TrashID) == "" {
+	if strings.TrimSpace(r.TrashCategoryID) == "" {
 		errors["trashid"] = append(errors["trashid"], "trashid is required")
 	}
 
@@ -58,7 +58,7 @@ type BulkRequestCartItems struct {
 func (b *BulkRequestCartItems) Validate() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 	for i, item := range b.Items {
-		if strings.TrimSpace(item.TrashID) == "" {
+		if strings.TrimSpace(item.TrashCategoryID) == "" {
 			errors[fmt.Sprintf("items[%d].trashid", i)] = append(errors[fmt.Sprintf("items[%d].trashid", i)], "trashid is required")
 		}
 	}

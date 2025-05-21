@@ -30,7 +30,7 @@ func GetCartItems(userID string) ([]dto.RequestCartItems, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return items, nil
 }
 
@@ -45,7 +45,7 @@ func AddOrUpdateCartItem(userID string, newItem dto.RequestCartItems) error {
 
 	updated := false
 	for i, item := range cartItems {
-		if item.TrashID == newItem.TrashID {
+		if item.TrashCategoryID == newItem.TrashCategoryID {
 			if newItem.Amount == 0 {
 				cartItems = append(cartItems[:i], cartItems[i+1:]...)
 			} else {
@@ -80,14 +80,14 @@ func DeleteCartItem(userID, trashID string) error {
 
 	index := -1
 	for i, item := range items {
-		if item.TrashID == trashID {
+		if item.TrashCategoryID == trashID {
 			index = i
 			break
 		}
 	}
 
 	if index == -1 {
-		log.Printf("TrashID %s not found in cart for user %s", trashID, userID)
+		log.Printf("TrashCategoryID %s not found in cart for user %s", trashID, userID)
 		return fmt.Errorf("trashid not found")
 	}
 

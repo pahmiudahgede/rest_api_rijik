@@ -31,9 +31,9 @@ func (s *CartService) CommitCartToDatabase(userID string) error {
 	var estimatedTotal float32
 
 	for _, item := range items {
-		trash, err := s.Repo.GetTrashCategoryByID(item.TrashID)
+		trash, err := s.Repo.GetTrashCategoryByID(item.TrashCategoryID)
 		if err != nil {
-			log.Printf("Trash category not found for trashID: %s", item.TrashID)
+			log.Printf("Trash category not found for trashID: %s", item.TrashCategoryID)
 			continue
 		}
 
@@ -43,7 +43,7 @@ func (s *CartService) CommitCartToDatabase(userID string) error {
 
 		cartItems = append(cartItems, model.CartItem{
 			ID:                     uuid.NewString(),
-			TrashID:                item.TrashID,
+			TrashCategoryID:                item.TrashCategoryID,
 			Amount:                 item.Amount,
 			SubTotalEstimatedPrice: subTotal,
 		})
@@ -87,7 +87,7 @@ func (s *CartService) GetCartFromRedis(userID string) (*dto.CartResponse, error)
 	var cartItemDTOs []dto.CartItemResponse
 
 	for _, item := range items {
-		trash, err := s.Repo.GetTrashCategoryByID(item.TrashID)
+		trash, err := s.Repo.GetTrashCategoryByID(item.TrashCategoryID)
 		if err != nil {
 			continue
 		}
@@ -133,7 +133,7 @@ func (s *CartService) GetCart(userID string) (*dto.CartResponse, error) {
 	for _, item := range cartDB.CartItems {
 		items = append(items, dto.CartItemResponse{
 			ItemId:                 item.ID,
-			TrashId:                item.TrashID,
+			TrashId:                item.TrashCategoryID,
 			TrashIcon:              item.TrashCategory.Icon,
 			TrashName:              item.TrashCategory.Name,
 			Amount:                 item.Amount,
