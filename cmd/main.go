@@ -1,19 +1,33 @@
 package main
 
 import (
+	"log"
+	"os"
 	"rijig/config"
+	"rijig/internal/worker"
 	"rijig/router"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/robfig/cron"
 )
 
 func main() {
 	config.SetupConfig()
+	logFile, _ := os.OpenFile("logs/cart_commit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	log.SetOutput(logFile)
+
+	go func() {
+		c := cron.New()
+		c.AddFunc("@every 1m", func() {
+			_ = worker.CommitExpiredCartsToDB()
+		})
+		c.Start()
+	}()
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", 
+		AllowOrigins: "*",
 		AllowMethods: "GET,POST,PUT,PATCH,DELETE",
 		AllowHeaders: "Content-Type,x-api-key",
 	}))

@@ -1,76 +1,111 @@
 package worker
 
 import (
-	"log"
+	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"rijig/config"
-	"rijig/internal/services"
+	"rijig/dto"
+	"rijig/model"
 )
 
-const (
-	lockPrefix      = "lock:cart:"
-	lockExpiration  = 30 * time.Second
-	commitThreshold = 20 * time.Second
-	scanPattern     = "cart:*"
-)
+func CommitExpiredCartsToDB() error {
+	ctx := context.Background()
 
-func StartCartCommitWorker(service *services.CartService) {
+	keys, err := config.RedisClient.Keys(ctx, "cart:user:*").Result()
+	if err != nil {
+		return fmt.Errorf("error fetching cart keys: %w", err)
+	}
 
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-
-		log.Println("🛠️ Cart Worker is running in background...")
-		for range ticker.C {
-			processCarts(service)
-		}
-	}()
-
-}
-
-func processCarts(service *services.CartService) {
-	iter := config.RedisClient.Scan(config.Ctx, 0, scanPattern, 0).Iterator()
-	for iter.Next(config.Ctx) {
-		key := iter.Val()
-
-		ttl, err := config.RedisClient.TTL(config.Ctx, key).Result()
-		if err != nil {
-			log.Printf("❌ Error getting TTL for %s: %v", key, err)
+	for _, key := range keys {
+		ttl, err := config.RedisClient.TTL(ctx, key).Result()
+		if err != nil || ttl > 30*time.Second {
 			continue
 		}
 
-		if ttl > 0 && ttl < commitThreshold {
-			userID := extractUserIDFromKey(key)
-			if userID == "" {
-				continue
-			}
-
-			lockKey := lockPrefix + userID
-			acquired, err := config.RedisClient.SetNX(config.Ctx, lockKey, "locked", lockExpiration).Result()
-			if err != nil || !acquired {
-				continue
-			}
-
-			log.Printf("🔄 Auto-committing cart for user %s (TTL: %v)", userID, ttl)
-			if err := service.CommitCartToDatabase(userID); err != nil {
-				log.Printf("❌ Failed to commit cart for %s: %v", userID, err)
-			} else {
-				log.Printf("✅ Cart committed for user %s", userID)
-			}
-
+		val, err := config.RedisClient.Get(ctx, key).Result()
+		if err != nil {
+			continue
 		}
+
+		var cart dto.RequestCartDTO
+		if err := json.Unmarshal([]byte(val), &cart); err != nil {
+			continue
+		}
+
+		userID := extractUserIDFromKey(key)
+
+		cartID := SaveCartToDB(ctx, userID, &cart)
+
+		_ = config.RedisClient.Del(ctx, key).Err()
+
+		fmt.Printf(
+			"[AUTO-COMMIT] UserID: %s | CartID: %s | TotalItem: %d | EstimatedTotalPrice: %.2f | Committed at: %s\n",
+			userID, cartID, len(cart.CartItems), calculateTotalEstimated(&cart), time.Now().Format(time.RFC3339),
+		)
+
 	}
 
-	if err := iter.Err(); err != nil {
-		log.Printf("❌ Error iterating Redis keys: %v", err)
-	}
+	return nil
 }
 
 func extractUserIDFromKey(key string) string {
-	if strings.HasPrefix(key, "cart:") {
-		return strings.TrimPrefix(key, "cart:")
+
+	parts := strings.Split(key, ":")
+	if len(parts) == 3 {
+		return parts[2]
 	}
 	return ""
+}
+
+func SaveCartToDB(ctx context.Context, userID string, cart *dto.RequestCartDTO) string {
+	totalAmount := float32(0)
+	totalPrice := float32(0)
+
+	var cartItems []model.CartItem
+	for _, item := range cart.CartItems {
+
+		var trash model.TrashCategory
+		if err := config.DB.First(&trash, "id = ?", item.TrashID).Error; err != nil {
+			continue
+		}
+
+		subtotal := trash.EstimatedPrice * float64(item.Amount)
+		totalAmount += item.Amount
+		totalPrice += float32(subtotal)
+
+		cartItems = append(cartItems, model.CartItem{
+			TrashCategoryID:        item.TrashID,
+			Amount:                 item.Amount,
+			SubTotalEstimatedPrice: float32(subtotal),
+		})
+	}
+
+	newCart := model.Cart{
+		UserID:              userID,
+		TotalAmount:         totalAmount,
+		EstimatedTotalPrice: totalPrice,
+		CartItems:           cartItems,
+	}
+
+	if err := config.DB.WithContext(ctx).Create(&newCart).Error; err != nil {
+		fmt.Printf("Error committing cart: %v\n", err)
+	}
+
+	return newCart.ID
+}
+
+func calculateTotalEstimated(cart *dto.RequestCartDTO) float32 {
+	var total float32
+	for _, item := range cart.CartItems {
+		var trash model.TrashCategory
+		if err := config.DB.First(&trash, "id = ?", item.TrashID).Error; err != nil {
+			continue
+		}
+		total += item.Amount * float32(trash.EstimatedPrice)
+	}
+	return total
 }

@@ -5,65 +5,53 @@ import (
 	"strings"
 )
 
-type ValidationErrors struct {
-	Errors map[string][]string
+type RequestCartItemDTO struct {
+	TrashID string  `json:"trash_id"`
+	Amount  float32 `json:"amount"`
 }
 
-func (v ValidationErrors) Error() string {
-	return "validation error"
+type RequestCartDTO struct {
+	CartItems []RequestCartItemDTO `json:"cart_items"`
 }
 
-type CartResponse struct {
-	ID                  string             `json:"id"`
-	UserID              string             `json:"userid"`
-	CartItems           []CartItemResponse `json:"cartitems"`
-	TotalAmount         float32            `json:"totalamount"`
-	EstimatedTotalPrice float32            `json:"estimated_totalprice"`
-	CreatedAt           string             `json:"createdAt"`
-	UpdatedAt           string             `json:"updatedAt"`
-}
-
-type CartItemResponse struct {
-	ItemId                 string  `json:"item_id"`
-	TrashId                string  `json:"trashid"`
-	TrashIcon              string  `json:"trashicon"`
-	TrashName              string  `json:"trashname"`
+type ResponseCartItemDTO struct {
+	ID                     string  `json:"id"`
+	TrashID                string  `json:"trash_id"`
+	TrashName              string  `json:"trash_name"`
+	TrashIcon              string  `json:"trash_icon"`
 	Amount                 float32 `json:"amount"`
-	EstimatedSubTotalPrice float32 `json:"estimated_subtotalprice"`
+	SubTotalEstimatedPrice float32 `json:"subtotal_estimated_price"`
 }
 
-type RequestCartItems struct {
-	TrashCategoryID string  `json:"trashid"`
-	Amount          float32 `json:"amount"`
+type ResponseCartDTO struct {
+	ID                  string                `json:"id"`
+	UserID              string                `json:"user_id"`
+	TotalAmount         float32               `json:"total_amount"`
+	EstimatedTotalPrice float32               `json:"estimated_total_price"`
+	CartItems           []ResponseCartItemDTO `json:"cart_items"`
 }
 
-func (r *RequestCartItems) ValidateRequestCartItem() (map[string][]string, bool) {
+// ==== VALIDATION ====
+
+func (r *RequestCartDTO) ValidateRequestCartDTO() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 
-	if strings.TrimSpace(r.TrashCategoryID) == "" {
-		errors["trashid"] = append(errors["trashid"], "trashid is required")
+	if len(r.CartItems) == 0 {
+		errors["cart_items"] = append(errors["cart_items"], "minimal satu item harus dimasukkan")
 	}
 
-	if len(errors) > 0 {
-		return errors, false
-	}
-
-	return nil, true
-}
-
-type BulkRequestCartItems struct {
-	Items []RequestCartItems `json:"items"`
-}
-
-func (b *BulkRequestCartItems) Validate() (map[string][]string, bool) {
-	errors := make(map[string][]string)
-	for i, item := range b.Items {
-		if strings.TrimSpace(item.TrashCategoryID) == "" {
-			errors[fmt.Sprintf("items[%d].trashid", i)] = append(errors[fmt.Sprintf("items[%d].trashid", i)], "trashid is required")
+	for i, item := range r.CartItems {
+		if strings.TrimSpace(item.TrashID) == "" {
+			errors[fmt.Sprintf("cart_items[%d].trash_id", i)] = append(errors[fmt.Sprintf("cart_items[%d].trash_id", i)], "trash_id tidak boleh kosong")
+		}
+		if item.Amount <= 0 {
+			errors[fmt.Sprintf("cart_items[%d].amount", i)] = append(errors[fmt.Sprintf("cart_items[%d].amount", i)], "amount harus lebih dari 0")
 		}
 	}
+
 	if len(errors) > 0 {
 		return errors, false
 	}
+
 	return nil, true
 }
