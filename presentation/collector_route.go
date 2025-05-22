@@ -30,8 +30,15 @@ func CollectorRouter(api fiber.Router) {
 	// Middleware Auth dan Role
 
 	// Inisialisasi repository dan service
-	collectorRepo := repositories.NewCollectorRepository()
+	pickupRepo := repositories.NewRequestPickupRepository()
 	trashRepo := repositories.NewTrashRepository(config.DB)
+	historyRepo := repositories.NewPickupStatusHistoryRepository()
+	cartService := services.NewCartService()
+
+	pickupService := services.NewRequestPickupService(trashRepo, pickupRepo, cartService, historyRepo)
+	pickupHandler := handler.NewRequestPickupHandler(pickupService)
+	collectorRepo := repositories.NewCollectorRepository()
+	// trashRepo := repositories.NewTrashRepository(config.DB)
 	collectorService := services.NewCollectorService(collectorRepo, trashRepo)
 	collectorHandler := handler.NewCollectorHandler(collectorService)
 
@@ -43,7 +50,9 @@ func CollectorRouter(api fiber.Router) {
 	collectors.Post("/", collectorHandler.CreateCollector)              // Create collector
 	collectors.Post("/:id/trash", collectorHandler.AddTrashToCollector) // Add trash to collector
 	collectors.Get("/:id", collectorHandler.GetCollectorByID)           // Get collector by ID
-	collectors.Get("/", collectorHandler.GetCollectorByUserID)          // Get collector by ID
+	collectors.Get("/", collectorHandler.GetCollectorByUserID) 
+	collectors.Get("/pickup/assigned-to-me", pickupHandler.GetAssignedPickup) 
+         // Get collector by ID
 	collectors.Patch("/:id", collectorHandler.UpdateCollector)          // Update collector fields
 	collectors.Patch("/:id/trash", collectorHandler.UpdateTrash)
 	collectors.Patch("/:id/job-status", collectorHandler.UpdateJobStatus)

@@ -5,6 +5,17 @@ import (
 	"strings"
 )
 
+type NearbyCollectorDTO struct {
+	CollectorID  string   `json:"collector_id"`
+	Name         string   `json:"name"`
+	Phone        string   `json:"phone"`
+	Rating       float32  `json:"rating"`
+	Latitude     float64  `json:"latitude"`
+	Longitude    float64  `json:"longitude"`
+	DistanceKm   float64  `json:"distance_km"`
+	MatchedTrash []string `json:"matched_trash_ids"`
+}
+
 type RequestCollectorDTO struct {
 	AddressId               string                           `json:"address_id"`
 	AvaibleTrashbyCollector []RequestAvaibleTrashbyCollector `json:"avaible_trash"`

@@ -20,6 +20,7 @@ type TrashRepository interface {
 	FindCategoryId(id string) (*model.TrashCategory, error)
 	GetTrashCategoryByName(name string) (*model.TrashCategory, error)
 	GetTrashDetailByID(id string) (*model.TrashDetail, error)
+	GetTrashCategoryByID(ctx context.Context, id string) (*model.TrashCategory, error)
 	GetDetailsByCategoryID(categoryID string) ([]model.TrashDetail, error)
 	UpdateCategoryName(id string, newName string) error
 	UpdateCategory(id string, updateTrashCategory *model.TrashCategory) (*model.TrashCategory, error)
@@ -66,6 +67,15 @@ func (r *trashRepository) GetCategoryByID(id string) (*model.TrashCategory, erro
 		return nil, fmt.Errorf("category not found: %v", err)
 	}
 	return &category, nil
+}
+
+// spesial code 
+func (r *trashRepository) GetTrashCategoryByID(ctx context.Context, id string) (*model.TrashCategory, error) {
+	var trash model.TrashCategory
+	if err := config.DB.WithContext(ctx).First(&trash, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &trash, nil
 }
 
 func (r *trashRepository) FindCategoryId(id string) (*model.TrashCategory, error) {
