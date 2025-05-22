@@ -31,8 +31,6 @@ type ResponseCartDTO struct {
 	CartItems           []ResponseCartItemDTO `json:"cart_items"`
 }
 
-// ==== VALIDATION ====
-
 func (r *RequestCartDTO) ValidateRequestCartDTO() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 

@@ -4,17 +4,6 @@ import (
 	"strings"
 )
 
-// type NearbyCollectorDTO struct {
-// 	CollectorID  string   `json:"collector_id"`
-// 	Name         string   `json:"name"`
-// 	Phone        string   `json:"phone"`
-// 	Rating       float32  `json:"rating"`
-// 	Latitude     float64  `json:"latitude"`
-// 	Longitude    float64  `json:"longitude"`
-// 	DistanceKm   float64  `json:"distance_km"`
-// 	MatchedTrash []string `json:"matched_trash_ids"`
-// }
-
 type SelectCollectorDTO struct {
 	CollectorID string `json:"collector_id"`
 }
@@ -62,7 +51,7 @@ type PickupRequestForCollectorDTO struct {
 
 type RequestPickupDTO struct {
 	AddressID     string `json:"address_id"`
-	RequestMethod string `json:"request_method"` // "manual" atau "otomatis"
+	RequestMethod string `json:"request_method"`
 	Notes         string `json:"notes,omitempty"`
 }
 

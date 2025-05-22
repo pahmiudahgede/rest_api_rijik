@@ -104,8 +104,6 @@ func (r *collectorRepository) DeleteAvaibleTrash(ctx context.Context, trashID st
 		Delete(&model.AvaibleTrashByCollector{}, "id = ?", trashID).Error
 }
 
-
-// 
 func (r *collectorRepository) GetActiveCollectorsWithTrashAndAddress(ctx context.Context) ([]model.Collector, error) {
 	var collectors []model.Collector
 	err := config.DB.WithContext(ctx).

@@ -25,7 +25,6 @@ func NewCartHandler(service services.CartService) CartHandler {
 	return &cartHandler{service: service}
 }
 
-// GET /cart
 func (h *cartHandler) GetCart(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 
@@ -37,7 +36,6 @@ func (h *cartHandler) GetCart(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, cart, "Data cart berhasil diambil")
 }
 
-// POST /cart/item
 func (h *cartHandler) AddOrUpdateCartItem(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 
@@ -60,7 +58,6 @@ func (h *cartHandler) AddOrUpdateCartItem(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, nil, "Item berhasil ditambahkan/diupdate di cart")
 }
 
-// POST /cart/items
 func (h *cartHandler) AddMultipleCartItems(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 
@@ -84,8 +81,6 @@ func (h *cartHandler) AddMultipleCartItems(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, nil, "Semua item berhasil ditambahkan/diupdate ke cart")
 }
 
-
-// DELETE /cart/item/:trashID
 func (h *cartHandler) DeleteCartItem(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	trashID := c.Params("trashID")
@@ -102,7 +97,6 @@ func (h *cartHandler) DeleteCartItem(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, nil, "Item berhasil dihapus dari cart")
 }
 
-// DELETE /cart
 func (h *cartHandler) ClearCart(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 

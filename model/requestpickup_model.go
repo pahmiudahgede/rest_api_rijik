@@ -16,8 +16,8 @@ type RequestPickup struct {
 	CollectorID            *string             `gorm:"type:uuid" json:"collector_id,omitempty"`
 	Collector              *Collector          `gorm:"foreignKey:CollectorID;references:ID" json:"collector,omitempty"`
 	ConfirmedByCollectorAt *time.Time          `json:"confirmed_by_collector_at,omitempty"`
-	RequestMethod          string              `gorm:"not null" json:"request_method"` // manual / otomatis
-	FinalPrice             float64             `json:"final_price"`                    // diisi setelah collector update berat
+	RequestMethod          string              `gorm:"not null" json:"request_method"`
+	FinalPrice             float64             `json:"final_price"`
 	CreatedAt              time.Time           `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt              time.Time           `gorm:"autoUpdateTime" json:"updated_at"`
 }
@@ -29,19 +29,6 @@ type RequestPickupItem struct {
 	TrashCategoryId        string         `gorm:"not null" json:"trash_category_id"`
 	TrashCategory          *TrashCategory `gorm:"foreignKey:TrashCategoryId" json:"trash_category"`
 	EstimatedAmount        float64        `gorm:"not null" json:"estimated_amount"`
-	EstimatedPricePerKg    float64        `gorm:"not null" json:"estimated_price_per_kg"`   // harga pada saat itu
-	EstimatedSubtotalPrice float64        `gorm:"not null" json:"estimated_subtotal_price"` // amount * price per kg
+	EstimatedPricePerKg    float64        `gorm:"not null" json:"estimated_price_per_kg"`
+	EstimatedSubtotalPrice float64        `gorm:"not null" json:"estimated_subtotal_price"`
 }
-
-// request_method {
-// 	"otomatis",
-// 	"manual"
-// }
-
-// status_pickup {
-// 	"waiting_collector",
-// 	"confirmed",
-// 	"collector_picking",
-// 	"completed"
-// 	"canceled"
-// }

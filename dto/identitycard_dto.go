@@ -47,11 +47,6 @@ func (r *RequestIdentityCardDTO) ValidateIdentityCardInput() (map[string][]strin
 	errors := make(map[string][]string)
 	isValid := true
 
-	// if strings.TrimSpace(r.UserID) == "" {
-	// 	errors["userId"] = append(errors["userId"], "UserID harus diisi")
-	// 	isValid = false
-	// }
-
 	if strings.TrimSpace(r.Identificationumber) == "" {
 		errors["identificationumber"] = append(errors["identificationumber"], "Nomor identifikasi harus diisi")
 		isValid = false
@@ -116,11 +111,6 @@ func (r *RequestIdentityCardDTO) ValidateIdentityCardInput() (map[string][]strin
 		errors["validuntil"] = append(errors["validuntil"], "Masa berlaku harus diisi")
 		isValid = false
 	}
-
-	// if strings.TrimSpace(r.Cardphoto) == "" {
-	// 	errors["cardphoto"] = append(errors["cardphoto"], "Foto KTP harus diisi")
-	// 	isValid = false
-	// }
 
 	return errors, isValid
 }
