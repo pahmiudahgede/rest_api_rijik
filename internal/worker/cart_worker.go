@@ -3,109 +3,156 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"rijig/config"
 	"rijig/dto"
+	"rijig/internal/repositories"
+	"rijig/internal/services"
 	"rijig/model"
 )
 
-func CommitExpiredCartsToDB() error {
+type CartWorker struct {
+	cartService services.CartService
+	cartRepo    repositories.CartRepository
+	trashRepo   repositories.TrashRepository
+}
+
+func NewCartWorker(cartService services.CartService, cartRepo repositories.CartRepository, trashRepo repositories.TrashRepository) *CartWorker {
+	return &CartWorker{
+		cartService: cartService,
+		cartRepo:    cartRepo,
+		trashRepo:   trashRepo,
+	}
+}
+
+func (w *CartWorker) AutoCommitExpiringCarts() error {
 	ctx := context.Background()
+	threshold := 1 * time.Minute
 
-	keys, err := config.RedisClient.Keys(ctx, "cart:user:*").Result()
+	keys, err := services.GetExpiringCartKeys(ctx, threshold)
 	if err != nil {
-		return fmt.Errorf("error fetching cart keys: %w", err)
+		return err
 	}
 
+	if len(keys) == 0 {
+		return nil
+	}
+
+	log.Printf("[CART-WORKER] Found %d carts expiring within 1 minute", len(keys))
+
+	successCount := 0
 	for _, key := range keys {
-		ttl, err := config.RedisClient.TTL(ctx, key).Result()
-		if err != nil || ttl > 30*time.Second {
+		userID := w.extractUserIDFromKey(key)
+		if userID == "" {
+			log.Printf("[CART-WORKER] Invalid key format: %s", key)
 			continue
 		}
 
-		val, err := config.RedisClient.Get(ctx, key).Result()
+		hasCart, err := w.cartRepo.HasExistingCart(ctx, userID)
 		if err != nil {
+			log.Printf("[CART-WORKER] Error checking existing cart for user %s: %v", userID, err)
 			continue
 		}
 
-		var cart dto.RequestCartDTO
-		if err := json.Unmarshal([]byte(val), &cart); err != nil {
+		if hasCart {
+
+			if err := services.DeleteCartFromRedis(ctx, userID); err != nil {
+				log.Printf("[CART-WORKER] Failed to delete Redis cache for user %s: %v", userID, err)
+			} else {
+				log.Printf("[CART-WORKER] Deleted Redis cache for user %s (already has DB cart)", userID)
+			}
 			continue
 		}
 
-		userID := extractUserIDFromKey(key)
+		cartData, err := w.getCartFromRedis(ctx, key)
+		if err != nil {
+			log.Printf("[CART-WORKER] Failed to get cart data for key %s: %v", key, err)
+			continue
+		}
 
-		cartID := SaveCartToDB(ctx, userID, &cart)
+		if err := w.commitCartToDB(ctx, userID, cartData); err != nil {
+			log.Printf("[CART-WORKER] Failed to commit cart for user %s: %v", userID, err)
+			continue
+		}
 
-		_ = config.RedisClient.Del(ctx, key).Err()
+		if err := services.DeleteCartFromRedis(ctx, userID); err != nil {
+			log.Printf("[CART-WORKER] Warning: Failed to delete Redis key after commit for user %s: %v", userID, err)
+		}
 
-		fmt.Printf(
-			"[AUTO-COMMIT] UserID: %s | CartID: %s | TotalItem: %d | EstimatedTotalPrice: %.2f | Committed at: %s\n",
-			userID, cartID, len(cart.CartItems), calculateTotalEstimated(&cart), time.Now().Format(time.RFC3339),
-		)
-
+		successCount++
+		log.Printf("[CART-WORKER] Successfully auto-committed cart for user %s", userID)
 	}
 
+	log.Printf("[CART-WORKER] Auto-commit completed: %d successful commits", successCount)
 	return nil
 }
 
-func extractUserIDFromKey(key string) string {
-
+func (w *CartWorker) extractUserIDFromKey(key string) string {
 	parts := strings.Split(key, ":")
-	if len(parts) == 3 {
-		return parts[2]
+	if len(parts) >= 2 {
+		return parts[len(parts)-1]
 	}
 	return ""
 }
 
-func SaveCartToDB(ctx context.Context, userID string, cart *dto.RequestCartDTO) string {
-	totalAmount := float32(0)
-	totalPrice := float32(0)
+func (w *CartWorker) getCartFromRedis(ctx context.Context, key string) (*dto.RequestCartDTO, error) {
+	val, err := config.RedisClient.Get(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
 
+	var cart dto.RequestCartDTO
+	if err := json.Unmarshal([]byte(val), &cart); err != nil {
+		return nil, err
+	}
+
+	return &cart, nil
+}
+
+func (w *CartWorker) commitCartToDB(ctx context.Context, userID string, cartData *dto.RequestCartDTO) error {
+	if len(cartData.CartItems) == 0 {
+		return nil
+	}
+
+	totalAmount := 0.0
+	totalPrice := 0.0
 	var cartItems []model.CartItem
-	for _, item := range cart.CartItems {
 
-		var trash model.TrashCategory
-		if err := config.DB.First(&trash, "id = ?", item.TrashID).Error; err != nil {
+	for _, item := range cartData.CartItems {
+		if item.Amount <= 0 {
 			continue
 		}
 
-		subtotal := trash.EstimatedPrice * float64(item.Amount)
+		trash, err := w.trashRepo.GetTrashCategoryByID(ctx, item.TrashID)
+		if err != nil {
+			log.Printf("[CART-WORKER] Warning: Skipping invalid trash category %s", item.TrashID)
+			continue
+		}
+
+		subtotal := item.Amount * trash.EstimatedPrice
 		totalAmount += item.Amount
-		totalPrice += float32(subtotal)
+		totalPrice += subtotal
 
 		cartItems = append(cartItems, model.CartItem{
 			TrashCategoryID:        item.TrashID,
 			Amount:                 item.Amount,
-			SubTotalEstimatedPrice: float32(subtotal),
+			SubTotalEstimatedPrice: subtotal,
 		})
 	}
 
-	newCart := model.Cart{
+	if len(cartItems) == 0 {
+		return nil
+	}
+
+	newCart := &model.Cart{
 		UserID:              userID,
 		TotalAmount:         totalAmount,
 		EstimatedTotalPrice: totalPrice,
 		CartItems:           cartItems,
 	}
 
-	if err := config.DB.WithContext(ctx).Create(&newCart).Error; err != nil {
-		fmt.Printf("Error committing cart: %v\n", err)
-	}
-
-	return newCart.ID
-}
-
-func calculateTotalEstimated(cart *dto.RequestCartDTO) float32 {
-	var total float32
-	for _, item := range cart.CartItems {
-		var trash model.TrashCategory
-		if err := config.DB.First(&trash, "id = ?", item.TrashID).Error; err != nil {
-			continue
-		}
-		total += item.Amount * float32(trash.EstimatedPrice)
-	}
-	return total
+	return w.cartRepo.CreateCartWithItems(ctx, newCart)
 }

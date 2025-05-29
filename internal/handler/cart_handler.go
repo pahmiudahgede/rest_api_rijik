@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"rijig/dto"
 	"rijig/internal/services"
 	"rijig/utils"
@@ -9,100 +8,86 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type CartHandler interface {
-	GetCart(c *fiber.Ctx) error
-	AddOrUpdateCartItem(c *fiber.Ctx) error
-	AddMultipleCartItems(c *fiber.Ctx) error
-	DeleteCartItem(c *fiber.Ctx) error
-	ClearCart(c *fiber.Ctx) error
+type CartHandler struct {
+	cartService services.CartService
 }
 
-type cartHandler struct {
-	service services.CartService
+func NewCartHandler(cartService services.CartService) *CartHandler {
+	return &CartHandler{cartService: cartService}
 }
 
-func NewCartHandler(service services.CartService) CartHandler {
-	return &cartHandler{service: service}
-}
-
-func (h *cartHandler) GetCart(c *fiber.Ctx) error {
+func (h *CartHandler) AddOrUpdateItem(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
+	var req dto.RequestCartItemDTO
 
-	cart, err := h.service.GetCart(context.Background(), userID)
-	if err != nil {
-		return utils.ErrorResponse(c, "Cart belum dibuat atau sudah kadaluarsa")
-	}
-
-	return utils.SuccessResponse(c, cart, "Data cart berhasil diambil")
-}
-
-func (h *cartHandler) AddOrUpdateCartItem(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
-
-	var item dto.RequestCartItemDTO
-	if err := c.BodyParser(&item); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{"body": {"format tidak valid"}})
-	}
-
-	if item.TrashID == "" || item.Amount <= 0 {
+	if err := c.BodyParser(&req); err != nil {
 		return utils.ValidationErrorResponse(c, map[string][]string{
-			"trash_id": {"harus diisi"},
-			"amount":   {"harus lebih dari 0"},
+			"request": {"Payload tidak valid"},
 		})
 	}
 
-	if err := h.service.AddOrUpdateItem(context.Background(), userID, item); err != nil {
-		return utils.InternalServerErrorResponse(c, err.Error())
-	}
-
-	return utils.SuccessResponse(c, nil, "Item berhasil ditambahkan/diupdate di cart")
-}
-
-func (h *cartHandler) AddMultipleCartItems(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
-
-	var payload dto.RequestCartDTO
-	if err := c.BodyParser(&payload); err != nil {
-		return utils.ValidationErrorResponse(c, map[string][]string{
-			"body": {"format tidak valid"},
-		})
-	}
-
-	if errs, ok := payload.ValidateRequestCartDTO(); !ok {
+	hasErrors, _ := req.Amount > 0 && req.TrashID != "", true
+	if !hasErrors {
+		errs := make(map[string][]string)
+		if req.Amount <= 0 {
+			errs["amount"] = append(errs["amount"], "Amount harus lebih dari 0")
+		}
+		if req.TrashID == "" {
+			errs["trash_id"] = append(errs["trash_id"], "Trash ID tidak boleh kosong")
+		}
 		return utils.ValidationErrorResponse(c, errs)
 	}
 
-	for _, item := range payload.CartItems {
-		if err := h.service.AddOrUpdateItem(context.Background(), userID, item); err != nil {
-			return utils.InternalServerErrorResponse(c, err.Error())
-		}
+	if err := h.cartService.AddOrUpdateItem(c.Context(), userID, req); err != nil {
+		return utils.InternalServerErrorResponse(c, "Gagal menambahkan item ke keranjang")
 	}
 
-	return utils.SuccessResponse(c, nil, "Semua item berhasil ditambahkan/diupdate ke cart")
+	return utils.GenericResponse(c, fiber.StatusOK, "Item berhasil ditambahkan ke keranjang")
 }
 
-func (h *cartHandler) DeleteCartItem(c *fiber.Ctx) error {
+func (h *CartHandler) GetCart(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
-	trashID := c.Params("trashID")
+
+	cart, err := h.cartService.GetCart(c.Context(), userID)
+	if err != nil {
+		return utils.ErrorResponse(c, "Gagal mengambil data keranjang")
+	}
+
+	return utils.SuccessResponse(c, cart, "Berhasil mengambil data keranjang")
+}
+
+func (h *CartHandler) DeleteItem(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+	trashID := c.Params("trash_id")
 
 	if trashID == "" {
-		return utils.ValidationErrorResponse(c, map[string][]string{"trash_id": {"tidak boleh kosong"}})
+		return utils.GenericResponse(c, fiber.StatusBadRequest, "Trash ID tidak boleh kosong")
 	}
 
-	err := h.service.DeleteItem(context.Background(), userID, trashID)
-	if err != nil {
-		return utils.InternalServerErrorResponse(c, err.Error())
+	if err := h.cartService.DeleteItem(c.Context(), userID, trashID); err != nil {
+		return utils.InternalServerErrorResponse(c, "Gagal menghapus item dari keranjang")
 	}
 
-	return utils.SuccessResponse(c, nil, "Item berhasil dihapus dari cart")
+	return utils.GenericResponse(c, fiber.StatusOK, "Item berhasil dihapus dari keranjang")
 }
 
-func (h *cartHandler) ClearCart(c *fiber.Ctx) error {
+func (h *CartHandler) Checkout(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 
-	if err := h.service.ClearCart(context.Background(), userID); err != nil {
-		return utils.InternalServerErrorResponse(c, err.Error())
+	if err := h.cartService.Checkout(c.Context(), userID); err != nil {
+		return utils.InternalServerErrorResponse(c, "Gagal melakukan checkout keranjang")
 	}
 
-	return utils.SuccessResponse(c, nil, "Seluruh cart berhasil dihapus")
+	return utils.GenericResponse(c, fiber.StatusOK, "Checkout berhasil. Permintaan pickup telah dibuat.")
+}
+
+func (h *CartHandler) ClearCart(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+
+	err := h.cartService.ClearCart(c.Context(), userID)
+	if err != nil {
+		return utils.InternalServerErrorResponse(c, "Gagal menghapus keranjang")
+	}
+
+	return utils.GenericResponse(c, fiber.StatusOK, "Keranjang berhasil dikosongkan")
 }

@@ -31,7 +31,7 @@ func NewAuthPengelolaService(userRepo repositories.UserRepository, roleRepo repo
 
 func (s *authPengelolaService) generateJWTToken(userID string, deviceID string) (string, error) {
 
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(168 * time.Hour)
 
 	claims := jwt.MapClaims{
 		"sub":       userID,

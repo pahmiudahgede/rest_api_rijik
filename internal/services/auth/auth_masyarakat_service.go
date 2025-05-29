@@ -31,7 +31,7 @@ func NewAuthMasyarakatService(userRepo repositories.UserRepository, roleRepo rep
 
 func (s *authMasyarakatService) generateJWTToken(userID string, deviceID string) (string, error) {
 
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(672 * time.Hour)
 
 	claims := jwt.MapClaims{
 		"sub":       userID,

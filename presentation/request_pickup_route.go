@@ -11,10 +11,12 @@ import (
 )
 
 func RequestPickupRouter(api fiber.Router) {
+	cartRepo := repositories.NewCartRepository()
 	pickupRepo := repositories.NewRequestPickupRepository()
 	historyRepo := repositories.NewPickupStatusHistoryRepository()
 	trashRepo := repositories.NewTrashRepository(config.DB)
-	cartService := services.NewCartService()
+
+	cartService := services.NewCartService(cartRepo, trashRepo)
 	historyService := services.NewPickupStatusHistoryService(historyRepo)
 
 	pickupService := services.NewRequestPickupService(trashRepo, pickupRepo, cartService, historyRepo)

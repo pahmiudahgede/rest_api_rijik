@@ -5,9 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
-
 	"rijig/config"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 )

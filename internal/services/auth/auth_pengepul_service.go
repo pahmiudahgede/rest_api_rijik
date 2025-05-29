@@ -31,7 +31,7 @@ func NewAuthPengepulService(userRepo repositories.UserRepository, roleRepo repos
 
 func (s *authPengepulService) generateJWTToken(userID string, deviceID string) (string, error) {
 
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(480 * time.Hour)
 
 	claims := jwt.MapClaims{
 		"sub":       userID,

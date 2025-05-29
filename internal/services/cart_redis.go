@@ -8,97 +8,66 @@ import (
 
 	"rijig/config"
 	"rijig/dto"
+
+	"github.com/go-redis/redis/v8"
 )
 
-var cartTTL = 30 * time.Minute
+const CartTTL = 30 * time.Minute
+const CartKeyPrefix = "cart:"
 
-func getCartKey(userID string) string {
-	return fmt.Sprintf("cart:user:%s", userID)
+func buildCartKey(userID string) string {
+	return fmt.Sprintf("%s%s", CartKeyPrefix, userID)
 }
 
 func SetCartToRedis(ctx context.Context, userID string, cart dto.RequestCartDTO) error {
-	key := getCartKey(userID)
-
 	data, err := json.Marshal(cart)
 	if err != nil {
-		return fmt.Errorf("failed to marshal cart: %w", err)
+		return err
 	}
 
-	err = config.RedisClient.Set(ctx, key, data, cartTTL).Err()
-	if err != nil {
-		return fmt.Errorf("failed to save cart to redis: %w", err)
-	}
+	return config.RedisClient.Set(ctx, buildCartKey(userID), data, CartTTL).Err()
+}
 
-	return nil
+func RefreshCartTTL(ctx context.Context, userID string) error {
+	return config.RedisClient.Expire(ctx, buildCartKey(userID), CartTTL).Err()
 }
 
 func GetCartFromRedis(ctx context.Context, userID string) (*dto.RequestCartDTO, error) {
-	key := getCartKey(userID)
-	val, err := config.RedisClient.Get(ctx, key).Result()
-	if err != nil {
+	val, err := config.RedisClient.Get(ctx, buildCartKey(userID)).Result()
+	if err == redis.Nil {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 
 	var cart dto.RequestCartDTO
 	if err := json.Unmarshal([]byte(val), &cart); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal cart data: %w", err)
+		return nil, err
 	}
-
 	return &cart, nil
 }
 
 func DeleteCartFromRedis(ctx context.Context, userID string) error {
-	key := getCartKey(userID)
-	return config.RedisClient.Del(ctx, key).Err()
+	return config.RedisClient.Del(ctx, buildCartKey(userID)).Err()
 }
 
-func GetCartTTL(ctx context.Context, userID string) (time.Duration, error) {
-	key := getCartKey(userID)
-	return config.RedisClient.TTL(ctx, key).Result()
-}
-
-func UpdateOrAddCartItemToRedis(ctx context.Context, userID string, item dto.RequestCartItemDTO) error {
-	cart, err := GetCartFromRedis(ctx, userID)
+func GetExpiringCartKeys(ctx context.Context, threshold time.Duration) ([]string, error) {
+	keys, err := config.RedisClient.Keys(ctx, CartKeyPrefix+"*").Result()
 	if err != nil {
+		return nil, err
+	}
 
-		cart = &dto.RequestCartDTO{
-			CartItems: []dto.RequestCartItemDTO{item},
+	var expiringKeys []string
+	for _, key := range keys {
+		ttl, err := config.RedisClient.TTL(ctx, key).Result()
+		if err != nil {
+			continue
 		}
-		return SetCartToRedis(ctx, userID, *cart)
-	}
 
-	updated := false
-	for i, ci := range cart.CartItems {
-		if ci.TrashID == item.TrashID {
-			cart.CartItems[i].Amount = item.Amount
-			updated = true
-			break
-		}
-	}
-	if !updated {
-		cart.CartItems = append(cart.CartItems, item)
-	}
-
-	return SetCartToRedis(ctx, userID, *cart)
-}
-
-func RemoveCartItemFromRedis(ctx context.Context, userID, trashID string) error {
-	cart, err := GetCartFromRedis(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	updatedItems := make([]dto.RequestCartItemDTO, 0)
-	for _, ci := range cart.CartItems {
-		if ci.TrashID != trashID {
-			updatedItems = append(updatedItems, ci)
+		if ttl > 0 && ttl <= threshold {
+			expiringKeys = append(expiringKeys, key)
 		}
 	}
 
-	if len(updatedItems) == 0 {
-		return DeleteCartFromRedis(ctx, userID)
-	}
-
-	cart.CartItems = updatedItems
-	return SetCartToRedis(ctx, userID, *cart)
+	return expiringKeys, nil
 }

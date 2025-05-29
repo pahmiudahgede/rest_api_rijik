@@ -67,8 +67,6 @@ func (s *requestPickupService) ConvertCartToRequestPickup(ctx context.Context, u
 		Notes:         req.Notes,
 		StatusPickup:  "waiting_collector",
 		RequestItems:  requestItems,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
 	}
 
 	if err := s.pickupRepo.CreateRequestPickup(ctx, &pickup); err != nil {
