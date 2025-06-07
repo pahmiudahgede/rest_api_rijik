@@ -1,5 +1,5 @@
 package service
-
+/* 
 import (
 	"errors"
 	"fmt"
@@ -189,3 +189,4 @@ func (s *authAdminService) LogoutAdmin(userID, deviceID string) error {
 
 	return nil
 }
+ */

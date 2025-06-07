@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,8 +11,8 @@ import (
 )
 
 type RoleService interface {
-	GetRoles() ([]dto.RoleResponseDTO, error)
-	GetRoleByID(roleID string) (*dto.RoleResponseDTO, error)
+	GetRoles(ctx context.Context) ([]dto.RoleResponseDTO, error)
+	GetRoleByID(ctx context.Context, roleID string) (*dto.RoleResponseDTO, error)
 }
 
 type roleService struct {
@@ -22,8 +23,7 @@ func NewRoleService(roleRepo repositories.RoleRepository) RoleService {
 	return &roleService{RoleRepo: roleRepo}
 }
 
-func (s *roleService) GetRoles() ([]dto.RoleResponseDTO, error) {
-
+func (s *roleService) GetRoles(ctx context.Context) ([]dto.RoleResponseDTO, error) {
 	cacheKey := "roles_list"
 	cachedData, err := utils.GetJSONData(cacheKey)
 	if err == nil && cachedData != nil {
@@ -44,7 +44,7 @@ func (s *roleService) GetRoles() ([]dto.RoleResponseDTO, error) {
 		}
 	}
 
-	roles, err := s.RoleRepo.FindAll()
+	roles, err := s.RoleRepo.FindAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch roles: %v", err)
 	}
@@ -73,9 +73,9 @@ func (s *roleService) GetRoles() ([]dto.RoleResponseDTO, error) {
 	return roleDTOs, nil
 }
 
-func (s *roleService) GetRoleByID(roleID string) (*dto.RoleResponseDTO, error) {
+func (s *roleService) GetRoleByID(ctx context.Context, roleID string) (*dto.RoleResponseDTO, error) {
 
-	role, err := s.RoleRepo.FindByID(roleID)
+	role, err := s.RoleRepo.FindByID(ctx, roleID)
 	if err != nil {
 		return nil, fmt.Errorf("role not found: %v", err)
 	}

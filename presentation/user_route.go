@@ -17,13 +17,13 @@ func UserProfileRouter(api fiber.Router) {
 
 	userProfilRoute := api.Group("/user")
 
-	userProfilRoute.Get("/info", middleware.AuthMiddleware, userProfileHandler.GetUserByIDHandler)
+	userProfilRoute.Get("/info", middleware.AuthMiddleware(), userProfileHandler.GetUserByIDHandler)
 
-	userProfilRoute.Get("/show-all", middleware.AuthMiddleware, userProfileHandler.GetAllUsersHandler)
+	userProfilRoute.Get("/show-all", middleware.AuthMiddleware(), userProfileHandler.GetAllUsersHandler)
 	// userProfilRoute.Get("/:userid", middleware.AuthMiddleware, userProfileHandler.GetUserProfileById)
 	// userProfilRoute.Get("/:roleid", middleware.AuthMiddleware, userProfileHandler.GetUsersByRoleID)
 
-	userProfilRoute.Put("/update-user", middleware.AuthMiddleware, userProfileHandler.UpdateUserHandler)
-	userProfilRoute.Patch("/update-user-password", middleware.AuthMiddleware, userProfileHandler.UpdateUserPasswordHandler)
-	userProfilRoute.Patch("/upload-photoprofile", middleware.AuthMiddleware, userProfileHandler.UpdateUserAvatarHandler)
+	userProfilRoute.Put("/update-user", middleware.AuthMiddleware(), userProfileHandler.UpdateUserHandler)
+	userProfilRoute.Patch("/update-user-password", middleware.AuthMiddleware(), userProfileHandler.UpdateUserPasswordHandler)
+	userProfilRoute.Patch("/upload-photoprofile", middleware.AuthMiddleware(), userProfileHandler.UpdateUserAvatarHandler)
 }

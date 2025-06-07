@@ -1,5 +1,5 @@
 package presentation
-
+/* 
 import (
 	"rijig/config"
 	handler "rijig/internal/handler/auth"
@@ -24,3 +24,4 @@ func AuthMasyarakatRouter(api fiber.Router) {
 	authMasyarakat.Post("/logout", middleware.AuthMiddleware, authHandler.LogoutHandler)
 	authMasyarakat.Post("/verify-otp", authHandler.VerifyOTPHandler)
 }
+ */

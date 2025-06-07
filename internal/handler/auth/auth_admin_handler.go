@@ -1,5 +1,5 @@
 package handler
-
+/* 
 import (
 	"log"
 	dto "rijig/dto/auth"
@@ -78,3 +78,4 @@ func (h *AuthAdminHandler) LogoutAdmin(c *fiber.Ctx) error {
     return utils.GenericResponse(c, fiber.StatusOK, "Successfully logged out")
 }
 
+ */

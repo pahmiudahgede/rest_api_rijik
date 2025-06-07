@@ -1,5 +1,5 @@
 package service
-
+/* 
 import (
 	"errors"
 	"fmt"
@@ -168,3 +168,4 @@ func (s *authMasyarakatService) Logout(userID, deviceID string) error {
 
 	return nil
 }
+ */

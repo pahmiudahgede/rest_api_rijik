@@ -11,9 +11,13 @@ type IdentityCard struct {
 	Dateofbirth         string    `gorm:"not null" json:"dateofbirth"`
 	Gender              string    `gorm:"not null" json:"gender"`
 	BloodType           string    `gorm:"not null" json:"bloodtype"`
+	Province            string    `gorm:"not null" json:"province"`
 	District            string    `gorm:"not null" json:"district"`
+	SubDistrict         string    `gorm:"not null" json:"subdistrict"`
+	Hamlet              string    `gorm:"not null" json:"hamlet"`
 	Village             string    `gorm:"not null" json:"village"`
 	Neighbourhood       string    `gorm:"not null" json:"neighbourhood"`
+	PostalCode          string    `gorm:"not null" json:"postalcode"`
 	Religion            string    `gorm:"not null" json:"religion"`
 	Maritalstatus       string    `gorm:"not null" json:"maritalstatus"`
 	Job                 string    `gorm:"not null" json:"job"`

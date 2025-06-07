@@ -27,7 +27,7 @@ func CollectorRouter(api fiber.Router) {
 	collectorHandler := handler.NewCollectorHandler(collectorService)
 
 	collectors := api.Group("/collectors")
-	collectors.Use(middleware.AuthMiddleware)
+	collectors.Use(middleware.AuthMiddleware())
 
 	collectors.Post("/", collectorHandler.CreateCollector)
 	collectors.Post("/:id/trash", collectorHandler.AddTrashToCollector)

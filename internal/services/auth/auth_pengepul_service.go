@@ -1,5 +1,5 @@
 package service
-
+/* 
 import (
 	"errors"
 	"fmt"
@@ -169,3 +169,4 @@ func (s *authPengepulService) Logout(userID, deviceID string) error {
 
 	return nil
 }
+ */

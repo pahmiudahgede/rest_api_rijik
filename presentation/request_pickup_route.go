@@ -24,7 +24,7 @@ func RequestPickupRouter(api fiber.Router) {
 	statuspickupHandler := handler.NewPickupStatusHistoryHandler(historyService)
 
 	reqpickup := api.Group("/reqpickup")
-	reqpickup.Use(middleware.AuthMiddleware)
+	reqpickup.Use(middleware.AuthMiddleware())
 
 	reqpickup.Post("/manual", pickupHandler.CreateRequestPickup)
 	reqpickup.Get("/pickup/:id/history", statuspickupHandler.GetStatusHistory)

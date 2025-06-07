@@ -1,5 +1,5 @@
 package handler
-
+/* 
 import (
 	"log"
 	"rijig/dto"
@@ -79,3 +79,4 @@ func (h *AuthMasyarakatHandler) LogoutHandler(c *fiber.Ctx) error {
 
 	return utils.SuccessResponse(c, nil, "Logged out successfully")
 }
+ */

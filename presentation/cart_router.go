@@ -17,7 +17,7 @@ func TrashCartRouter(api fiber.Router) {
 	cartHandler := handler.NewCartHandler(cartService)
 
 	cart := api.Group("/cart")
-	cart.Use(middleware.AuthMiddleware)
+	cart.Use(middleware.AuthMiddleware())
 
 	cart.Get("/", cartHandler.GetCart)
 	cart.Post("/item", cartHandler.AddOrUpdateItem)

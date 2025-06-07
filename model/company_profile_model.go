@@ -11,7 +11,7 @@ type CompanyProfile struct {
 	CompanyName        string    `gorm:"not null" json:"company_name"`
 	CompanyAddress     string    `gorm:"not null" json:"company_address"`
 	CompanyPhone       string    `gorm:"not null" json:"company_phone"`
-	CompanyEmail       string    `gorm:"not null" json:"company_email"`
+	CompanyEmail       string    `json:"company_email,omitempty"`
 	CompanyLogo        string    `json:"company_logo,omitempty"`
 	CompanyWebsite     string    `json:"company_website,omitempty"`
 	TaxID              string    `json:"tax_id,omitempty"`

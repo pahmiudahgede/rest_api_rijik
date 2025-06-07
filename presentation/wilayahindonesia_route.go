@@ -17,7 +17,7 @@ func WilayahRouter(api fiber.Router) {
 	wilayahService := services.NewWilayahIndonesiaService(wilayahRepo)
 	wilayahHandler := handler.NewWilayahImportHandler(wilayahService)
 
-	api.Post("/import/data-wilayah-indonesia", middleware.RoleMiddleware(utils.RoleAdministrator), wilayahHandler.ImportWilayahData)
+	api.Post("/import/data-wilayah-indonesia", middleware.RequireRoles(utils.RoleAdministrator), wilayahHandler.ImportWilayahData)
 
 	wilayahAPI := api.Group("/wilayah-indonesia")
 

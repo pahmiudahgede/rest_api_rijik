@@ -1,5 +1,5 @@
 package dto
-
+/* 
 import (
 	"strings"
 )
@@ -62,3 +62,4 @@ func (r *RequestTrashDetailDTO) ValidateTrashDetailInput() (map[string][]string,
 
 	return nil, true
 }
+ */

@@ -15,7 +15,7 @@ func PickupRatingRouter(api fiber.Router) {
 	ratingHandler := handler.NewPickupRatingHandler(ratingService)
 
 	rating := api.Group("/pickup")
-	rating.Use(middleware.AuthMiddleware)
+	rating.Use(middleware.AuthMiddleware())
 	rating.Post("/:id/rating", ratingHandler.CreateRating)
 
 	collector := api.Group("/collector")

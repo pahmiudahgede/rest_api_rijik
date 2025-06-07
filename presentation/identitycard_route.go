@@ -1,5 +1,5 @@
 package presentation
-
+/* 
 import (
 	"rijig/config"
 	"rijig/internal/handler"
@@ -26,3 +26,4 @@ func IdentityCardRouter(api fiber.Router) {
 	identityCardApi.Put("/update/:identity_id", middleware.RoleMiddleware(utils.RolePengelola, utils.RolePengepul), identityCardHandler.UpdateIdentityCard)
 	identityCardApi.Delete("/delete/:identity_id", middleware.RoleMiddleware(utils.RolePengelola, utils.RolePengepul), identityCardHandler.DeleteIdentityCard)
 }
+ */

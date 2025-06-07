@@ -1,5 +1,5 @@
 package presentation
-
+/* 
 import (
 	"rijig/config"
 	handler "rijig/internal/handler/auth"
@@ -24,3 +24,4 @@ func AuthPengelolaRouter(api fiber.Router) {
 	authPengelola.Post("/logout", middleware.AuthMiddleware, authHandler.LogoutHandler)
 	authPengelola.Post("/verify-otp", authHandler.VerifyOTPHandler)
 }
+ */

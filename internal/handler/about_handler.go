@@ -1,5 +1,5 @@
 package handler
-
+/* 
 import (
 	"fmt"
 	"log"
@@ -24,7 +24,7 @@ func (h *AboutHandler) CreateAbout(c *fiber.Ctx) error {
 	var request dto.RequestAboutDTO
 	if err := c.BodyParser(&request); err != nil {
 		log.Printf("Error parsing request body: %v", err)
-		return utils.ErrorResponse(c, "Invalid input data")
+		return utils.ResponseErrorData(c, "Invalid input data")
 	}
 
 	aboutCoverImage, err := c.FormFile("cover_image")
@@ -173,3 +173,4 @@ func (h *AboutHandler) DeleteAboutDetail(c *fiber.Ctx) error {
 
 	return utils.GenericResponse(c, fiber.StatusOK, "Successfully deleted AboutDetail")
 }
+ */

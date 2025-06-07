@@ -17,17 +17,17 @@ func TrashRouter(api fiber.Router) {
 	trashHandler := handler.NewTrashHandler(trashService)
 
 	trashAPI := api.Group("/trash")
-	trashAPI.Use(middleware.AuthMiddleware)
+	trashAPI.Use(middleware.AuthMiddleware())
 
-	trashAPI.Post("/category", middleware.RoleMiddleware(utils.RoleAdministrator), trashHandler.CreateCategory)
-	trashAPI.Post("/category/detail", middleware.RoleMiddleware(utils.RoleAdministrator), trashHandler.AddDetailToCategory)
+	trashAPI.Post("/category", middleware.RequireRoles(utils.RoleAdministrator), trashHandler.CreateCategory)
+	trashAPI.Post("/category/detail", middleware.RequireRoles(utils.RoleAdministrator), trashHandler.AddDetailToCategory)
 	trashAPI.Get("/categories", trashHandler.GetCategories)
 	trashAPI.Get("/category/:category_id", trashHandler.GetCategoryByID)
 	trashAPI.Get("/detail/:detail_id", trashHandler.GetTrashDetailByID)
 
-	trashAPI.Patch("/category/:category_id", middleware.RoleMiddleware(utils.RoleAdministrator), trashHandler.UpdateCategory)
-	trashAPI.Put("/detail/:detail_id", middleware.RoleMiddleware(utils.RoleAdministrator), trashHandler.UpdateDetail)
+	trashAPI.Patch("/category/:category_id", middleware.RequireRoles(utils.RoleAdministrator), trashHandler.UpdateCategory)
+	trashAPI.Put("/detail/:detail_id", middleware.RequireRoles(utils.RoleAdministrator), trashHandler.UpdateDetail)
 
-	trashAPI.Delete("/category/:category_id", middleware.RoleMiddleware(utils.RoleAdministrator), trashHandler.DeleteCategory)
-	trashAPI.Delete("/detail/:detail_id", middleware.RoleMiddleware(utils.RoleAdministrator), trashHandler.DeleteDetail)
+	trashAPI.Delete("/category/:category_id", middleware.RequireRoles(utils.RoleAdministrator), trashHandler.DeleteCategory)
+	trashAPI.Delete("/detail/:detail_id", middleware.RequireRoles(utils.RoleAdministrator), trashHandler.DeleteDetail)
 }

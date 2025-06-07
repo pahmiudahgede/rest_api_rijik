@@ -69,7 +69,6 @@ func (r *trashRepository) GetCategoryByID(id string) (*model.TrashCategory, erro
 	return &category, nil
 }
 
-// spesial code 
 func (r *trashRepository) GetTrashCategoryByID(ctx context.Context, id string) (*model.TrashCategory, error) {
 	var trash model.TrashCategory
 	if err := config.DB.WithContext(ctx).First(&trash, "id = ?", id).Error; err != nil {

@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"rijig/utils"
 	"strings"
 )
 
@@ -45,12 +46,8 @@ func (r *RequestCompanyProfileDTO) ValidateCompanyProfileInput() (map[string][]s
 		errors["company_Address"] = append(errors["company_address"], "Company address is required")
 	}
 
-	if strings.TrimSpace(r.CompanyPhone) == "" {
-		errors["company_Phone"] = append(errors["company_phone"], "Company phone is required")
-	}
-
-	if strings.TrimSpace(r.CompanyEmail) == "" {
-		errors["company_Email"] = append(errors["company_email"], "Company email is required")
+	if !utils.IsValidPhoneNumber(r.CompanyPhone) {
+		errors["company_Phone"] = append(errors["company_phone"], "nomor harus dimulai 62.. dan 8-14 digit")
 	}
 
 	if strings.TrimSpace(r.CompanyDescription) == "" {

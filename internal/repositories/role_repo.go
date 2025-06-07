@@ -1,48 +1,49 @@
 package repositories
 
 import (
+	"context"
 	"rijig/model"
 
 	"gorm.io/gorm"
 )
 
 type RoleRepository interface {
-	FindByID(id string) (*model.Role, error)
-	FindRoleByName(roleName string) (*model.Role, error)
-	FindAll() ([]model.Role, error)
+	FindByID(ctx context.Context, id string) (*model.Role, error)
+	FindRoleByName(ctx context.Context, roleName string) (*model.Role, error)
+	FindAll(ctx context.Context) ([]model.Role, error)
 }
 
 type roleRepository struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
 func NewRoleRepository(db *gorm.DB) RoleRepository {
-	return &roleRepository{DB: db}
+	return &roleRepository{db}
 }
 
-func (r *roleRepository) FindByID(id string) (*model.Role, error) {
+func (r *roleRepository) FindByID(ctx context.Context, id string) (*model.Role, error) {
 	var role model.Role
-	err := r.DB.Where("id = ?", id).First(&role).Error
+	err := r.db.WithContext(ctx).Where("id = ?", id).First(&role).Error
 	if err != nil {
 		return nil, err
 	}
 	return &role, nil
 }
 
-func (r *roleRepository) FindAll() ([]model.Role, error) {
+func (r *roleRepository) FindRoleByName(ctx context.Context, roleName string) (*model.Role, error) {
+	var role model.Role
+	err := r.db.WithContext(ctx).Where("role_name = ?", roleName).First(&role).Error
+	if err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
+func (r *roleRepository) FindAll(ctx context.Context) ([]model.Role, error) {
 	var roles []model.Role
-	err := r.DB.Find(&roles).Error
+	err := r.db.WithContext(ctx).Find(&roles).Error
 	if err != nil {
 		return nil, err
 	}
 	return roles, nil
-}
-
-func (r *roleRepository) FindRoleByName(roleName string) (*model.Role, error) {
-	var role model.Role
-	err := r.DB.Where("role_name = ?", roleName).First(&role).Error
-	if err != nil {
-		return nil, err
-	}
-	return &role, nil
 }

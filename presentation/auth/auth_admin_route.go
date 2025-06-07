@@ -1,5 +1,5 @@
 package presentation
-
+/* 
 import (
 	"log"
 	"os"
@@ -33,3 +33,4 @@ func AuthAdminRouter(api fiber.Router) {
 	adminAuthAPI.Post("/login", adminAuthHandler.LoginAdmin)
 	adminAuthAPI.Post("/logout", middleware.AuthMiddleware, adminAuthHandler.LogoutAdmin)
 }
+ */

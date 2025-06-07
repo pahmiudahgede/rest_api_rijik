@@ -22,7 +22,7 @@ func (h *RoleHandler) GetRoles(c *fiber.Ctx) error {
 	// 	return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
 	// }
 
-	roles, err := h.RoleService.GetRoles()
+	roles, err := h.RoleService.GetRoles(c.Context())
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusInternalServerError, err.Error())
 	}
@@ -38,7 +38,7 @@ func (h *RoleHandler) GetRoleByID(c *fiber.Ctx) error {
 	// 	return utils.GenericResponse(c, fiber.StatusForbidden, "Forbidden: You don't have permission to access this resource")
 	// }
 
-	role, err := h.RoleService.GetRoleByID(roleID)
+	role, err := h.RoleService.GetRoleByID(c.Context(), roleID)
 	if err != nil {
 		return utils.GenericResponse(c, fiber.StatusNotFound, "role id tidak ditemukan")
 	}

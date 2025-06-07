@@ -17,7 +17,7 @@ func CompanyProfileRouter(api fiber.Router) {
 	companyProfileHandler := handler.NewCompanyProfileHandler(companyProfileService)
 
 	companyProfileAPI := api.Group("/company-profile")
-	companyProfileAPI.Use(middleware.AuthMiddleware)	
+	companyProfileAPI.Use(middleware.AuthMiddleware())	
 
 	companyProfileAPI.Post("/create", companyProfileHandler.CreateCompanyProfile)
 	companyProfileAPI.Get("/get/:company_id", companyProfileHandler.GetCompanyProfileByID)

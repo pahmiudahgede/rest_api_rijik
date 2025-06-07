@@ -16,10 +16,10 @@ func PickupMatchingRouter(api fiber.Router) {
 	handler := handler.NewPickupMatchingHandler(service)
 
 	manual := api.Group("/pickup/manual")
-	manual.Use(middleware.AuthMiddleware)
+	manual.Use(middleware.AuthMiddleware())
 	manual.Get("/:pickupID/nearby-collectors", handler.GetNearbyCollectorsForPickup)
 
 	auto := api.Group("/pickup/otomatis")
-	auto.Use(middleware.AuthMiddleware)
+	auto.Use(middleware.AuthMiddleware())
 	auto.Get("/available-requests", handler.GetAvailablePickupForCollector)
 }
