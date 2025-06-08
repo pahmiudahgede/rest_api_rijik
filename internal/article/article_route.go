@@ -2,9 +2,6 @@ package article
 
 import (
 	"rijig/config"
-	"rijig/internal/handler"
-	"rijig/internal/repositories"
-	"rijig/internal/services"
 	"rijig/middleware"
 	"rijig/utils"
 
@@ -12,9 +9,9 @@ import (
 )
 
 func ArticleRouter(api fiber.Router) {
-	articleRepo := repositories.NewArticleRepository(config.DB)
-	articleService := services.NewArticleService(articleRepo)
-	articleHandler := handler.NewArticleHandler(articleService)
+	articleRepo := NewArticleRepository(config.DB)
+	articleService := NewArticleService(articleRepo)
+	articleHandler := NewArticleHandler(articleService)
 
 	articleAPI := api.Group("/article")
 

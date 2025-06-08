@@ -1,0 +1,139 @@
+# docker-compose.dev.yml - Development environment dengan Air hot reload
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: rijig_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: apirijig_v2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pahmiadmin
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - rijig_network_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d apirijig_v2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: rijig_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6378:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - rijig_network_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  # Go Application dengan Air hot reload
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: rijig_app_dev
+    restart: unless-stopped
+    ports:
+      - "7000:7000"
+    environment:
+      # Docker Environment Flag
+      DOCKER_ENV: "true"
+
+      # Base URL
+      BASE_URL: /apirijig/v2
+
+      # Server Settings
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 7000
+
+      # Database Settings - menggunakan service name sebagai host
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: apirijig_v2
+      DB_USER: postgres
+      DB_PASSWORD: pahmiadmin
+
+      # Redis Settings - menggunakan service name sebagai host
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+
+      # Auth Keys
+      API_KEY: apirijikL0RH64wfkEpPqjAroLVPuFgT0EpsSLBPsmyUvIqZrUAi6X3HNPM7Vter
+      SECRET_KEY: TJ6h3vPMPlAuv7cbD27RU1/UyRctEih5k4H3+o7tZM1PSwTcoFETL6lqB54=
+
+      # TTL Settings
+      ACCESS_TOKEN_EXPIRY: 23*time.Hour
+      REFRESH_TOKEN_EXPIRY: 28*24*time.Hour
+      PARTIAL_TOKEN_EXPIRY: 2*time.Hour
+    volumes:
+      # Mount source code untuk hot reload
+      - .:/app
+      # Exclude node_modules dan vendor (jika ada)
+      - /app/tmp
+      - /app/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rijig_network_dev
+
+  # pgAdmin (optional - untuk GUI database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rijig_pgadmin_dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@rijig.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data_dev:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - rijig_network_dev
+
+  # Redis Commander (optional - untuk GUI redis management)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: rijig_redis_commander_dev
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - rijig_network_dev
+
+networks:
+  rijig_network_dev:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+  pgadmin_data_dev:

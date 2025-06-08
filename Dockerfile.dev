@@ -1,0 +1,28 @@
+# Dockerfile untuk development environment dengan Air hot reload
+FROM golang:1.23-alpine
+
+# Install dependencies dan Air
+RUN apk add --no-cache git ca-certificates curl && \
+    go install github.com/cosmtrek/air@latest
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files dan download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Create tmp directory untuk Air
+RUN mkdir -p tmp
+
+# Set timezone (optional)
+RUN cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+
+# Expose port
+EXPOSE 7000
+
+# Run Air untuk hot reload
+CMD ["air", "-c", ".air.toml"]

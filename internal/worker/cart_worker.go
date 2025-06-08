@@ -1,5 +1,5 @@
 package worker
-
+/* 
 import (
 	"context"
 	"encoding/json"
@@ -156,3 +156,4 @@ func (w *CartWorker) commitCartToDB(ctx context.Context, userID string, cartData
 
 	return w.cartRepo.CreateCartWithItems(ctx, newCart)
 }
+ */

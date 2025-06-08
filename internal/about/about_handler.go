@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"log"
 	"rijig/dto"
-	"rijig/internal/services"
 	"rijig/utils"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type AboutHandler struct {
-	AboutService services.AboutService
+	AboutService AboutService
 }
 
-func NewAboutHandler(aboutService services.AboutService) *AboutHandler {
+func NewAboutHandler(aboutService AboutService) *AboutHandler {
 	return &AboutHandler{
 		AboutService: aboutService,
 	}
@@ -36,7 +35,7 @@ func (h *AboutHandler) CreateAbout(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Cover image is required")
 	}
 
-	response, err := h.AboutService.CreateAbout(request, aboutCoverImage)
+	response, err := h.AboutService.CreateAbout(c.Context(), request, aboutCoverImage)
 	if err != nil {
 		log.Printf("Error creating About: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to create About: %v", err))
@@ -60,7 +59,7 @@ func (h *AboutHandler) UpdateAbout(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "cover_image is required")
 	}
 
-	response, err := h.AboutService.UpdateAbout(id, request, aboutCoverImage)
+	response, err := h.AboutService.UpdateAbout(c.Context(), id, request, aboutCoverImage)
 	if err != nil {
 		log.Printf("Error updating About: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to update About: %v", err))
@@ -70,7 +69,7 @@ func (h *AboutHandler) UpdateAbout(c *fiber.Ctx) error {
 }
 
 func (h *AboutHandler) GetAllAbout(c *fiber.Ctx) error {
-	response, err := h.AboutService.GetAllAbout()
+	response, err := h.AboutService.GetAllAbout(c.Context())
 	if err != nil {
 		log.Printf("Error fetching all About: %v", err)
 		return utils.InternalServerError(c, "Failed to fetch About list")
@@ -82,7 +81,7 @@ func (h *AboutHandler) GetAllAbout(c *fiber.Ctx) error {
 func (h *AboutHandler) GetAboutByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	response, err := h.AboutService.GetAboutByID(id)
+	response, err := h.AboutService.GetAboutByID(c.Context(), id)
 	if err != nil {
 		log.Printf("Error fetching About by ID: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to fetch About by ID: %v", err))
@@ -94,7 +93,7 @@ func (h *AboutHandler) GetAboutByID(c *fiber.Ctx) error {
 func (h *AboutHandler) GetAboutDetailById(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	response, err := h.AboutService.GetAboutDetailById(id)
+	response, err := h.AboutService.GetAboutDetailById(c.Context(), id)
 	if err != nil {
 		log.Printf("Error fetching About detail by ID: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to fetch About by ID: %v", err))
@@ -106,7 +105,7 @@ func (h *AboutHandler) GetAboutDetailById(c *fiber.Ctx) error {
 func (h *AboutHandler) DeleteAbout(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	if err := h.AboutService.DeleteAbout(id); err != nil {
+	if err := h.AboutService.DeleteAbout(c.Context(), id); err != nil {
 		log.Printf("Error deleting About: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to delete About: %v", err))
 	}
@@ -132,7 +131,7 @@ func (h *AboutHandler) CreateAboutDetail(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "image_detail is required")
 	}
 
-	response, err := h.AboutService.CreateAboutDetail(request, aboutDetailImage)
+	response, err := h.AboutService.CreateAboutDetail(c.Context(), request, aboutDetailImage)
 	if err != nil {
 		log.Printf("Error creating AboutDetail: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to create AboutDetail: %v", err))
@@ -156,7 +155,7 @@ func (h *AboutHandler) UpdateAboutDetail(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "image_detail is required")
 	}
 
-	response, err := h.AboutService.UpdateAboutDetail(id, request, aboutDetailImage)
+	response, err := h.AboutService.UpdateAboutDetail(c.Context(), id, request, aboutDetailImage)
 	if err != nil {
 		log.Printf("Error updating AboutDetail: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to update AboutDetail: %v", err))
@@ -168,7 +167,7 @@ func (h *AboutHandler) UpdateAboutDetail(c *fiber.Ctx) error {
 func (h *AboutHandler) DeleteAboutDetail(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	if err := h.AboutService.DeleteAboutDetail(id); err != nil {
+	if err := h.AboutService.DeleteAboutDetail(c.Context(), id); err != nil {
 		log.Printf("Error deleting AboutDetail: %v", err)
 		return utils.InternalServerError(c, fmt.Sprintf("Failed to delete AboutDetail: %v", err))
 	}

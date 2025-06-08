@@ -38,7 +38,7 @@ type ResponseRequestPickup struct {
 type ResponseRequestPickupItem struct {
 	ID              string                     `json:"id,omitempty"`
 	TrashCategoryID string                     `json:"trash_category_id,omitempty"`
-	TrashCategory   []ResponseTrashCategoryDTO `json:"trash_category,omitempty"`
+	// TrashCategory   []ResponseTrashCategoryDTO `json:"trash_category,omitempty"`
 	EstimatedAmount float64                    `json:"estimated_amount,omitempty"`
 }
 

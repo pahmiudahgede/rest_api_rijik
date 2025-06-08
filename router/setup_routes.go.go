@@ -11,9 +11,8 @@ import (
 	"rijig/internal/userpin"
 	"rijig/internal/whatsapp"
 	"rijig/middleware"
-	"rijig/presentation"
+	// "rijig/presentation"
 
-	// presentationn "rijig/presentation/auth"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -41,22 +40,22 @@ func SetupRoutes(app *fiber.App) {
 	// presentationn.AuthMasyarakatRouter(api)
 	// || auth router || //
 	// presentation.IdentityCardRouter(api)
-	presentation.CompanyProfileRouter(api)
-	presentation.RequestPickupRouter(api)
-	presentation.PickupMatchingRouter(api)
-	presentation.PickupRatingRouter(api)
+	// presentation.CompanyProfileRouter(api)
+	// presentation.RequestPickupRouter(api)
+	// presentation.PickupMatchingRouter(api)
+	// presentation.PickupRatingRouter(api)
 
-	presentation.CollectorRouter(api)
-	presentation.TrashCartRouter(api)
+	// presentation.CollectorRouter(api)
+	// presentation.TrashCartRouter(api)
 
-	presentation.UserProfileRouter(api)
-	presentation.UserPinRouter(api)
-	// presentation.RoleRouter(api)
-	presentation.WilayahRouter(api)
-	presentation.AddressRouter(api)
-	// presentation.ArticleRouter(api)
-	presentation.AboutRouter(api)
-	presentation.TrashRouter(api)
-	presentation.CoverageAreaRouter(api)
+	// presentation.UserProfileRouter(api)
+	// presentation.UserPinRouter(api)
+	// // presentation.RoleRouter(api)
+	// presentation.WilayahRouter(api)
+	// presentation.AddressRouter(api)
+	// // presentation.ArticleRouter(api)
+	// // presentation.AboutRouter(api)
+	// presentation.TrashRouter(api)
+	// presentation.CoverageAreaRouter(api)
 	whatsapp.WhatsAppRouter(api)
 }

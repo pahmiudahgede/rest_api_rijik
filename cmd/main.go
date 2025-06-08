@@ -1,13 +1,11 @@
 package main
 
 import (
-	"log"
 	"rijig/config"
-	"rijig/internal/repositories"
-	"rijig/internal/services"
-	"rijig/internal/worker"
+	// "rijig/internal/repositories"
+	// "rijig/internal/services"
+
 	"rijig/router"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -15,21 +13,21 @@ import (
 
 func main() {
 	config.SetupConfig()
-	cartRepo := repositories.NewCartRepository()
-	trashRepo := repositories.NewTrashRepository(config.DB)
-	cartService := services.NewCartService(cartRepo, trashRepo)
-	worker := worker.NewCartWorker(cartService, cartRepo, trashRepo)
+	// cartRepo := repositories.NewCartRepository()
+	// trashRepo := repositories.NewTrashRepository(config.DB)
+	// cartService := services.NewCartService(cartRepo, trashRepo)
+	// worker := worker.NewCartWorker(cartService, cartRepo, trashRepo)
 
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
+	// go func() {
+	// 	ticker := time.NewTicker(30 * time.Second)
+	// 	defer ticker.Stop()
 
-		for range ticker.C {
-			if err := worker.AutoCommitExpiringCarts(); err != nil {
-				log.Printf("Auto-commit error: %v", err)
-			}
-		}
-	}()
+	// 	for range ticker.C {
+	// 		if err := worker.AutoCommitExpiringCarts(); err != nil {
+	// 			log.Printf("Auto-commit error: %v", err)
+	// 		}
+	// 	}
+	// }()
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -44,7 +42,6 @@ func main() {
 	})
 
 	app.Use(cors.New())
-
 
 	router.SetupRoutes(app)
 	config.StartServer(app)
