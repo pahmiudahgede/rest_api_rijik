@@ -19,6 +19,8 @@ help:
 	@echo "  logs       - Show logs for all services"
 	@echo "  clean      - Remove all containers and volumes"
 	@echo "  prod       - Start production environment"
+	@echo "  psql-prod  - Execute psql in production postgres"
+	@echo "  redis-prod - Execute redis-cli in production redis"
 	@echo ""
 	@echo "$(YELLOW)Development (dengan Air hot reload):$(NC)"
 	@echo "  dev-build  - Build development images"
@@ -27,14 +29,14 @@ help:
 	@echo "  dev-logs   - Show development logs"
 	@echo "  dev-clean  - Clean development environment"
 	@echo "  dev-restart- Restart development environment"
+	@echo "  psql       - Execute psql in development postgres"
+	@echo "  redis-cli  - Execute redis-cli in development redis"
 	@echo ""
 	@echo "$(YELLOW)Utilities:$(NC)"
 	@echo "  app-logs   - Show only app logs"
 	@echo "  db-logs    - Show only database logs"
 	@echo "  status     - Check service status"
 	@echo "  shell      - Execute bash in app container"
-	@echo "  psql       - Execute psql in postgres container"
-	@echo "  redis-cli  - Execute redis-cli in redis container"
 
 # Production Commands
 build:
@@ -66,6 +68,15 @@ clean:
 prod:
 	@echo "$(GREEN)Starting production environment...$(NC)"
 	docker compose up -d
+
+# Production utilities
+psql-prod:
+	@echo "$(GREEN)Connecting to production PostgreSQL...$(NC)"
+	docker compose exec postgres psql -U postgres -d apirijig_v2
+
+redis-prod:
+	@echo "$(GREEN)Connecting to production Redis...$(NC)"
+	docker compose exec redis redis-cli
 
 # Development Commands (dengan Air hot reload)
 dev-build:
@@ -101,7 +112,7 @@ dev-restart:
 	@echo "$(YELLOW)Restarting development services...$(NC)"
 	docker compose -f docker-compose.dev.yml restart
 
-# Development utilities
+# Development utilities (FIXED - menggunakan -f docker-compose.dev.yml)
 dev-app-logs:
 	@echo "$(GREEN)Showing development app logs...$(NC)"
 	docker compose -f docker-compose.dev.yml logs -f app
@@ -118,7 +129,16 @@ dev-status:
 	@echo "$(GREEN)Development service status:$(NC)"
 	docker compose -f docker-compose.dev.yml ps
 
-# Shared utilities
+# FIXED: Development database access (default untuk development)
+psql:
+	@echo "$(GREEN)Connecting to development PostgreSQL...$(NC)"
+	docker compose -f docker-compose.dev.yml exec postgres psql -U postgres -d apirijig_v2
+
+redis-cli:
+	@echo "$(GREEN)Connecting to development Redis...$(NC)"
+	docker compose -f docker-compose.dev.yml exec redis redis-cli
+
+# Shared utilities (default ke production)
 app-logs:
 	docker compose logs -f app
 
@@ -130,12 +150,6 @@ status:
 
 shell:
 	docker compose exec app sh
-
-psql:
-	docker compose exec postgres psql -U postgres -d apirijig_v2
-
-redis-cli:
-	docker compose exec redis redis-cli
 
 # Rebuild and restart app only
 app-rebuild:
