@@ -51,44 +51,15 @@ services:
     restart: unless-stopped
     ports:
       - "7000:7000"
-    environment:
-      # Docker Environment Flag
-      DOCKER_ENV: "true"
-
-      # Base URL
-      BASE_URL: /apirijig/v2
-
-      # Server Settings
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 7000
-
-      # Database Settings - menggunakan service name sebagai host
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: apirijig_v2
-      DB_USER: postgres
-      DB_PASSWORD: pahmiadmin
-
-      # Redis Settings - menggunakan service name sebagai host
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ""
-      REDIS_DB: 0
-
-      # Auth Keys
-      API_KEY: apirijikL0RH64wfkEpPqjAroLVPuFgT0EpsSLBPsmyUvIqZrUAi6X3HNPM7Vter
-      SECRET_KEY: TJ6h3vPMPlAuv7cbD27RU1/UyRctEih5k4H3+o7tZM1PSwTcoFETL6lqB54=
-
-      # TTL Settings
-      ACCESS_TOKEN_EXPIRY: 23*time.Hour
-      REFRESH_TOKEN_EXPIRY: 28*24*time.Hour
-      PARTIAL_TOKEN_EXPIRY: 2*time.Hour
+    env_file:
+      - .env.docker
     volumes:
       # Mount source code untuk hot reload
       - .:/app
-      # Exclude node_modules dan vendor (jika ada)
+      # Cache Go modules untuk performance
+      - go_modules_cache:/go/pkg/mod
+      # Exclude tmp directory untuk mencegah konflik
       - /app/tmp
-      - /app/vendor
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,6 +67,7 @@ services:
         condition: service_healthy
     networks:
       - rijig_network_dev
+    working_dir: /app
 
   # pgAdmin (optional - untuk GUI database management)
   pgadmin:
@@ -137,3 +109,4 @@ volumes:
   postgres_data_dev:
   redis_data_dev:
   pgadmin_data_dev:
+  go_modules_cache:

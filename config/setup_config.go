@@ -8,12 +8,9 @@ import (
 )
 
 func SetupConfig() {
-
 	if _, exists := os.LookupEnv("DOCKER_ENV"); exists {
-
 		log.Println("Running in Docker container, using environment variables")
 	} else {
-
 		err := godotenv.Load(".env.dev")
 		if err != nil {
 			log.Printf("Warning: Error loading .env file: %v", err)

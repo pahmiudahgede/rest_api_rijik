@@ -33,6 +33,21 @@ func NewAuthenticationService(authRepo AuthenticationRepository, roleRepo role.R
 	return &authenticationService{authRepo, roleRepo}
 }
 
+func normalizeRoleName(roleName string) string {
+	switch strings.ToLower(roleName) {
+	case "administrator", "admin":
+		return utils.RoleAdministrator
+	case "pengelola":
+		return utils.RolePengelola
+	case "pengepul":
+		return utils.RolePengepul
+	case "masyarakat":
+		return utils.RoleMasyarakat
+	default:
+		return strings.ToLower(roleName)
+	}
+}
+
 func (s *authenticationService) LoginAdmin(ctx context.Context, req *LoginAdminRequest) (*AuthResponse, error) {
 	user, err := s.authRepo.FindUserByEmail(ctx, req.Email)
 	if err != nil {
@@ -103,14 +118,16 @@ func (s *authenticationService) RegisterAdmin(ctx context.Context, req *Register
 
 func (s *authenticationService) SendRegistrationOTP(ctx context.Context, req *LoginorRegistRequest) (*OTPResponse, error) {
 
-	existingUser, err := s.authRepo.FindUserByPhoneAndRole(ctx, req.Phone, strings.ToLower(req.RoleName))
+	normalizedRole := strings.ToLower(req.RoleName)
+
+	existingUser, err := s.authRepo.FindUserByPhoneAndRole(ctx, req.Phone, normalizedRole)
 	if err == nil && existingUser != nil {
 		return nil, fmt.Errorf("nomor telepon dengan role %s sudah terdaftar", req.RoleName)
 	}
 
-	roleData, err := s.roleRepo.FindRoleByName(ctx, req.RoleName)
+	roleData, err := s.roleRepo.FindRoleByName(ctx, normalizedRole)
 	if err != nil {
-		return nil, fmt.Errorf("role tidak valid")
+		return nil, fmt.Errorf("role tidak valid: %v", err)
 	}
 
 	rateLimitKey := fmt.Sprintf("otp_limit:%s", req.Phone)
@@ -125,33 +142,34 @@ func (s *authenticationService) SendRegistrationOTP(ctx context.Context, req *Lo
 
 	otpKey := fmt.Sprintf("otp:%s:register", req.Phone)
 	otpData := OTPData{
-		Phone:  req.Phone,
-		OTP:    otp,
-		Role:   req.RoleName,
-		RoleID: roleData.ID,
-		Type:   "register",
-
-		Attempts: 0,
+		Phone:     req.Phone,
+		OTP:       otp,
+		Role:      normalizedRole,
+		RoleID:    roleData.ID,
+		Type:      "register",
+		Attempts:  0,
+		ExpiresAt: time.Now().Add(90 * time.Second),
 	}
 
-	err = utils.SetCacheWithTTL(otpKey, otpData, 1*time.Minute)
+	err = utils.SetCacheWithTTL(otpKey, otpData, 90*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("gagal menyimpan OTP: %v", err)
 	}
 
-	err = sendOTPViaSMS(req.Phone, otp)
+	err = sendOTP(req.Phone, otp)
 	if err != nil {
 		return nil, fmt.Errorf("gagal mengirim OTP: %v", err)
 	}
 
 	return &OTPResponse{
 		Message:   "OTP berhasil dikirim",
-		ExpiresIn: 60,
+		ExpiresIn: 90,
 		Phone:     maskPhoneNumber(req.Phone),
 	}, nil
 }
 
 func (s *authenticationService) VerifyRegistrationOTP(ctx context.Context, req *VerifyOtpRequest) (*AuthResponse, error) {
+
 	otpKey := fmt.Sprintf("otp:%s:register", req.Phone)
 	var otpData OTPData
 	err := utils.GetCache(otpKey, &otpData)
@@ -166,7 +184,7 @@ func (s *authenticationService) VerifyRegistrationOTP(ctx context.Context, req *
 
 	if otpData.OTP != req.Otp {
 		otpData.Attempts++
-		utils.SetCache(otpKey, otpData, time.Until(otpData.ExpiresAt))
+		utils.SetCacheWithTTL(otpKey, otpData, time.Until(otpData.ExpiresAt))
 		return nil, fmt.Errorf("kode OTP salah")
 	}
 
@@ -174,12 +192,14 @@ func (s *authenticationService) VerifyRegistrationOTP(ctx context.Context, req *
 		return nil, fmt.Errorf("role tidak sesuai")
 	}
 
+	normalizedRole := strings.ToLower(req.RoleName)
+
 	user := &model.User{
 		Phone:                req.Phone,
 		PhoneVerified:        true,
 		RoleID:               otpData.RoleID,
 		RegistrationStatus:   utils.RegStatusIncomplete,
-		RegistrationProgress: 0,
+		RegistrationProgress: utils.ProgressOTPVerified,
 		Name:                 "",
 		Gender:               "",
 		Dateofbirth:          "",
@@ -191,11 +211,15 @@ func (s *authenticationService) VerifyRegistrationOTP(ctx context.Context, req *
 		return nil, fmt.Errorf("gagal membuat user: %v", err)
 	}
 
+	if user.ID == "" {
+		return nil, fmt.Errorf("gagal mendapatkan user ID setelah registrasi")
+	}
+
 	utils.DeleteCache(otpKey)
 
 	tokenResponse, err := utils.GenerateTokenPair(
 		user.ID,
-		req.RoleName,
+		normalizedRole,
 		req.DeviceID,
 		user.RegistrationStatus,
 		int(user.RegistrationProgress),
@@ -205,15 +229,18 @@ func (s *authenticationService) VerifyRegistrationOTP(ctx context.Context, req *
 		return nil, fmt.Errorf("gagal generate token: %v", err)
 	}
 
-	nextStep := utils.GetNextRegistrationStep(req.RoleName, int(user.RegistrationProgress),user.RegistrationStatus)
+	nextStep := utils.GetNextRegistrationStep(
+		normalizedRole,
+		int(user.RegistrationProgress),
+		user.RegistrationStatus,
+	)
 
 	return &AuthResponse{
-		Message:      "Registrasi berhasil",
-		AccessToken:  tokenResponse.AccessToken,
-		RefreshToken: tokenResponse.RefreshToken,
-		TokenType:    string(tokenResponse.TokenType),
-		ExpiresIn:    tokenResponse.ExpiresIn,
-
+		Message:            "Registrasi berhasil",
+		AccessToken:        tokenResponse.AccessToken,
+		RefreshToken:       tokenResponse.RefreshToken,
+		TokenType:          string(tokenResponse.TokenType),
+		ExpiresIn:          tokenResponse.ExpiresIn,
 		RegistrationStatus: user.RegistrationStatus,
 		NextStep:           nextStep,
 		SessionID:          tokenResponse.SessionID,
@@ -256,7 +283,7 @@ func (s *authenticationService) SendLoginOTP(ctx context.Context, req *LoginorRe
 		return nil, fmt.Errorf("gagal menyimpan OTP: %v", err)
 	}
 
-	err = sendOTPViaSMS(req.Phone, otp)
+	err = sendOTP(req.Phone, otp)
 	if err != nil {
 		return nil, fmt.Errorf("gagal mengirim OTP: %v", err)
 	}
@@ -349,7 +376,7 @@ func isRateLimited(key string, maxAttempts int, duration time.Duration) bool {
 	return false
 }
 
-func sendOTPViaSMS(phone, otp string) error {
+func sendOTP(phone, otp string) error {
 
 	fmt.Printf("Sending OTP %s to %s\n", otp, phone)
 	return nil

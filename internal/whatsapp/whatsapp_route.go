@@ -1,11 +1,11 @@
 package whatsapp
 
 import (
-	"rijig/middleware"
-
 	"github.com/gofiber/fiber/v2"
 )
 
 func WhatsAppRouter(api fiber.Router) {
-	api.Post("/logout/whastapp", middleware.AuthMiddleware(), WhatsAppHandler)
+	api.Get("/whatsapp-status", WhatsAppStatusHandler)
+	api.Get("/whatsapp/pw=admin1234", WhatsAppQRPageHandler)
+	api.Post("/logout/whastapp", WhatsAppLogoutHandler)
 }

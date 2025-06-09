@@ -11,14 +11,15 @@ import (
 	"rijig/internal/userpin"
 	"rijig/internal/whatsapp"
 	"rijig/middleware"
-	// "rijig/presentation"
 
+	// "rijig/presentation"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func SetupRoutes(app *fiber.App) {
 	apa := app.Group(os.Getenv("BASE_URL"))
+	whatsapp.WhatsAppRouter(apa)
 	apa.Static("/uploads", "./public"+os.Getenv("BASE_URL")+"/uploads")
 
 	api := app.Group(os.Getenv("BASE_URL"))

@@ -210,11 +210,6 @@ func (h *AuthenticationHandler) LogoutAuthentication(c *fiber.Ctx) error {
 		return err
 	}
 
-	// deviceID := c.Get("Device-ID")
-	// if deviceID == "" {
-	// 	return utils.BadRequest(c, "Device ID is required")
-	// }
-
 	err = h.service.LogoutAuthentication(c.Context(), claims.UserID, claims.DeviceID)
 	if err != nil {
 

@@ -13,10 +13,10 @@ require (
 	gorm.io/gorm v1.25.12
 )
 
-require (
-	golang.org/x/term v0.30.0 // indirect
-	rsc.io/qr v0.2.0 // indirect
-)
+// require (
+// 	golang.org/x/term v0.30.0 // indirect
+// 	rsc.io/qr v0.2.0 // indirect
+// )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -35,9 +35,9 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/mdp/qrterminal/v3 v3.2.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // direct
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
