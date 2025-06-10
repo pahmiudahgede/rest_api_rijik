@@ -15,47 +15,39 @@ func NewUserPinHandler(service UserPinService) *UserPinHandler {
 	return &UserPinHandler{service}
 }
 
-// userID, ok := c.Locals("user_id").(string)
-//
-//	if !ok || userID == "" {
-//		return utils.Unauthorized(c, "user_id is missing or invalid")
-//	}
 func (h *UserPinHandler) CreateUserPinHandler(c *fiber.Ctx) error {
-	// Ambil klaim pengguna yang sudah diautentikasi
+
 	claims, err := middleware.GetUserFromContext(c)
 	if err != nil {
-		return err
+		return utils.Unauthorized(c, "Authentication required")
 	}
 
-	// Parsing body request untuk PIN
+	if claims.UserID == "" || claims.DeviceID == "" {
+		return utils.BadRequest(c, "Invalid user claims")
+	}
+
 	var req RequestPinDTO
 	if err := c.BodyParser(&req); err != nil {
 		return utils.BadRequest(c, "Invalid request body")
 	}
 
-	// Validasi request PIN
 	if errs, ok := req.ValidateRequestPinDTO(); !ok {
 		return utils.ResponseErrorData(c, fiber.StatusBadRequest, "Validation error", errs)
 	}
 
-	// Panggil service untuk membuat PIN
-	err = h.service.CreateUserPin(c.Context(), claims.UserID, &req)
+	pintokenresponse, err := h.service.CreateUserPin(c.Context(), claims.UserID, claims.DeviceID, &req)
 	if err != nil {
-		if err.Error() == "PIN already created" {
-			return utils.BadRequest(c, err.Error()) // Jika PIN sudah ada, kembalikan error 400
+		if err.Error() == Pinhasbeencreated {
+			return utils.BadRequest(c, err.Error())
 		}
-		return utils.InternalServerError(c, err.Error()) // Jika terjadi error lain, internal server error
+		return utils.InternalServerError(c, err.Error())
 	}
 
-	// Mengembalikan response sukses jika berhasil
-	return utils.Success(c, "PIN created successfully")
+	return utils.SuccessWithData(c, "PIN created successfully", pintokenresponse)
 }
 
 func (h *UserPinHandler) VerifyPinHandler(c *fiber.Ctx) error {
-	// userID, ok := c.Locals("user_id").(string)
-	// if !ok || userID == "" {
-	// 	return utils.Unauthorized(c, "user_id is missing or invalid")
-	// }
+
 	claims, err := middleware.GetUserFromContext(c)
 	if err != nil {
 		return err
@@ -66,12 +58,10 @@ func (h *UserPinHandler) VerifyPinHandler(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Invalid request body")
 	}
 
-	token, err := h.service.VerifyUserPin(c.Context(), claims.UserID, &req)
+	token, err := h.service.VerifyUserPin(c.Context(), claims.UserID, claims.DeviceID, &req)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
 
-	return utils.SuccessWithData(c, "PIN verified successfully", fiber.Map{
-		"token": token,
-	})
+	return utils.SuccessWithData(c, "PIN verified successfully", token)
 }

@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
-	"rijig/dto"
 	"rijig/model"
 	"rijig/utils"
 	"time"
@@ -24,15 +23,15 @@ const (
 )
 
 type AboutService interface {
-	CreateAbout(ctx context.Context, request dto.RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*dto.ResponseAboutDTO, error)
-	UpdateAbout(ctx context.Context, id string, request dto.RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*dto.ResponseAboutDTO, error)
-	GetAllAbout(ctx context.Context) ([]dto.ResponseAboutDTO, error)
-	GetAboutByID(ctx context.Context, id string) (*dto.ResponseAboutDTO, error)
-	GetAboutDetailById(ctx context.Context, id string) (*dto.ResponseAboutDetailDTO, error)
+	CreateAbout(ctx context.Context, request RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*ResponseAboutDTO, error)
+	UpdateAbout(ctx context.Context, id string, request RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*ResponseAboutDTO, error)
+	GetAllAbout(ctx context.Context) ([]ResponseAboutDTO, error)
+	GetAboutByID(ctx context.Context, id string) (*ResponseAboutDTO, error)
+	GetAboutDetailById(ctx context.Context, id string) (*ResponseAboutDetailDTO, error)
 	DeleteAbout(ctx context.Context, id string) error
 
-	CreateAboutDetail(ctx context.Context, request dto.RequestAboutDetailDTO, coverImageAboutDetail *multipart.FileHeader) (*dto.ResponseAboutDetailDTO, error)
-	UpdateAboutDetail(ctx context.Context, id string, request dto.RequestAboutDetailDTO, imageDetail *multipart.FileHeader) (*dto.ResponseAboutDetailDTO, error)
+	CreateAboutDetail(ctx context.Context, request RequestAboutDetailDTO, coverImageAboutDetail *multipart.FileHeader) (*ResponseAboutDetailDTO, error)
+	UpdateAboutDetail(ctx context.Context, id string, request RequestAboutDetailDTO, imageDetail *multipart.FileHeader) (*ResponseAboutDetailDTO, error)
 	DeleteAboutDetail(ctx context.Context, id string) error
 }
 
@@ -66,11 +65,11 @@ func (s *aboutService) invalidateAboutDetailCaches(aboutDetailID, aboutID string
 	s.invalidateAboutCaches(aboutID)
 }
 
-func formatResponseAboutDetailDTO(about *model.AboutDetail) (*dto.ResponseAboutDetailDTO, error) {
+func formatResponseAboutDetailDTO(about *model.AboutDetail) (*ResponseAboutDetailDTO, error) {
 	createdAt, _ := utils.FormatDateToIndonesianFormat(about.CreatedAt)
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(about.UpdatedAt)
 
-	response := &dto.ResponseAboutDetailDTO{
+	response := &ResponseAboutDetailDTO{
 		ID:          about.ID,
 		AboutID:     about.AboutID,
 		ImageDetail: about.ImageDetail,
@@ -82,11 +81,11 @@ func formatResponseAboutDetailDTO(about *model.AboutDetail) (*dto.ResponseAboutD
 	return response, nil
 }
 
-func formatResponseAboutDTO(about *model.About) (*dto.ResponseAboutDTO, error) {
+func formatResponseAboutDTO(about *model.About) (*ResponseAboutDTO, error) {
 	createdAt, _ := utils.FormatDateToIndonesianFormat(about.CreatedAt)
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(about.UpdatedAt)
 
-	response := &dto.ResponseAboutDTO{
+	response := &ResponseAboutDTO{
 		ID:         about.ID,
 		Title:      about.Title,
 		CoverImage: about.CoverImage,
@@ -194,7 +193,7 @@ func deleteCoverImageAbout(coverimageAboutPath string) error {
 	return nil
 }
 
-func (s *aboutService) CreateAbout(ctx context.Context, request dto.RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*dto.ResponseAboutDTO, error) {
+func (s *aboutService) CreateAbout(ctx context.Context, request RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*ResponseAboutDTO, error) {
 	errors, valid := request.ValidateAbout()
 	if !valid {
 		return nil, fmt.Errorf("validation error: %v", errors)
@@ -224,7 +223,7 @@ func (s *aboutService) CreateAbout(ctx context.Context, request dto.RequestAbout
 	return response, nil
 }
 
-func (s *aboutService) UpdateAbout(ctx context.Context, id string, request dto.RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*dto.ResponseAboutDTO, error) {
+func (s *aboutService) UpdateAbout(ctx context.Context, id string, request RequestAboutDTO, coverImageAbout *multipart.FileHeader) (*ResponseAboutDTO, error) {
 	errors, valid := request.ValidateAbout()
 	if !valid {
 		return nil, fmt.Errorf("validation error: %v", errors)
@@ -271,9 +270,9 @@ func (s *aboutService) UpdateAbout(ctx context.Context, id string, request dto.R
 	return response, nil
 }
 
-func (s *aboutService) GetAllAbout(ctx context.Context) ([]dto.ResponseAboutDTO, error) {
+func (s *aboutService) GetAllAbout(ctx context.Context) ([]ResponseAboutDTO, error) {
 
-	var cachedAbouts []dto.ResponseAboutDTO
+	var cachedAbouts []ResponseAboutDTO
 	if err := utils.GetCache(cacheKeyAllAbout, &cachedAbouts); err == nil {
 		return cachedAbouts, nil
 	}
@@ -283,7 +282,7 @@ func (s *aboutService) GetAllAbout(ctx context.Context) ([]dto.ResponseAboutDTO,
 		return nil, fmt.Errorf("failed to get About list: %v", err)
 	}
 
-	var aboutDTOList []dto.ResponseAboutDTO
+	var aboutDTOList []ResponseAboutDTO
 	for _, about := range aboutList {
 		response, err := formatResponseAboutDTO(&about)
 		if err != nil {
@@ -300,10 +299,10 @@ func (s *aboutService) GetAllAbout(ctx context.Context) ([]dto.ResponseAboutDTO,
 	return aboutDTOList, nil
 }
 
-func (s *aboutService) GetAboutByID(ctx context.Context, id string) (*dto.ResponseAboutDTO, error) {
+func (s *aboutService) GetAboutByID(ctx context.Context, id string) (*ResponseAboutDTO, error) {
 	cacheKey := fmt.Sprintf(cacheKeyAboutByID, id)
 
-	var cachedAbout dto.ResponseAboutDTO
+	var cachedAbout ResponseAboutDTO
 	if err := utils.GetCache(cacheKey, &cachedAbout); err == nil {
 		return &cachedAbout, nil
 	}
@@ -318,7 +317,7 @@ func (s *aboutService) GetAboutByID(ctx context.Context, id string) (*dto.Respon
 		return nil, fmt.Errorf("error formatting About response: %v", err)
 	}
 
-	var responseDetails []dto.ResponseAboutDetailDTO
+	var responseDetails []ResponseAboutDetailDTO
 	for _, detail := range about.AboutDetail {
 		formattedDetail, err := formatResponseAboutDetailDTO(&detail)
 		if err != nil {
@@ -336,10 +335,10 @@ func (s *aboutService) GetAboutByID(ctx context.Context, id string) (*dto.Respon
 	return response, nil
 }
 
-func (s *aboutService) GetAboutDetailById(ctx context.Context, id string) (*dto.ResponseAboutDetailDTO, error) {
+func (s *aboutService) GetAboutDetailById(ctx context.Context, id string) (*ResponseAboutDetailDTO, error) {
 	cacheKey := fmt.Sprintf(cacheKeyAboutDetail, id)
 
-	var cachedDetail dto.ResponseAboutDetailDTO
+	var cachedDetail ResponseAboutDetailDTO
 	if err := utils.GetCache(cacheKey, &cachedDetail); err == nil {
 		return &cachedDetail, nil
 	}
@@ -390,7 +389,7 @@ func (s *aboutService) DeleteAbout(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *aboutService) CreateAboutDetail(ctx context.Context, request dto.RequestAboutDetailDTO, coverImageAboutDetail *multipart.FileHeader) (*dto.ResponseAboutDetailDTO, error) {
+func (s *aboutService) CreateAboutDetail(ctx context.Context, request RequestAboutDetailDTO, coverImageAboutDetail *multipart.FileHeader) (*ResponseAboutDetailDTO, error) {
 	errors, valid := request.ValidateAboutDetail()
 	if !valid {
 		return nil, fmt.Errorf("validation error: %v", errors)
@@ -426,7 +425,7 @@ func (s *aboutService) CreateAboutDetail(ctx context.Context, request dto.Reques
 	return response, nil
 }
 
-func (s *aboutService) UpdateAboutDetail(ctx context.Context, id string, request dto.RequestAboutDetailDTO, imageDetail *multipart.FileHeader) (*dto.ResponseAboutDetailDTO, error) {
+func (s *aboutService) UpdateAboutDetail(ctx context.Context, id string, request RequestAboutDetailDTO, imageDetail *multipart.FileHeader) (*ResponseAboutDetailDTO, error) {
 	errors, valid := request.ValidateAboutDetail()
 	if !valid {
 		return nil, fmt.Errorf("validation error: %v", errors)

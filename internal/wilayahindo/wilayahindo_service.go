@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"rijig/dto"
 	"rijig/model"
 	"rijig/utils"
 )
@@ -13,17 +12,17 @@ import (
 type WilayahIndonesiaService interface {
 	ImportDataFromCSV(ctx context.Context) error
 
-	GetAllProvinces(ctx context.Context, page, limit int) ([]dto.ProvinceResponseDTO, int, error)
-	GetProvinceByID(ctx context.Context, id string, page, limit int) (*dto.ProvinceResponseDTO, int, error)
+	GetAllProvinces(ctx context.Context, page, limit int) ([]ProvinceResponseDTO, int, error)
+	GetProvinceByID(ctx context.Context, id string, page, limit int) (*ProvinceResponseDTO, int, error)
 
-	GetAllRegencies(ctx context.Context, page, limit int) ([]dto.RegencyResponseDTO, int, error)
-	GetRegencyByID(ctx context.Context, id string, page, limit int) (*dto.RegencyResponseDTO, int, error)
+	GetAllRegencies(ctx context.Context, page, limit int) ([]RegencyResponseDTO, int, error)
+	GetRegencyByID(ctx context.Context, id string, page, limit int) (*RegencyResponseDTO, int, error)
 
-	GetAllDistricts(ctx context.Context, page, limit int) ([]dto.DistrictResponseDTO, int, error)
-	GetDistrictByID(ctx context.Context, id string, page, limit int) (*dto.DistrictResponseDTO, int, error)
+	GetAllDistricts(ctx context.Context, page, limit int) ([]DistrictResponseDTO, int, error)
+	GetDistrictByID(ctx context.Context, id string, page, limit int) (*DistrictResponseDTO, int, error)
 
-	GetAllVillages(ctx context.Context, page, limit int) ([]dto.VillageResponseDTO, int, error)
-	GetVillageByID(ctx context.Context, id string) (*dto.VillageResponseDTO, error)
+	GetAllVillages(ctx context.Context, page, limit int) ([]VillageResponseDTO, int, error)
+	GetVillageByID(ctx context.Context, id string) (*VillageResponseDTO, error)
 }
 
 type wilayahIndonesiaService struct {
@@ -122,11 +121,11 @@ func (s *wilayahIndonesiaService) ImportDataFromCSV(ctx context.Context) error {
 	return nil
 }
 
-func (s *wilayahIndonesiaService) GetAllProvinces(ctx context.Context, page, limit int) ([]dto.ProvinceResponseDTO, int, error) {
+func (s *wilayahIndonesiaService) GetAllProvinces(ctx context.Context, page, limit int) ([]ProvinceResponseDTO, int, error) {
 	cacheKey := fmt.Sprintf("provinces_page:%d_limit:%d", page, limit)
 
 	var cachedResponse struct {
-		Data  []dto.ProvinceResponseDTO `json:"data"`
+		Data  []ProvinceResponseDTO `json:"data"`
 		Total int                       `json:"total"`
 	}
 
@@ -139,16 +138,16 @@ func (s *wilayahIndonesiaService) GetAllProvinces(ctx context.Context, page, lim
 		return nil, 0, fmt.Errorf("failed to fetch provinces: %w", err)
 	}
 
-	provinceDTOs := make([]dto.ProvinceResponseDTO, len(provinces))
+	provinceDTOs := make([]ProvinceResponseDTO, len(provinces))
 	for i, province := range provinces {
-		provinceDTOs[i] = dto.ProvinceResponseDTO{
+		provinceDTOs[i] = ProvinceResponseDTO{
 			ID:   province.ID,
 			Name: province.Name,
 		}
 	}
 
 	cacheData := struct {
-		Data  []dto.ProvinceResponseDTO `json:"data"`
+		Data  []ProvinceResponseDTO `json:"data"`
 		Total int                       `json:"total"`
 	}{
 		Data:  provinceDTOs,
@@ -162,11 +161,11 @@ func (s *wilayahIndonesiaService) GetAllProvinces(ctx context.Context, page, lim
 	return provinceDTOs, total, nil
 }
 
-func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string, page, limit int) (*dto.ProvinceResponseDTO, int, error) {
+func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string, page, limit int) (*ProvinceResponseDTO, int, error) {
 	cacheKey := fmt.Sprintf("province:%s_page:%d_limit:%d", id, page, limit)
 
 	var cachedResponse struct {
-		Data           dto.ProvinceResponseDTO `json:"data"`
+		Data           ProvinceResponseDTO `json:"data"`
 		TotalRegencies int                     `json:"total_regencies"`
 	}
 
@@ -179,14 +178,14 @@ func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string
 		return nil, 0, err
 	}
 
-	provinceDTO := dto.ProvinceResponseDTO{
+	provinceDTO := ProvinceResponseDTO{
 		ID:   province.ID,
 		Name: province.Name,
 	}
 
-	regencyDTOs := make([]dto.RegencyResponseDTO, len(province.Regencies))
+	regencyDTOs := make([]RegencyResponseDTO, len(province.Regencies))
 	for i, regency := range province.Regencies {
-		regencyDTOs[i] = dto.RegencyResponseDTO{
+		regencyDTOs[i] = RegencyResponseDTO{
 			ID:         regency.ID,
 			ProvinceID: regency.ProvinceID,
 			Name:       regency.Name,
@@ -195,7 +194,7 @@ func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string
 	provinceDTO.Regencies = regencyDTOs
 
 	cacheData := struct {
-		Data           dto.ProvinceResponseDTO `json:"data"`
+		Data           ProvinceResponseDTO `json:"data"`
 		TotalRegencies int                     `json:"total_regencies"`
 	}{
 		Data:           provinceDTO,
@@ -209,11 +208,11 @@ func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string
 	return &provinceDTO, totalRegencies, nil
 }
 
-func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, limit int) ([]dto.RegencyResponseDTO, int, error) {
+func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, limit int) ([]RegencyResponseDTO, int, error) {
 	cacheKey := fmt.Sprintf("regencies_page:%d_limit:%d", page, limit)
 
 	var cachedResponse struct {
-		Data  []dto.RegencyResponseDTO `json:"data"`
+		Data  []RegencyResponseDTO `json:"data"`
 		Total int                      `json:"total"`
 	}
 
@@ -226,9 +225,9 @@ func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, lim
 		return nil, 0, fmt.Errorf("failed to fetch regencies: %w", err)
 	}
 
-	regencyDTOs := make([]dto.RegencyResponseDTO, len(regencies))
+	regencyDTOs := make([]RegencyResponseDTO, len(regencies))
 	for i, regency := range regencies {
-		regencyDTOs[i] = dto.RegencyResponseDTO{
+		regencyDTOs[i] = RegencyResponseDTO{
 			ID:         regency.ID,
 			ProvinceID: regency.ProvinceID,
 			Name:       regency.Name,
@@ -236,7 +235,7 @@ func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, lim
 	}
 
 	cacheData := struct {
-		Data  []dto.RegencyResponseDTO `json:"data"`
+		Data  []RegencyResponseDTO `json:"data"`
 		Total int                      `json:"total"`
 	}{
 		Data:  regencyDTOs,
@@ -250,11 +249,11 @@ func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, lim
 	return regencyDTOs, total, nil
 }
 
-func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string, page, limit int) (*dto.RegencyResponseDTO, int, error) {
+func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string, page, limit int) (*RegencyResponseDTO, int, error) {
 	cacheKey := fmt.Sprintf("regency:%s_page:%d_limit:%d", id, page, limit)
 
 	var cachedResponse struct {
-		Data           dto.RegencyResponseDTO `json:"data"`
+		Data           RegencyResponseDTO `json:"data"`
 		TotalDistricts int                    `json:"total_districts"`
 	}
 
@@ -267,15 +266,15 @@ func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string,
 		return nil, 0, err
 	}
 
-	regencyDTO := dto.RegencyResponseDTO{
+	regencyDTO := RegencyResponseDTO{
 		ID:         regency.ID,
 		ProvinceID: regency.ProvinceID,
 		Name:       regency.Name,
 	}
 
-	districtDTOs := make([]dto.DistrictResponseDTO, len(regency.Districts))
+	districtDTOs := make([]DistrictResponseDTO, len(regency.Districts))
 	for i, district := range regency.Districts {
-		districtDTOs[i] = dto.DistrictResponseDTO{
+		districtDTOs[i] = DistrictResponseDTO{
 			ID:        district.ID,
 			RegencyID: district.RegencyID,
 			Name:      district.Name,
@@ -284,7 +283,7 @@ func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string,
 	regencyDTO.Districts = districtDTOs
 
 	cacheData := struct {
-		Data           dto.RegencyResponseDTO `json:"data"`
+		Data           RegencyResponseDTO `json:"data"`
 		TotalDistricts int                    `json:"total_districts"`
 	}{
 		Data:           regencyDTO,
@@ -298,11 +297,11 @@ func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string,
 	return &regencyDTO, totalDistricts, nil
 }
 
-func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, limit int) ([]dto.DistrictResponseDTO, int, error) {
+func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, limit int) ([]DistrictResponseDTO, int, error) {
 	cacheKey := fmt.Sprintf("districts_page:%d_limit:%d", page, limit)
 
 	var cachedResponse struct {
-		Data  []dto.DistrictResponseDTO `json:"data"`
+		Data  []DistrictResponseDTO `json:"data"`
 		Total int                       `json:"total"`
 	}
 
@@ -315,9 +314,9 @@ func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, lim
 		return nil, 0, fmt.Errorf("failed to fetch districts: %w", err)
 	}
 
-	districtDTOs := make([]dto.DistrictResponseDTO, len(districts))
+	districtDTOs := make([]DistrictResponseDTO, len(districts))
 	for i, district := range districts {
-		districtDTOs[i] = dto.DistrictResponseDTO{
+		districtDTOs[i] = DistrictResponseDTO{
 			ID:        district.ID,
 			RegencyID: district.RegencyID,
 			Name:      district.Name,
@@ -325,7 +324,7 @@ func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, lim
 	}
 
 	cacheData := struct {
-		Data  []dto.DistrictResponseDTO `json:"data"`
+		Data  []DistrictResponseDTO `json:"data"`
 		Total int                       `json:"total"`
 	}{
 		Data:  districtDTOs,
@@ -339,11 +338,11 @@ func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, lim
 	return districtDTOs, total, nil
 }
 
-func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string, page, limit int) (*dto.DistrictResponseDTO, int, error) {
+func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string, page, limit int) (*DistrictResponseDTO, int, error) {
 	cacheKey := fmt.Sprintf("district:%s_page:%d_limit:%d", id, page, limit)
 
 	var cachedResponse struct {
-		Data          dto.DistrictResponseDTO `json:"data"`
+		Data          DistrictResponseDTO `json:"data"`
 		TotalVillages int                     `json:"total_villages"`
 	}
 
@@ -356,15 +355,15 @@ func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string
 		return nil, 0, err
 	}
 
-	districtDTO := dto.DistrictResponseDTO{
+	districtDTO := DistrictResponseDTO{
 		ID:        district.ID,
 		RegencyID: district.RegencyID,
 		Name:      district.Name,
 	}
 
-	villageDTOs := make([]dto.VillageResponseDTO, len(district.Villages))
+	villageDTOs := make([]VillageResponseDTO, len(district.Villages))
 	for i, village := range district.Villages {
-		villageDTOs[i] = dto.VillageResponseDTO{
+		villageDTOs[i] = VillageResponseDTO{
 			ID:         village.ID,
 			DistrictID: village.DistrictID,
 			Name:       village.Name,
@@ -373,7 +372,7 @@ func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string
 	districtDTO.Villages = villageDTOs
 
 	cacheData := struct {
-		Data          dto.DistrictResponseDTO `json:"data"`
+		Data          DistrictResponseDTO `json:"data"`
 		TotalVillages int                     `json:"total_villages"`
 	}{
 		Data:          districtDTO,
@@ -387,11 +386,11 @@ func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string
 	return &districtDTO, totalVillages, nil
 }
 
-func (s *wilayahIndonesiaService) GetAllVillages(ctx context.Context, page, limit int) ([]dto.VillageResponseDTO, int, error) {
+func (s *wilayahIndonesiaService) GetAllVillages(ctx context.Context, page, limit int) ([]VillageResponseDTO, int, error) {
 	cacheKey := fmt.Sprintf("villages_page:%d_limit:%d", page, limit)
 
 	var cachedResponse struct {
-		Data  []dto.VillageResponseDTO `json:"data"`
+		Data  []VillageResponseDTO `json:"data"`
 		Total int                      `json:"total"`
 	}
 
@@ -404,9 +403,9 @@ func (s *wilayahIndonesiaService) GetAllVillages(ctx context.Context, page, limi
 		return nil, 0, fmt.Errorf("failed to fetch villages: %w", err)
 	}
 
-	villageDTOs := make([]dto.VillageResponseDTO, len(villages))
+	villageDTOs := make([]VillageResponseDTO, len(villages))
 	for i, village := range villages {
-		villageDTOs[i] = dto.VillageResponseDTO{
+		villageDTOs[i] = VillageResponseDTO{
 			ID:         village.ID,
 			DistrictID: village.DistrictID,
 			Name:       village.Name,
@@ -414,7 +413,7 @@ func (s *wilayahIndonesiaService) GetAllVillages(ctx context.Context, page, limi
 	}
 
 	cacheData := struct {
-		Data  []dto.VillageResponseDTO `json:"data"`
+		Data  []VillageResponseDTO `json:"data"`
 		Total int                      `json:"total"`
 	}{
 		Data:  villageDTOs,
@@ -428,10 +427,10 @@ func (s *wilayahIndonesiaService) GetAllVillages(ctx context.Context, page, limi
 	return villageDTOs, total, nil
 }
 
-func (s *wilayahIndonesiaService) GetVillageByID(ctx context.Context, id string) (*dto.VillageResponseDTO, error) {
+func (s *wilayahIndonesiaService) GetVillageByID(ctx context.Context, id string) (*VillageResponseDTO, error) {
 	cacheKey := fmt.Sprintf("village:%s", id)
 
-	var cachedResponse dto.VillageResponseDTO
+	var cachedResponse VillageResponseDTO
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
 		return &cachedResponse, nil
 	}
@@ -441,7 +440,7 @@ func (s *wilayahIndonesiaService) GetVillageByID(ctx context.Context, id string)
 		return nil, fmt.Errorf("village not found: %w", err)
 	}
 
-	villageResponse := &dto.VillageResponseDTO{
+	villageResponse := &VillageResponseDTO{
 		ID:         village.ID,
 		DistrictID: village.DistrictID,
 		Name:       village.Name,

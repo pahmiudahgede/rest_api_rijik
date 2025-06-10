@@ -9,7 +9,9 @@ import (
 	"rijig/internal/identitycart"
 	"rijig/internal/role"
 	"rijig/internal/userpin"
+	"rijig/internal/userprofile"
 	"rijig/internal/whatsapp"
+	"rijig/internal/wilayahindo"
 	"rijig/middleware"
 
 	// "rijig/presentation"
@@ -19,8 +21,9 @@ import (
 
 func SetupRoutes(app *fiber.App) {
 	apa := app.Group(os.Getenv("BASE_URL"))
-	whatsapp.WhatsAppRouter(apa)
 	apa.Static("/uploads", "./public"+os.Getenv("BASE_URL")+"/uploads")
+	a := app.Group(os.Getenv("BASE_URL"))
+	whatsapp.WhatsAppRouter(a)
 
 	api := app.Group(os.Getenv("BASE_URL"))
 	api.Use(middleware.APIKeyMiddleware)
@@ -32,6 +35,8 @@ func SetupRoutes(app *fiber.App) {
 	role.UserRoleRouter(api)
 
 	article.ArticleRouter(api)
+	userprofile.UserProfileRouter(api)
+	wilayahindo.WilayahRouter(api)
 
 	// || auth router || //
 	// presentation.AuthRouter(api)
@@ -58,5 +63,4 @@ func SetupRoutes(app *fiber.App) {
 	// // presentation.AboutRouter(api)
 	// presentation.TrashRouter(api)
 	// presentation.CoverageAreaRouter(api)
-	whatsapp.WhatsAppRouter(api)
 }

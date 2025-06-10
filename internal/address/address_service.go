@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"rijig/dto"
 	"rijig/internal/wilayahindo"
 	"rijig/model"
 	"rijig/utils"
@@ -20,10 +19,10 @@ const (
 )
 
 type AddressService interface {
-	CreateAddress(ctx context.Context, userID string, request dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
-	GetAddressByUserID(ctx context.Context, userID string) ([]dto.AddressResponseDTO, error)
-	GetAddressByID(ctx context.Context, userID, id string) (*dto.AddressResponseDTO, error)
-	UpdateAddress(ctx context.Context, userID, id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error)
+	CreateAddress(ctx context.Context, userID string, request CreateAddressDTO) (*AddressResponseDTO, error)
+	GetAddressByUserID(ctx context.Context, userID string) ([]AddressResponseDTO, error)
+	GetAddressByID(ctx context.Context, userID, id string) (*AddressResponseDTO, error)
+	UpdateAddress(ctx context.Context, userID, id string, addressDTO CreateAddressDTO) (*AddressResponseDTO, error)
 	DeleteAddress(ctx context.Context, userID, id string) error
 }
 
@@ -39,7 +38,7 @@ func NewAddressService(addressRepo AddressRepository, wilayahRepo wilayahindo.Wi
 	}
 }
 
-func (s *addressService) validateWilayahIDs(ctx context.Context, addressDTO dto.CreateAddressDTO) (string, string, string, string, error) {
+func (s *addressService) validateWilayahIDs(ctx context.Context, addressDTO CreateAddressDTO) (string, string, string, string, error) {
 
 	province, _, err := s.wilayahRepo.FindProvinceByID(ctx, addressDTO.Province, 0, 0)
 	if err != nil {
@@ -64,11 +63,11 @@ func (s *addressService) validateWilayahIDs(ctx context.Context, addressDTO dto.
 	return province.Name, regency.Name, district.Name, village.Name, nil
 }
 
-func (s *addressService) mapToResponseDTO(address *model.Address) *dto.AddressResponseDTO {
+func (s *addressService) mapToResponseDTO(address *model.Address) *AddressResponseDTO {
 	createdAt, _ := utils.FormatDateToIndonesianFormat(address.CreatedAt)
 	updatedAt, _ := utils.FormatDateToIndonesianFormat(address.UpdatedAt)
 
-	return &dto.AddressResponseDTO{
+	return &AddressResponseDTO{
 		UserID:     address.UserID,
 		ID:         address.ID,
 		Province:   address.Province,
@@ -98,20 +97,20 @@ func (s *addressService) invalidateAddressCaches(userID, addressID string) {
 	}
 }
 
-func (s *addressService) cacheAddress(addressDTO *dto.AddressResponseDTO) {
+func (s *addressService) cacheAddress(addressDTO *AddressResponseDTO) {
 	cacheKey := fmt.Sprintf(addressCacheKeyPattern, addressDTO.ID)
 	if err := utils.SetCache(cacheKey, addressDTO, cacheTTL); err != nil {
 		fmt.Printf("Error caching address to Redis: %v\n", err)
 	}
 }
 
-func (s *addressService) cacheUserAddresses(ctx context.Context, userID string) ([]dto.AddressResponseDTO, error) {
+func (s *addressService) cacheUserAddresses(ctx context.Context, userID string) ([]AddressResponseDTO, error) {
 	addresses, err := s.addressRepo.FindAddressByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch addresses: %w", err)
 	}
 
-	var addressDTOs []dto.AddressResponseDTO
+	var addressDTOs []AddressResponseDTO
 	for _, address := range addresses {
 		addressDTOs = append(addressDTOs, *s.mapToResponseDTO(&address))
 	}
@@ -137,7 +136,7 @@ func (s *addressService) checkAddressOwnership(ctx context.Context, userID, addr
 	return address, nil
 }
 
-func (s *addressService) CreateAddress(ctx context.Context, userID string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error) {
+func (s *addressService) CreateAddress(ctx context.Context, userID string, addressDTO CreateAddressDTO) (*AddressResponseDTO, error) {
 
 	provinceName, regencyName, districtName, villageName, err := s.validateWilayahIDs(ctx, addressDTO)
 	if err != nil {
@@ -168,10 +167,10 @@ func (s *addressService) CreateAddress(ctx context.Context, userID string, addre
 	return responseDTO, nil
 }
 
-func (s *addressService) GetAddressByUserID(ctx context.Context, userID string) ([]dto.AddressResponseDTO, error) {
+func (s *addressService) GetAddressByUserID(ctx context.Context, userID string) ([]AddressResponseDTO, error) {
 
 	cacheKey := fmt.Sprintf(userAddressesCacheKeyPattern, userID)
-	var cachedAddresses []dto.AddressResponseDTO
+	var cachedAddresses []AddressResponseDTO
 
 	if err := utils.GetCache(cacheKey, &cachedAddresses); err == nil {
 		return cachedAddresses, nil
@@ -180,7 +179,7 @@ func (s *addressService) GetAddressByUserID(ctx context.Context, userID string) 
 	return s.cacheUserAddresses(ctx, userID)
 }
 
-func (s *addressService) GetAddressByID(ctx context.Context, userID, id string) (*dto.AddressResponseDTO, error) {
+func (s *addressService) GetAddressByID(ctx context.Context, userID, id string) (*AddressResponseDTO, error) {
 
 	address, err := s.checkAddressOwnership(ctx, userID, id)
 	if err != nil {
@@ -188,7 +187,7 @@ func (s *addressService) GetAddressByID(ctx context.Context, userID, id string) 
 	}
 
 	cacheKey := fmt.Sprintf(addressCacheKeyPattern, id)
-	var cachedAddress dto.AddressResponseDTO
+	var cachedAddress AddressResponseDTO
 
 	if err := utils.GetCache(cacheKey, &cachedAddress); err == nil {
 		return &cachedAddress, nil
@@ -200,7 +199,7 @@ func (s *addressService) GetAddressByID(ctx context.Context, userID, id string) 
 	return responseDTO, nil
 }
 
-func (s *addressService) UpdateAddress(ctx context.Context, userID, id string, addressDTO dto.CreateAddressDTO) (*dto.AddressResponseDTO, error) {
+func (s *addressService) UpdateAddress(ctx context.Context, userID, id string, addressDTO CreateAddressDTO) (*AddressResponseDTO, error) {
 
 	address, err := s.checkAddressOwnership(ctx, userID, id)
 	if err != nil {

@@ -6,7 +6,7 @@ import (
 )
 
 type RequestPinDTO struct {
-	DeviceId string `json:"device_id"`
+	// DeviceId string `json:"device_id"`
 	Pin      string `json:"userpin"`
 }
 

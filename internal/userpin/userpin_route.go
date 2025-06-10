@@ -3,6 +3,7 @@ package userpin
 import (
 	"rijig/config"
 	"rijig/internal/authentication"
+	"rijig/internal/userprofile"
 	"rijig/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,8 +12,9 @@ import (
 func UsersPinRoute(api fiber.Router) {
 	userPinRepo := NewUserPinRepository(config.DB)
 	authRepo := authentication.NewAuthenticationRepository(config.DB)
+	userprofileRepo := userprofile.NewUserProfileRepository(config.DB)
 
-	userPinService := NewUserPinService(userPinRepo, authRepo)
+	userPinService := NewUserPinService(userPinRepo, authRepo, userprofileRepo)
 
 	userPinHandler := NewUserPinHandler(userPinService)
 

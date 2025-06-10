@@ -7,6 +7,7 @@ type IdentityCard struct {
 	UserID              string    `gorm:"not null" json:"userId"`
 	User                User      `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user"`
 	Identificationumber string    `gorm:"not null" json:"identificationumber"`
+	Fullname            string    `gorm:"not null" json:"fullname"`
 	Placeofbirth        string    `gorm:"not null" json:"placeofbirth"`
 	Dateofbirth         string    `gorm:"not null" json:"dateofbirth"`
 	Gender              string    `gorm:"not null" json:"gender"`

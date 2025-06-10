@@ -9,6 +9,7 @@ type ResponseIdentityCardDTO struct {
 	ID                  string `json:"id"`
 	UserID              string `json:"userId"`
 	Identificationumber string `json:"identificationumber"`
+	Fullname            string `json:"fullname"`
 	Placeofbirth        string `json:"placeofbirth"`
 	Dateofbirth         string `json:"dateofbirth"`
 	Gender              string `json:"gender"`
@@ -31,9 +32,10 @@ type ResponseIdentityCardDTO struct {
 }
 
 type RequestIdentityCardDTO struct {
-	DeviceID            string `json:"device_id"`
+	// DeviceID            string `json:"device_id"`
 	UserID              string `json:"userId"`
 	Identificationumber string `json:"identificationumber"`
+	Fullname            string `json:"fullname"`
 	Placeofbirth        string `json:"placeofbirth"`
 	Dateofbirth         string `json:"dateofbirth"`
 	Gender              string `json:"gender"`

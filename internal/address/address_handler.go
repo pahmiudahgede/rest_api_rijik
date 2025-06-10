@@ -1,7 +1,6 @@
 package address
 
 import (
-	"rijig/dto"
 	"rijig/middleware"
 	"rijig/utils"
 
@@ -17,7 +16,7 @@ func NewAddressHandler(addressService AddressService) *AddressHandler {
 }
 
 func (h *AddressHandler) CreateAddress(c *fiber.Ctx) error {
-	var request dto.CreateAddressDTO
+	var request CreateAddressDTO
 	claims, err := middleware.GetUserFromContext(c)
 	if err != nil {
 		return err
@@ -74,7 +73,7 @@ func (h *AddressHandler) UpdateAddress(c *fiber.Ctx) error {
 
 	addressID := c.Params("address_id")
 
-	var request dto.CreateAddressDTO
+	var request CreateAddressDTO
 	claims, err := middleware.GetUserFromContext(c)
 	if err != nil {
 		return err

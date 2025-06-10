@@ -2,45 +2,51 @@ package userpin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"rijig/internal/authentication"
+	"rijig/internal/userprofile"
 	"rijig/model"
 	"rijig/utils"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 type UserPinService interface {
-	CreateUserPin(ctx context.Context, userID string, dto *RequestPinDTO) error
-	VerifyUserPin(ctx context.Context, userID string, pin *RequestPinDTO) (*utils.TokenResponse, error)
+	CreateUserPin(ctx context.Context, userID, deviceId string, dto *RequestPinDTO) (*authentication.AuthResponse, error)
+	VerifyUserPin(ctx context.Context, userID, deviceID string, pin *RequestPinDTO) (*utils.TokenResponse, error)
 }
 
 type userPinService struct {
-	UserPinRepo UserPinRepository
-	authRepo    authentication.AuthenticationRepository
+	UserPinRepo     UserPinRepository
+	authRepo        authentication.AuthenticationRepository
+	userProfileRepo userprofile.UserProfileRepository
 }
 
 func NewUserPinService(UserPinRepo UserPinRepository,
-	authRepo authentication.AuthenticationRepository) UserPinService {
-	return &userPinService{UserPinRepo, authRepo}
+	authRepo authentication.AuthenticationRepository,
+	userProfileRepo userprofile.UserProfileRepository) UserPinService {
+	return &userPinService{UserPinRepo, authRepo, userProfileRepo}
 }
 
-func (s *userPinService) CreateUserPin(ctx context.Context, userID string, dto *RequestPinDTO) error {
+var (
+	Pinhasbeencreated = "PIN already created"
+)
 
-	if errs, ok := dto.ValidateRequestPinDTO(); !ok {
-		return fmt.Errorf("validation error: %v", errs)
-	}
+func (s *userPinService) CreateUserPin(ctx context.Context, userID, deviceId string, dto *RequestPinDTO) (*authentication.AuthResponse, error) {
 
-	existingPin, err := s.UserPinRepo.FindByUserID(ctx, userID)
+	_, err := s.UserPinRepo.FindByUserID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to check existing PIN: %w", err)
-	}
-	if existingPin != nil {
-		return fmt.Errorf("PIN already created")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("%v", Pinhasbeencreated)
 	}
 
 	hashed, err := utils.HashingPlainText(dto.Pin)
 	if err != nil {
-		return fmt.Errorf("failed to hash PIN: %w", err)
+		return nil, fmt.Errorf("failed to hash PIN: %w", err)
 	}
 
 	userPin := &model.UserPin{
@@ -49,35 +55,63 @@ func (s *userPinService) CreateUserPin(ctx context.Context, userID string, dto *
 	}
 
 	if err := s.UserPinRepo.Create(ctx, userPin); err != nil {
-		return fmt.Errorf("failed to create PIN: %w", err)
-	}
-
-	user, err := s.authRepo.FindUserByID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("user not found")
-	}
-
-	roleName := strings.ToLower(user.Role.RoleName)
-
-	progress := authentication.IsRegistrationComplete(roleName, int(user.RegistrationProgress))
-	// progress := utils.GetNextRegistrationStep(roleName, int(user.RegistrationProgress))
-	// progress := utils.GetNextRegistrationStep(roleName, user.RegistrationProgress)
-	// progress := utils.GetNextRegistrationStep(roleName, user.RegistrationProgress)
-
-	if !progress {
-		err = s.authRepo.PatchUser(ctx, userID, map[string]interface{}{
-			"registration_progress": int(user.RegistrationProgress) + 1,
-			"registration_status":   utils.RegStatusComplete,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to update user progress: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("user not found")
 		}
+		return nil, fmt.Errorf("failed to create pin: %w", err)
 	}
 
-	return nil
+	updates := map[string]interface{}{
+		"registration_progress": utils.ProgressComplete,
+		"registration_status":   utils.RegStatusComplete,
+	}
+
+	if err = s.authRepo.PatchUser(ctx, userID, updates); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	updated, err := s.userProfileRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, userprofile.ErrUserNotFound) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get updated user: %w", err)
+	}
+
+	tokenResponse, err := utils.GenerateTokenPair(
+		updated.ID,
+		updated.Role.RoleName,
+		deviceId,
+		updated.RegistrationStatus,
+		int(updated.RegistrationProgress),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("gagal generate token: %v", err)
+	}
+
+	nextStep := utils.GetNextRegistrationStep(
+		updated.Role.RoleName,
+		int(updated.RegistrationProgress),
+		updated.RegistrationStatus,
+	)
+
+	return &authentication.AuthResponse{
+		Message:            "Isi data diri berhasil",
+		AccessToken:        tokenResponse.AccessToken,
+		RefreshToken:       tokenResponse.RefreshToken,
+		TokenType:          string(tokenResponse.TokenType),
+		ExpiresIn:          tokenResponse.ExpiresIn,
+		RegistrationStatus: updated.RegistrationStatus,
+		NextStep:           nextStep,
+		SessionID:          tokenResponse.SessionID,
+	}, nil
 }
 
-func (s *userPinService) VerifyUserPin(ctx context.Context, userID string, pin *RequestPinDTO) (*utils.TokenResponse, error) {
+func (s *userPinService) VerifyUserPin(ctx context.Context, userID, deviceID string, pin *RequestPinDTO) (*utils.TokenResponse, error) {
 	user, err := s.authRepo.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found")
@@ -93,5 +127,5 @@ func (s *userPinService) VerifyUserPin(ctx context.Context, userID string, pin *
 	}
 
 	roleName := strings.ToLower(user.Role.RoleName)
-	return utils.GenerateTokenPair(user.ID, roleName, pin.DeviceId, user.RegistrationStatus, int(user.RegistrationProgress))
+	return utils.GenerateTokenPair(user.ID, roleName, deviceID, user.RegistrationStatus, int(user.RegistrationProgress))
 }

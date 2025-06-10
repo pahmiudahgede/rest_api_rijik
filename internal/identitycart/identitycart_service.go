@@ -2,34 +2,47 @@ package identitycart
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"rijig/internal/authentication"
+	"rijig/internal/role"
+	"rijig/internal/userprofile"
 	"rijig/model"
 	"rijig/utils"
-	"strings"
+	"time"
 )
 
 type IdentityCardService interface {
-	CreateIdentityCard(ctx context.Context, userID string, request *RequestIdentityCardDTO, cardPhoto *multipart.FileHeader) (*authentication.AuthResponse, error)
+	CreateIdentityCard(ctx context.Context, userID, deviceID string, request *RequestIdentityCardDTO, cardPhoto *multipart.FileHeader) (*authentication.AuthResponse, error)
 	GetIdentityCardByID(ctx context.Context, id string) (*ResponseIdentityCardDTO, error)
 	GetIdentityCardsByUserID(ctx context.Context, userID string) ([]ResponseIdentityCardDTO, error)
 	UpdateIdentityCard(ctx context.Context, userID string, id string, request *RequestIdentityCardDTO, cardPhoto *multipart.FileHeader) (*ResponseIdentityCardDTO, error)
+
+	GetAllIdentityCardsByRegStatus(ctx context.Context, userRegStatus string) ([]ResponseIdentityCardDTO, error)
+	UpdateUserRegistrationStatusByIdentityCard(ctx context.Context, identityCardUserID string, newStatus string) error
 }
 
 type identityCardService struct {
 	identityRepo IdentityCardRepository
 	authRepo     authentication.AuthenticationRepository
+	userRepo     userprofile.UserProfileRepository
 }
 
-func NewIdentityCardService(identityRepo IdentityCardRepository, authRepo authentication.AuthenticationRepository) IdentityCardService {
+func NewIdentityCardService(identityRepo IdentityCardRepository, authRepo authentication.AuthenticationRepository, userRepo userprofile.UserProfileRepository) IdentityCardService {
 	return &identityCardService{
-		identityRepo: identityRepo,
-		authRepo:     authRepo,
+		identityRepo,
+		authRepo, userRepo,
 	}
+}
+
+type IdentityCardWithUserDTO struct {
+	IdentityCard ResponseIdentityCardDTO            `json:"identity_card"`
+	User         userprofile.UserProfileResponseDTO `json:"user"`
 }
 
 func FormatResponseIdentityCard(identityCard *model.IdentityCard) (*ResponseIdentityCardDTO, error) {
@@ -93,7 +106,7 @@ func (s *identityCardService) saveIdentityCardImage(userID string, cardPhoto *mu
 	}
 	defer dst.Close()
 
-	if _, err := dst.ReadFrom(src); err != nil {
+	if _, err := io.Copy(dst, src); err != nil {
 		return "", fmt.Errorf("failed to save card photo: %v", err)
 	}
 
@@ -123,16 +136,7 @@ func deleteIdentityCardImage(imagePath string) error {
 	return nil
 }
 
-func (s *identityCardService) CreateIdentityCard(ctx context.Context, userID string, request *RequestIdentityCardDTO, cardPhoto *multipart.FileHeader) (*authentication.AuthResponse, error) {
-
-	// Validate essential parameters
-	if userID == "" {
-		return nil, fmt.Errorf("userID cannot be empty")
-	}
-
-	if request.DeviceID == "" {
-		return nil, fmt.Errorf("deviceID cannot be empty")
-	}
+func (s *identityCardService) CreateIdentityCard(ctx context.Context, userID, deviceID string, request *RequestIdentityCardDTO, cardPhoto *multipart.FileHeader) (*authentication.AuthResponse, error) {
 
 	cardPhotoPath, err := s.saveIdentityCardImage(userID, cardPhoto)
 	if err != nil {
@@ -172,33 +176,13 @@ func (s *identityCardService) CreateIdentityCard(ctx context.Context, userID str
 		return nil, fmt.Errorf("failed to find user: %v", err)
 	}
 
-	// Validate user data
 	if user.Role.RoleName == "" {
 		return nil, fmt.Errorf("user role not found")
 	}
 
-	roleName := strings.ToLower(user.Role.RoleName)
-
-	// Determine new registration status and progress
-	var newRegistrationStatus string
-	var newRegistrationProgress int
-
-	switch roleName {
-	case "pengepul":
-		newRegistrationProgress = 2
-		newRegistrationStatus = utils.RegStatusPending
-	case "pengelola":
-		newRegistrationProgress = 2
-		newRegistrationStatus = user.RegistrationStatus
-	default:
-		newRegistrationProgress = int(user.RegistrationProgress)
-		newRegistrationStatus = user.RegistrationStatus
-	}
-
-	// Update user registration progress and status
 	updates := map[string]interface{}{
-		"registration_progress": newRegistrationProgress,
-		"registration_status":   newRegistrationStatus,
+		"registration_progress": utils.ProgressDataSubmitted,
+		"registration_status":   utils.RegStatusPending,
 	}
 
 	err = s.authRepo.PatchUser(ctx, userID, updates)
@@ -206,25 +190,37 @@ func (s *identityCardService) CreateIdentityCard(ctx context.Context, userID str
 		return nil, fmt.Errorf("failed to update user: %v", err)
 	}
 
-	// Debug logging before token generation
+	updated, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, userprofile.ErrUserNotFound) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get updated user: %w", err)
+	}
+
 	log.Printf("Token Generation Parameters:")
 	log.Printf("- UserID: '%s'", user.ID)
 	log.Printf("- Role: '%s'", user.Role.RoleName)
-	log.Printf("- DeviceID: '%s'", request.DeviceID)
-	log.Printf("- Registration Status: '%s'", newRegistrationStatus)
+	log.Printf("- DeviceID: '%s'", deviceID)
+	log.Printf("- Registration Status: '%s'", utils.RegStatusPending)
 
-	// Generate token pair with updated status
 	tokenResponse, err := utils.GenerateTokenPair(
-		user.ID,
-		user.Role.RoleName,
-		request.DeviceID,
-		newRegistrationStatus,
-		newRegistrationProgress,
+		updated.ID,
+		updated.Role.RoleName,
+		deviceID,
+		updated.RegistrationStatus,
+		int(updated.RegistrationProgress),
 	)
 	if err != nil {
 		log.Printf("GenerateTokenPair error: %v", err)
 		return nil, fmt.Errorf("failed to generate token: %v", err)
 	}
+
+	nextStep := utils.GetNextRegistrationStep(
+		updated.Role.RoleName,
+		int(updated.RegistrationProgress),
+		updated.RegistrationStatus,
+	)
 
 	return &authentication.AuthResponse{
 		Message:            "identity card berhasil diunggah, silakan tunggu konfirmasi dari admin dalam 1x24 jam",
@@ -232,8 +228,8 @@ func (s *identityCardService) CreateIdentityCard(ctx context.Context, userID str
 		RefreshToken:       tokenResponse.RefreshToken,
 		TokenType:          string(tokenResponse.TokenType),
 		ExpiresIn:          tokenResponse.ExpiresIn,
-		RegistrationStatus: newRegistrationStatus,
-		NextStep:           tokenResponse.NextStep,
+		RegistrationStatus: updated.RegistrationStatus,
+		NextStep:           nextStep,
 		SessionID:          tokenResponse.SessionID,
 	}, nil
 }
@@ -318,4 +314,165 @@ func (s *identityCardService) UpdateIdentityCard(ctx context.Context, userID str
 	idcardResponseDTO, _ := FormatResponseIdentityCard(identityCard)
 
 	return idcardResponseDTO, nil
+}
+
+func (s *identityCardService) GetAllIdentityCardsByRegStatus(ctx context.Context, userRegStatus string) ([]ResponseIdentityCardDTO, error) {
+	identityCards, err := s.authRepo.GetIdentityCardsByUserRegStatus(ctx, userRegStatus)
+	if err != nil {
+		log.Printf("Error getting identity cards by registration status: %v", err)
+		return nil, fmt.Errorf("failed to get identity cards: %w", err)
+	}
+
+	var response []ResponseIdentityCardDTO
+	for _, card := range identityCards {
+		createdAt, _ := utils.FormatDateToIndonesianFormat(card.CreatedAt)
+		updatedAt, _ := utils.FormatDateToIndonesianFormat(card.UpdatedAt)
+		dto := ResponseIdentityCardDTO{
+			ID:                  card.ID,
+			UserID:              card.UserID,
+			Identificationumber: card.Identificationumber,
+			Placeofbirth:        card.Placeofbirth,
+			Dateofbirth:         card.Dateofbirth,
+			Gender:              card.Gender,
+			BloodType:           card.BloodType,
+			Province:            card.Province,
+			District:            card.District,
+			SubDistrict:         card.SubDistrict,
+			Hamlet:              card.Hamlet,
+			Village:             card.Village,
+			Neighbourhood:       card.Neighbourhood,
+			PostalCode:          card.PostalCode,
+			Religion:            card.Religion,
+			Maritalstatus:       card.Maritalstatus,
+			Job:                 card.Job,
+			Citizenship:         card.Citizenship,
+			Validuntil:          card.Validuntil,
+			Cardphoto:           card.Cardphoto,
+			CreatedAt:           createdAt,
+			UpdatedAt:           updatedAt,
+		}
+		response = append(response, dto)
+	}
+
+	return response, nil
+}
+
+func (s *identityCardService) UpdateUserRegistrationStatusByIdentityCard(ctx context.Context, identityCardUserID string, newStatus string) error {
+
+	user, err := s.authRepo.FindUserByID(ctx, identityCardUserID)
+	if err != nil {
+		log.Printf("Error finding user by ID %s: %v", identityCardUserID, err)
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	updates := map[string]interface{}{
+		"registration_status": newStatus,
+		"updated_at":          time.Now(),
+	}
+
+	switch newStatus {
+	case utils.RegStatusConfirmed:
+		updates["registration_progress"] = utils.ProgressDataSubmitted
+
+		identityCards, err := s.GetIdentityCardsByUserID(ctx, identityCardUserID)
+		if err != nil {
+			log.Printf("Error fetching identity cards for user ID %s: %v", identityCardUserID, err)
+			return fmt.Errorf("failed to fetch identity card data: %w", err)
+		}
+
+		if len(identityCards) == 0 {
+			log.Printf("No identity card found for user ID %s", identityCardUserID)
+			return fmt.Errorf("no identity card found for user")
+		}
+
+		identityCard := identityCards[0]
+
+		updates["name"] = identityCard.Fullname
+		updates["gender"] = identityCard.Gender
+		updates["dateofbirth"] = identityCard.Dateofbirth
+		updates["placeofbirth"] = identityCard.District
+
+		log.Printf("Syncing user data for ID %s: name=%s, gender=%s, dob=%s, pob=%s",
+			identityCardUserID, identityCard.Fullname, identityCard.Gender,
+			identityCard.Dateofbirth, identityCard.District)
+
+	case utils.RegStatusRejected:
+		updates["registration_progress"] = utils.ProgressOTPVerified
+
+	}
+
+	err = s.authRepo.PatchUser(ctx, user.ID, updates)
+	if err != nil {
+		log.Printf("Error updating user registration status for user ID %s: %v", user.ID, err)
+		return fmt.Errorf("failed to update user registration status: %w", err)
+	}
+
+	log.Printf("Successfully updated registration status for user ID %s to %s", user.ID, newStatus)
+
+	if newStatus == utils.RegStatusConfirmed {
+		log.Printf("User profile data synced successfully for user ID %s", user.ID)
+	}
+
+	return nil
+}
+
+func (s *identityCardService) mapIdentityCardToDTO(card model.IdentityCard) ResponseIdentityCardDTO {
+	createdAt, _ := utils.FormatDateToIndonesianFormat(card.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(card.UpdatedAt)
+	return ResponseIdentityCardDTO{
+		ID:                  card.ID,
+		UserID:              card.UserID,
+		Identificationumber: card.Identificationumber,
+		Placeofbirth:        card.Placeofbirth,
+		Dateofbirth:         card.Dateofbirth,
+		Gender:              card.Gender,
+		BloodType:           card.BloodType,
+		Province:            card.Province,
+		District:            card.District,
+		SubDistrict:         card.SubDistrict,
+		Hamlet:              card.Hamlet,
+		Village:             card.Village,
+		Neighbourhood:       card.Neighbourhood,
+		PostalCode:          card.PostalCode,
+		Religion:            card.Religion,
+		Maritalstatus:       card.Maritalstatus,
+		Job:                 card.Job,
+		Citizenship:         card.Citizenship,
+		Validuntil:          card.Validuntil,
+		Cardphoto:           card.Cardphoto,
+		CreatedAt:           createdAt,
+		UpdatedAt:           updatedAt,
+	}
+}
+
+func (s *identityCardService) mapUserToDTO(user model.User) userprofile.UserProfileResponseDTO {
+	avatar := ""
+	if user.Avatar != nil {
+		avatar = *user.Avatar
+	}
+
+	var roleDTO role.RoleResponseDTO
+	if user.Role != nil {
+		roleDTO = role.RoleResponseDTO{
+			ID:       user.Role.ID,
+			RoleName: user.Role.RoleName,
+		}
+	}
+
+	createdAt, _ := utils.FormatDateToIndonesianFormat(user.CreatedAt)
+	updatedAt, _ := utils.FormatDateToIndonesianFormat(user.UpdatedAt)
+	return userprofile.UserProfileResponseDTO{
+		ID:            user.ID,
+		Avatar:        avatar,
+		Name:          user.Name,
+		Gender:        user.Gender,
+		Dateofbirth:   user.Dateofbirth,
+		Placeofbirth:  user.Placeofbirth,
+		Phone:         user.Phone,
+		Email:         user.Email,
+		PhoneVerified: user.PhoneVerified,
+		Role:          roleDTO,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+	}
 }

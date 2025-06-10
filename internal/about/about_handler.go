@@ -3,7 +3,6 @@ package about
 import (
 	"fmt"
 	"log"
-	"rijig/dto"
 	"rijig/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,7 +19,7 @@ func NewAboutHandler(aboutService AboutService) *AboutHandler {
 }
 
 func (h *AboutHandler) CreateAbout(c *fiber.Ctx) error {
-	var request dto.RequestAboutDTO
+	var request RequestAboutDTO
 	if err := c.BodyParser(&request); err != nil {
 		return utils.ResponseErrorData(c, fiber.StatusBadRequest, "Invalid request body", map[string][]string{"body": {"Invalid body"}})
 	}
@@ -47,7 +46,7 @@ func (h *AboutHandler) CreateAbout(c *fiber.Ctx) error {
 func (h *AboutHandler) UpdateAbout(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	var request dto.RequestAboutDTO
+	var request RequestAboutDTO
 	if err := c.BodyParser(&request); err != nil {
 		log.Printf("Error parsing request body: %v", err)
 		return utils.BadRequest(c, "Invalid input data")
@@ -114,7 +113,7 @@ func (h *AboutHandler) DeleteAbout(c *fiber.Ctx) error {
 }
 
 func (h *AboutHandler) CreateAboutDetail(c *fiber.Ctx) error {
-	var request dto.RequestAboutDetailDTO
+	var request RequestAboutDetailDTO
 	if err := c.BodyParser(&request); err != nil {
 		log.Printf("Error parsing request body: %v", err)
 		return utils.BadRequest(c, "Invalid input data")
@@ -143,7 +142,7 @@ func (h *AboutHandler) CreateAboutDetail(c *fiber.Ctx) error {
 func (h *AboutHandler) UpdateAboutDetail(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	var request dto.RequestAboutDetailDTO
+	var request RequestAboutDetailDTO
 	if err := c.BodyParser(&request); err != nil {
 		log.Printf("Error parsing request body: %v", err)
 		return utils.BadRequest(c, "Invalid input data")

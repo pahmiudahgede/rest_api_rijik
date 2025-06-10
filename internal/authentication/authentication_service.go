@@ -315,7 +315,9 @@ func (s *authenticationService) VerifyLoginOTP(ctx context.Context, req *VerifyO
 		return nil, fmt.Errorf("kode OTP salah")
 	}
 
-	user, err := s.authRepo.FindUserByID(ctx, otpData.UserID)
+	normalizedRole := strings.ToLower(req.RoleName)
+
+	user, err := s.authRepo.FindUserByPhoneAndRole(ctx, req.Phone, normalizedRole)
 	if err != nil {
 		return nil, fmt.Errorf("user tidak ditemukan")
 	}
@@ -324,24 +326,29 @@ func (s *authenticationService) VerifyLoginOTP(ctx context.Context, req *VerifyO
 
 	tokenResponse, err := utils.GenerateTokenPair(
 		user.ID,
-		user.Role.RoleName,
+		normalizedRole,
 		req.DeviceID,
-		"pin_verification_required",
+		user.RegistrationStatus,
 		int(user.RegistrationProgress),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("gagal generate token: %v", err)
 	}
 
+	nextStep := utils.GetNextRegistrationStep(
+		normalizedRole,
+		int(user.RegistrationProgress),
+		user.RegistrationStatus,
+	)
+
 	return &AuthResponse{
-		Message:            "OTP berhasil diverifikasi, silakan masukkan PIN",
+		Message:            "otp berhasil diverifikasi",
 		AccessToken:        tokenResponse.AccessToken,
 		RefreshToken:       tokenResponse.RefreshToken,
 		TokenType:          string(tokenResponse.TokenType),
 		ExpiresIn:          tokenResponse.ExpiresIn,
-		User:               convertUserToResponse(user),
 		RegistrationStatus: user.RegistrationStatus,
-		NextStep:           "Masukkan PIN",
+		NextStep:           nextStep,
 		SessionID:          tokenResponse.SessionID,
 	}, nil
 }
