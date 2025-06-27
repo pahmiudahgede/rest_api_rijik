@@ -503,7 +503,7 @@ func DeviceValidation() fiber.Handler {
 			return err
 		}
 
-		deviceID := c.Get("X-Device-ID")
+		deviceID := claims.DeviceID
 		if deviceID == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(&AuthError{
 				Code:    "MISSING_DEVICE_ID",

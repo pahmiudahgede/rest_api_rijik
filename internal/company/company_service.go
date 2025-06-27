@@ -2,8 +2,13 @@ package company
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 	"rijig/internal/authentication"
 	"rijig/internal/role"
 	"rijig/internal/userprofile"
@@ -13,7 +18,7 @@ import (
 )
 
 type CompanyProfileService interface {
-	CreateCompanyProfile(ctx context.Context, userID string, request *RequestCompanyProfileDTO) (*ResponseCompanyProfileDTO, error)
+	CreateCompanyProfile(ctx context.Context, userID, deviceID string, request *RequestCompanyProfileDTO, companyLogo *multipart.FileHeader) (*authentication.AuthResponse, error)
 	GetCompanyProfileByID(ctx context.Context, id string) (*ResponseCompanyProfileDTO, error)
 	GetCompanyProfilesByUserID(ctx context.Context, userID string) ([]ResponseCompanyProfileDTO, error)
 	UpdateCompanyProfile(ctx context.Context, userID string, request *RequestCompanyProfileDTO) (*ResponseCompanyProfileDTO, error)
@@ -25,12 +30,15 @@ type CompanyProfileService interface {
 
 type companyProfileService struct {
 	companyRepo CompanyProfileRepository
-	authRepo    authentication.AuthenticationRepository
+	authRepo     authentication.AuthenticationRepository
+	userRepo     userprofile.UserProfileRepository
 }
 
-func NewCompanyProfileService(companyRepo CompanyProfileRepository, authRepo authentication.AuthenticationRepository) CompanyProfileService {
+func NewCompanyProfileService(companyRepo CompanyProfileRepository,
+	authRepo     authentication.AuthenticationRepository,
+	userRepo     userprofile.UserProfileRepository) CompanyProfileService {
 	return &companyProfileService{
-		companyRepo, authRepo,
+		companyRepo, authRepo, userRepo,
 	}
 }
 
@@ -56,10 +64,73 @@ func FormatResponseCompanyProfile(companyProfile *model.CompanyProfile) (*Respon
 	}, nil
 }
 
-func (s *companyProfileService) CreateCompanyProfile(ctx context.Context, userID string, request *RequestCompanyProfileDTO) (*ResponseCompanyProfileDTO, error) {
-	// if errors, valid := request.ValidateCompanyProfileInput(); !valid {
-	// 	return nil, fmt.Errorf("validation failed: %v", errors)
-	// }
+func (s *companyProfileService) saveCompanyLogo(userID string, companyLogo *multipart.FileHeader) (string, error) {
+	pathImage := "/uploads/companyprofile/"
+	companyLogoDir := "./public" + os.Getenv("BASE_URL") + pathImage
+	if _, err := os.Stat(companyLogoDir); os.IsNotExist(err) {
+
+		if err := os.MkdirAll(companyLogoDir, os.ModePerm); err != nil {
+			return "", fmt.Errorf("failed to create directory for company logo: %v", err)
+		}
+	}
+
+	allowedExtensions := map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+	extension := filepath.Ext(companyLogo.Filename)
+	if !allowedExtensions[extension] {
+		return "", fmt.Errorf("invalid file type, only .jpg, .jpeg, and .png are allowed")
+	}
+
+	companyLogoFileName := fmt.Sprintf("%s_companylogo%s", userID, extension)
+	companyLogoPath := filepath.Join(companyLogoDir, companyLogoFileName)
+
+	src, err := companyLogo.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open uploaded file: %v", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(companyLogoPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create company logo: %v", err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return "", fmt.Errorf("failed to save company logo: %v", err)
+	}
+
+	companyLogoURL := fmt.Sprintf("%s%s", pathImage, companyLogoFileName)
+
+	return companyLogoURL, nil
+}
+
+func deleteIdentityCardImage(imagePath string) error {
+	if imagePath == "" {
+		return nil
+	}
+
+	baseDir := "./public/" + os.Getenv("BASE_URL")
+	absolutePath := baseDir + imagePath
+
+	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
+		return fmt.Errorf("image file not found: %v", err)
+	}
+
+	err := os.Remove(absolutePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete image: %v", err)
+	}
+
+	log.Printf("Image deleted successfully: %s", absolutePath)
+	return nil
+}
+
+func (s *companyProfileService) CreateCompanyProfile(ctx context.Context, userID, deviceID string, request *RequestCompanyProfileDTO, companyLogo *multipart.FileHeader) (*authentication.AuthResponse, error) {
+
+	companyLogoPath, err := s.saveCompanyLogo(userID, companyLogo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save company logo: %v", err)
+	}
 
 	companyProfile := &model.CompanyProfile{
 		UserID:             userID,
@@ -67,7 +138,7 @@ func (s *companyProfileService) CreateCompanyProfile(ctx context.Context, userID
 		CompanyAddress:     request.CompanyAddress,
 		CompanyPhone:       request.CompanyPhone,
 		CompanyEmail:       request.CompanyEmail,
-		CompanyLogo:        request.CompanyLogo,
+		CompanyLogo:        companyLogoPath,
 		CompanyWebsite:     request.CompanyWebsite,
 		TaxID:              request.TaxID,
 		FoundedDate:        request.FoundedDate,
@@ -75,12 +146,72 @@ func (s *companyProfileService) CreateCompanyProfile(ctx context.Context, userID
 		CompanyDescription: request.CompanyDescription,
 	}
 
-	created, err := s.companyRepo.CreateCompanyProfile(ctx, companyProfile)
+	_, err = s.companyRepo.CreateCompanyProfile(ctx, companyProfile)
 	if err != nil {
 		return nil, err
 	}
 
-	return FormatResponseCompanyProfile(created)
+	user, err := s.authRepo.FindUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user: %v", err)
+	}
+
+	if user.Role.RoleName == "" {
+		return nil, fmt.Errorf("user role not found")
+	}
+
+	updates := map[string]interface{}{
+		"registration_progress": utils.ProgressDataSubmitted,
+		"registration_status":   utils.RegStatusPending,
+	}
+
+	err = s.authRepo.PatchUser(ctx, userID, updates)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user: %v", err)
+	}
+
+	updated, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, userprofile.ErrUserNotFound) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get updated user: %w", err)
+	}
+
+	log.Printf("Token Generation Parameters:")
+	log.Printf("- UserID: '%s'", user.ID)
+	log.Printf("- Role: '%s'", user.Role.RoleName)
+	log.Printf("- DeviceID: '%s'", deviceID)
+	log.Printf("- Registration Status: '%s'", utils.RegStatusPending)
+
+	tokenResponse, err := utils.GenerateTokenPair(
+		updated.ID,
+		updated.Role.RoleName,
+		deviceID,
+		updated.RegistrationStatus,
+		int(updated.RegistrationProgress),
+	)
+	if err != nil {
+		log.Printf("GenerateTokenPair error: %v", err)
+		return nil, fmt.Errorf("failed to generate token: %v", err)
+	}
+
+	nextStep := utils.GetNextRegistrationStep(
+		updated.Role.RoleName,
+		int(updated.RegistrationProgress),
+		updated.RegistrationStatus,
+	)
+
+	return &authentication.AuthResponse{
+		Message:            "data usaha anda berhasil diunggah, silakan tunggu konfirmasi dari admin dalam 1x24 jam",
+		AccessToken:        tokenResponse.AccessToken,
+		RefreshToken:       tokenResponse.RefreshToken,
+		TokenType:          string(tokenResponse.TokenType),
+		ExpiresIn:          tokenResponse.ExpiresIn,
+		RegistrationStatus: updated.RegistrationStatus,
+		NextStep:           nextStep,
+		SessionID:          tokenResponse.SessionID,
+	}, nil
 }
 
 func (s *companyProfileService) GetCompanyProfileByID(ctx context.Context, id string) (*ResponseCompanyProfileDTO, error) {

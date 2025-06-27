@@ -3,6 +3,7 @@ package company
 import (
 	"rijig/config"
 	"rijig/internal/authentication"
+	"rijig/internal/userprofile"
 	"rijig/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +12,8 @@ import (
 func CompanyRouter(api fiber.Router) {
 	companyProfileRepo := NewCompanyProfileRepository(config.DB)
 	authRepo := authentication.NewAuthenticationRepository(config.DB)
-	companyProfileService := NewCompanyProfileService(companyProfileRepo, authRepo)
+	userRepo := userprofile.NewUserProfileRepository(config.DB)
+	companyProfileService := NewCompanyProfileService(companyProfileRepo, authRepo, userRepo)
 	companyProfileHandler := NewCompanyProfileHandler(companyProfileService)
 
 	companyProfileAPI := api.Group("/companyprofile")

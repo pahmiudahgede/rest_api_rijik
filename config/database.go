@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 
-	"rijig/model"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -14,7 +12,6 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		os.Getenv("DB_HOST"),
@@ -31,59 +28,7 @@ func ConnectDatabase() {
 	}
 	log.Println("Database connected successfully!")
 
-	err = DB.AutoMigrate(
-		// ==wilayah indonesia==
-		&model.Province{},
-		&model.Regency{},
-		&model.District{},
-		&model.Village{},
-		// ==wilayah indonesia==
-
-		// ==============main feature==============
-		// =>user preparation<=
-		&model.User{},
-		&model.Collector{},
-		&model.AvaibleTrashByCollector{},
-		&model.Role{},
-		&model.UserPin{},
-		&model.Address{},
-		&model.IdentityCard{},
-		&model.CompanyProfile{},
-
-		// =>user preparation<=
-		// =>requestpickup preparation<=
-		&model.RequestPickup{},
-		&model.RequestPickupItem{},
-		&model.PickupStatusHistory{},
-		&model.PickupRating{},
-
-		&model.Cart{},
-		&model.CartItem{},
-		// =>requestpickup preparation<=
-
-		// =>store preparation<=
-		&model.Store{},
-		&model.Product{},
-		&model.ProductImage{},
-		// =>store preparation<=
-		// ==============main feature==============
-
-		// ==============additional content========
-		&model.Article{},
-		&model.Banner{},
-		&model.InitialCoint{},
-		&model.About{},
-		&model.AboutDetail{},
-		&model.CoverageArea{},
-
-		// =>Trash Model<=
-		&model.TrashCategory{},
-		&model.TrashDetail{},
-		// =>Trash Model<=
-		// ==============additional content========
-	)
-	if err != nil {
+	if err := RunMigrations(DB); err != nil {
 		log.Fatalf("Error performing auto-migration: %v", err)
 	}
-	log.Println("Database migrated successfully!")
 }

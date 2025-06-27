@@ -39,19 +39,19 @@ func (r *RequestCompanyProfileDTO) ValidateCompanyProfileInput() (map[string][]s
 	errors := make(map[string][]string)
 
 	if strings.TrimSpace(r.CompanyName) == "" {
-		errors["company_Name"] = append(errors["company_name"], "Company name is required")
+		errors["company_name"] = append(errors["company_name"], "Company name is required")
 	}
 
 	if strings.TrimSpace(r.CompanyAddress) == "" {
-		errors["company_Address"] = append(errors["company_address"], "Company address is required")
+		errors["company_address"] = append(errors["company_address"], "Company address is required")
 	}
 
 	if !utils.IsValidPhoneNumber(r.CompanyPhone) {
-		errors["company_Phone"] = append(errors["company_phone"], "nomor harus dimulai 62.. dan 8-14 digit")
+		errors["company_phone"] = append(errors["company_phone"], "nomor harus dimulai 62.. dan 8-14 digit")
 	}
 
 	if strings.TrimSpace(r.CompanyDescription) == "" {
-		errors["company_Description"] = append(errors["company_description"], "Company description is required")
+		errors["company_description"] = append(errors["company_description"], "Company description is required")
 	}
 
 	if len(errors) > 0 {

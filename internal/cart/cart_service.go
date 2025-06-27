@@ -2,355 +2,266 @@ package cart
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
-	"time"
 
+	// "rijig/dto"
+	// "rijig/internal/repositories"
 	"rijig/internal/trash"
 	"rijig/model"
-	"rijig/utils"
-
-	"github.com/google/uuid"
 )
 
-type CartService struct {
-	cartRepo  CartRepository
+type CartService interface {
+	AddOrUpdateItem(ctx context.Context, userID string, req RequestCartItemDTO) error
+	GetCart(ctx context.Context, userID string) (*ResponseCartDTO, error)
+	DeleteItem(ctx context.Context, userID string, trashID string) error
+	ClearCart(ctx context.Context, userID string) error
+	Checkout(ctx context.Context, userID string) error
+}
+
+type cartService struct {
+	repo      CartRepository
 	trashRepo trash.TrashRepositoryInterface
 }
 
-func NewCartService(cartRepo CartRepository, trashRepo trash.TrashRepositoryInterface) *CartService {
-	return &CartService{
-		cartRepo:  cartRepo,
-		trashRepo: trashRepo,
-	}
+func NewCartService(repo CartRepository, trashRepo trash.TrashRepositoryInterface) CartService {
+	return &cartService{repo, trashRepo}
 }
 
-func (s *CartService) AddToCart(ctx context.Context, userID, trashCategoryID string, amount float64) error {
-	cartKey := fmt.Sprintf("cart:%s", userID)
-
-	var cartItems map[string]model.CartItem
-	err := utils.GetCache(cartKey, &cartItems)
-	if err != nil && err.Error() != "ErrCacheMiss" {
-		return fmt.Errorf("failed to get cart from cache: %w", err)
+func (s *cartService) AddOrUpdateItem(ctx context.Context, userID string, req RequestCartItemDTO) error {
+	if req.Amount <= 0 {
+		return errors.New("amount harus lebih dari 0")
 	}
 
-	if cartItems == nil {
-		cartItems = make(map[string]model.CartItem)
-	}
-
-	trashCategory, err := s.trashRepo.GetTrashCategoryByID(ctx, trashCategoryID)
+	_, err := s.trashRepo.GetTrashCategoryByID(ctx, req.TrashID)
 	if err != nil {
-		return fmt.Errorf("failed to get trash category: %w", err)
+		return err
 	}
 
-	cartItems[trashCategoryID] = model.CartItem{
-		TrashCategoryID:        trashCategoryID,
-		Amount:                 amount,
-		SubTotalEstimatedPrice: amount * float64(trashCategory.EstimatedPrice),
-	}
-
-	return utils.SetCache(cartKey, cartItems, 24*time.Hour)
-}
-
-func (s *CartService) RemoveFromCart(ctx context.Context, userID, trashCategoryID string) error {
-	cartKey := fmt.Sprintf("cart:%s", userID)
-
-	var cartItems map[string]model.CartItem
-	err := utils.GetCache(cartKey, &cartItems)
+	existingCart, err := GetCartFromRedis(ctx, userID)
 	if err != nil {
-		if err.Error() == "ErrCacheMiss" {
-			return nil
-		}
-		return fmt.Errorf("failed to get cart from cache: %w", err)
+		return err
 	}
 
-	delete(cartItems, trashCategoryID)
-
-	if len(cartItems) == 0 {
-		return utils.DeleteCache(cartKey)
+	if existingCart == nil {
+		existingCart = &RequestCartDTO{
+			CartItems: []RequestCartItemDTO{},
+		}
 	}
 
-	return utils.SetCache(cartKey, cartItems, 24*time.Hour)
-}
-
-func (s *CartService) ClearCart(userID string) error {
-	cartKey := fmt.Sprintf("cart:%s", userID)
-	return utils.DeleteCache(cartKey)
-}
-
-func (s *CartService) GetCartFromRedis(ctx context.Context, userID string) (*CartResponse, error) {
-	cartKey := fmt.Sprintf("cart:%s", userID)
-
-	var cartItems map[string]model.CartItem
-	err := utils.GetCache(cartKey, &cartItems)
-	if err != nil {
-		if err.Error() == "ErrCacheMiss" {
-			return &CartResponse{
-				ID:                  "N/A",
-				UserID:              userID,
-				TotalAmount:         0,
-				EstimatedTotalPrice: 0,
-				CartItems:           []CartItemResponse{},
-			}, nil
+	updated := false
+	for i, item := range existingCart.CartItems {
+		if item.TrashID == req.TrashID {
+			existingCart.CartItems[i].Amount = req.Amount
+			updated = true
+			break
 		}
-		return nil, fmt.Errorf("failed to get cart from cache: %w", err)
 	}
 
-	var totalAmount float64
-	var estimatedTotal float64
-	var cartItemDTOs []CartItemResponse
-
-	for _, item := range cartItems {
-		trashCategory, err := s.trashRepo.GetTrashCategoryByID(ctx, item.TrashCategoryID)
-		if err != nil {
-			log.Printf("Failed to get trash category %s: %v", item.TrashCategoryID, err)
-			continue
-		}
-
-		totalAmount += item.Amount
-		estimatedTotal += item.SubTotalEstimatedPrice
-
-		cartItemDTOs = append(cartItemDTOs, CartItemResponse{
-			ID:                     uuid.NewString(),
-			TrashID:                trashCategory.ID,
-			TrashName:              trashCategory.Name,
-			TrashIcon:              trashCategory.IconTrash,
-			TrashPrice:             float64(trashCategory.EstimatedPrice),
-			Amount:                 item.Amount,
-			SubTotalEstimatedPrice: item.SubTotalEstimatedPrice,
+	if !updated {
+		existingCart.CartItems = append(existingCart.CartItems, RequestCartItemDTO{
+			TrashID: req.TrashID,
+			Amount:  req.Amount,
 		})
 	}
 
-	resp := &CartResponse{
-		ID:                  "N/A",
-		UserID:              userID,
-		TotalAmount:         totalAmount,
-		EstimatedTotalPrice: estimatedTotal,
-		CartItems:           cartItemDTOs,
-	}
-
-	return resp, nil
+	return SetCartToRedis(ctx, userID, *existingCart)
 }
 
-func (s *CartService) CommitCartToDatabase(ctx context.Context, userID string) error {
-	cartKey := fmt.Sprintf("cart:%s", userID)
+func (s *cartService) GetCart(ctx context.Context, userID string) (*ResponseCartDTO, error) {
 
-	var cartItems map[string]model.CartItem
-	err := utils.GetCache(cartKey, &cartItems)
+	cached, err := GetCartFromRedis(ctx, userID)
 	if err != nil {
-		if err.Error() == "ErrCacheMiss" {
-			log.Printf("No cart items found in Redis for user: %s", userID)
-			return fmt.Errorf("no cart items found")
-		}
-		return fmt.Errorf("failed to get cart from cache: %w", err)
+		return nil, err
 	}
 
-	if len(cartItems) == 0 {
-		log.Printf("No items to commit for user: %s", userID)
-		return fmt.Errorf("no items to commit")
-	}
+	if cached != nil {
 
-	hasCart, err := s.cartRepo.HasExistingCart(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to check existing cart: %w", err)
-	}
-
-	var cart *model.Cart
-	if hasCart {
-
-		cart, err = s.cartRepo.GetCartByUser(ctx, userID)
-		if err != nil {
-			return fmt.Errorf("failed to get existing cart: %w", err)
-		}
-	} else {
-
-		cart, err = s.cartRepo.FindOrCreateCart(ctx, userID)
-		if err != nil {
-			return fmt.Errorf("failed to create cart: %w", err)
-		}
-	}
-
-	for _, item := range cartItems {
-		trashCategory, err := s.trashRepo.GetTrashCategoryByID(ctx, item.TrashCategoryID)
-		if err != nil {
-			log.Printf("Trash category not found for trashID: %s", item.TrashCategoryID)
-			continue
+		if err := RefreshCartTTL(ctx, userID); err != nil {
+			log.Printf("Warning: Failed to refresh cart TTL for user %s: %v", userID, err)
 		}
 
-		err = s.cartRepo.AddOrUpdateCartItem(
-			ctx,
-			cart.ID,
-			item.TrashCategoryID,
-			item.Amount,
-			float64(trashCategory.EstimatedPrice),
-		)
-		if err != nil {
-			log.Printf("Failed to add/update cart item: %v", err)
-			continue
-		}
+		return s.buildResponseFromCache(ctx, userID, cached)
 	}
 
-	if err := s.cartRepo.UpdateCartTotals(ctx, cart.ID); err != nil {
-		return fmt.Errorf("failed to update cart totals: %w", err)
-	}
-
-	if err := utils.DeleteCache(cartKey); err != nil {
-		log.Printf("Failed to clear Redis cart: %v", err)
-	}
-
-	log.Printf("Cart committed successfully for user: %s", userID)
-	return nil
-}
-
-func (s *CartService) GetCart(ctx context.Context, userID string) (*CartResponse, error) {
-
-	cartRedis, err := s.GetCartFromRedis(ctx, userID)
-	if err == nil && len(cartRedis.CartItems) > 0 {
-		return cartRedis, nil
-	}
-
-	cartDB, err := s.cartRepo.GetCartByUser(ctx, userID)
+	cart, err := s.repo.GetCartByUser(ctx, userID)
 	if err != nil {
 
-		return &CartResponse{
-			ID:                  "N/A",
+		return &ResponseCartDTO{
+			ID:                  "",
 			UserID:              userID,
 			TotalAmount:         0,
 			EstimatedTotalPrice: 0,
-			CartItems:           []CartItemResponse{},
+			CartItems:           []ResponseCartItemDTO{},
 		}, nil
+
 	}
 
-	var items []CartItemResponse
-	for _, item := range cartDB.CartItems {
-		items = append(items, CartItemResponse{
+	response := s.buildResponseFromDB(cart)
+
+	cacheData := RequestCartDTO{CartItems: []RequestCartItemDTO{}}
+	for _, item := range cart.CartItems {
+		cacheData.CartItems = append(cacheData.CartItems, RequestCartItemDTO{
+			TrashID: item.TrashCategoryID,
+			Amount:  item.Amount,
+		})
+	}
+
+	if err := SetCartToRedis(ctx, userID, cacheData); err != nil {
+		log.Printf("Warning: Failed to cache cart for user %s: %v", userID, err)
+	}
+
+	return response, nil
+}
+
+func (s *cartService) DeleteItem(ctx context.Context, userID string, trashID string) error {
+
+	existingCart, err := GetCartFromRedis(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if existingCart == nil {
+		return errors.New("keranjang tidak ditemukan")
+	}
+
+	filtered := []RequestCartItemDTO{}
+	for _, item := range existingCart.CartItems {
+		if item.TrashID != trashID {
+			filtered = append(filtered, item)
+		}
+	}
+	existingCart.CartItems = filtered
+
+	return SetCartToRedis(ctx, userID, *existingCart)
+}
+
+func (s *cartService) ClearCart(ctx context.Context, userID string) error {
+
+	if err := DeleteCartFromRedis(ctx, userID); err != nil {
+		return err
+	}
+
+	return s.repo.DeleteCart(ctx, userID)
+}
+
+func (s *cartService) Checkout(ctx context.Context, userID string) error {
+
+	cachedCart, err := GetCartFromRedis(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if cachedCart != nil {
+		if err := s.commitCartFromRedis(ctx, userID, cachedCart); err != nil {
+			return err
+		}
+	}
+
+	_, err = s.repo.GetCartByUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	DeleteCartFromRedis(ctx, userID)
+	return s.repo.DeleteCart(ctx, userID)
+}
+
+func (s *cartService) buildResponseFromCache(ctx context.Context, userID string, cached *RequestCartDTO) (*ResponseCartDTO, error) {
+	totalQty := 0.0
+	totalPrice := 0.0
+	items := []ResponseCartItemDTO{}
+
+	for _, item := range cached.CartItems {
+		trash, err := s.trashRepo.GetTrashCategoryByID(ctx, item.TrashID)
+		if err != nil {
+			log.Printf("Warning: Trash category %s not found for cached cart item", item.TrashID)
+			continue
+		}
+
+		subtotal := item.Amount * trash.EstimatedPrice
+		totalQty += item.Amount
+		totalPrice += subtotal
+
+		items = append(items, ResponseCartItemDTO{
+			ID:                     "",
+			TrashID:                item.TrashID,
+			TrashName:              trash.Name,
+			TrashIcon:              trash.IconTrash,
+			TrashPrice:             trash.EstimatedPrice,
+			Amount:                 item.Amount,
+			SubTotalEstimatedPrice: subtotal,
+		})
+	}
+
+	return &ResponseCartDTO{
+		ID:                  "-",
+		UserID:              userID,
+		TotalAmount:         totalQty,
+		EstimatedTotalPrice: totalPrice,
+		CartItems:           items,
+	}, nil
+}
+
+func (s *cartService) buildResponseFromDB(cart *model.Cart) *ResponseCartDTO {
+	var items []ResponseCartItemDTO
+	for _, item := range cart.CartItems {
+		items = append(items, ResponseCartItemDTO{
 			ID:                     item.ID,
 			TrashID:                item.TrashCategoryID,
 			TrashName:              item.TrashCategory.Name,
 			TrashIcon:              item.TrashCategory.IconTrash,
-			TrashPrice:             float64(item.TrashCategory.EstimatedPrice),
+			TrashPrice:             item.TrashCategory.EstimatedPrice,
 			Amount:                 item.Amount,
 			SubTotalEstimatedPrice: item.SubTotalEstimatedPrice,
 		})
 	}
 
-	resp := &CartResponse{
-		ID:                  cartDB.ID,
-		UserID:              cartDB.UserID,
-		TotalAmount:         cartDB.TotalAmount,
-		EstimatedTotalPrice: cartDB.EstimatedTotalPrice,
+	return &ResponseCartDTO{
+		ID:                  cart.ID,
+		UserID:              cart.UserID,
+		TotalAmount:         cart.TotalAmount,
+		EstimatedTotalPrice: cart.EstimatedTotalPrice,
 		CartItems:           items,
 	}
-
-	return resp, nil
 }
 
-func (s *CartService) SyncCartFromDatabaseToRedis(ctx context.Context, userID string) error {
-
-	cartDB, err := s.cartRepo.GetCartByUser(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to get cart from database: %w", err)
+func (s *cartService) commitCartFromRedis(ctx context.Context, userID string, cachedCart *RequestCartDTO) error {
+	if len(cachedCart.CartItems) == 0 {
+		return nil
 	}
 
-	cartItems := make(map[string]model.CartItem)
-	for _, item := range cartDB.CartItems {
-		cartItems[item.TrashCategoryID] = model.CartItem{
-			TrashCategoryID:        item.TrashCategoryID,
+	totalAmount := 0.0
+	totalPrice := 0.0
+	var cartItems []model.CartItem
+
+	for _, item := range cachedCart.CartItems {
+		trash, err := s.trashRepo.GetTrashCategoryByID(ctx, item.TrashID)
+		if err != nil {
+			log.Printf("Warning: Skipping invalid trash category %s during commit", item.TrashID)
+			continue
+		}
+
+		subtotal := item.Amount * trash.EstimatedPrice
+		totalAmount += item.Amount
+		totalPrice += subtotal
+
+		cartItems = append(cartItems, model.CartItem{
+			TrashCategoryID:        item.TrashID,
 			Amount:                 item.Amount,
-			SubTotalEstimatedPrice: item.SubTotalEstimatedPrice,
-		}
-	}
-
-	cartKey := fmt.Sprintf("cart:%s", userID)
-	return utils.SetCache(cartKey, cartItems, 24*time.Hour)
-}
-
-func (s *CartService) GetCartItemCount(userID string) (int, error) {
-	cartKey := fmt.Sprintf("cart:%s", userID)
-
-	var cartItems map[string]model.CartItem
-	err := utils.GetCache(cartKey, &cartItems)
-	if err != nil {
-		if err.Error() == "ErrCacheMiss" {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("failed to get cart from cache: %w", err)
-	}
-
-	return len(cartItems), nil
-}
-
-func (s *CartService) DeleteCart(ctx context.Context, userID string) error {
-
-	cartKey := fmt.Sprintf("cart:%s", userID)
-	if err := utils.DeleteCache(cartKey); err != nil {
-		log.Printf("Failed to delete cart from Redis: %v", err)
-	}
-
-	return s.cartRepo.DeleteCart(ctx, userID)
-}
-
-func (s *CartService) UpdateCartWithDTO(ctx context.Context, userID string, cartDTO *RequestCartDTO) error {
-
-	if errors, valid := cartDTO.ValidateRequestCartDTO(); !valid {
-		return fmt.Errorf("validation failed: %v", errors)
-	}
-
-	cartKey := fmt.Sprintf("cart:%s", userID)
-	cartItems := make(map[string]model.CartItem)
-
-	for _, itemDTO := range cartDTO.CartItems {
-
-		trashCategory, err := s.trashRepo.GetTrashCategoryByID(ctx, itemDTO.TrashID)
-		if err != nil {
-			log.Printf("Failed to get trash category %s: %v", itemDTO.TrashID, err)
-			continue
-		}
-
-		subtotal := itemDTO.Amount * float64(trashCategory.EstimatedPrice)
-
-		cartItems[itemDTO.TrashID] = model.CartItem{
-			TrashCategoryID:        itemDTO.TrashID,
-			Amount:                 itemDTO.Amount,
 			SubTotalEstimatedPrice: subtotal,
-		}
+		})
 	}
 
-	return utils.SetCache(cartKey, cartItems, 24*time.Hour)
-}
-
-func (s *CartService) AddItemsToCart(ctx context.Context, userID string, items []RequestCartItemDTO) error {
-	cartKey := fmt.Sprintf("cart:%s", userID)
-
-	var cartItems map[string]model.CartItem
-	err := utils.GetCache(cartKey, &cartItems)
-	if err != nil && err.Error() != "ErrCacheMiss" {
-		return fmt.Errorf("failed to get cart from cache: %w", err)
+	if len(cartItems) == 0 {
+		return nil
 	}
 
-	if cartItems == nil {
-		cartItems = make(map[string]model.CartItem)
+	newCart := &model.Cart{
+		UserID:              userID,
+		TotalAmount:         totalAmount,
+		EstimatedTotalPrice: totalPrice,
+		CartItems:           cartItems,
 	}
 
-	for _, itemDTO := range items {
-		if itemDTO.TrashID == "" {
-			continue
-		}
-
-		trashCategory, err := s.trashRepo.GetTrashCategoryByID(ctx, itemDTO.TrashID)
-		if err != nil {
-			log.Printf("Failed to get trash category %s: %v", itemDTO.TrashID, err)
-			continue
-		}
-
-		subtotal := itemDTO.Amount * float64(trashCategory.EstimatedPrice)
-
-		cartItems[itemDTO.TrashID] = model.CartItem{
-			TrashCategoryID:        itemDTO.TrashID,
-			Amount:                 itemDTO.Amount,
-			SubTotalEstimatedPrice: subtotal,
-		}
-	}
-
-	return utils.SetCache(cartKey, cartItems, 24*time.Hour)
+	return s.repo.CreateCartWithItems(ctx, newCart)
 }

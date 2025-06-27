@@ -30,6 +30,7 @@ func AuthenticationRouter(api fiber.Router) {
 	// 	authHandler.GetMe,
 	// )
 
+	authRoute.Get("/cekapproval", middleware.AuthMiddleware(), authHandler.GetRegistrationStatus)
 	authRoute.Post("/login/admin", authHandler.Login)
 	authRoute.Post("/register/admin", authHandler.Register)
 	authRoute.Post("/request-otp", authHandler.RequestOtpHandler)

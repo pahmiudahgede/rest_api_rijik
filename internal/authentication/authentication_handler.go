@@ -1,6 +1,7 @@
 package authentication
 
 import (
+	"log"
 	"rijig/middleware"
 	"rijig/utils"
 
@@ -16,8 +17,11 @@ func NewAuthenticationHandler(service AuthenticationService) *AuthenticationHand
 }
 
 func (h *AuthenticationHandler) RefreshToken(c *fiber.Ctx) error {
-	deviceID := c.Get("X-Device-ID")
-	if deviceID == "" {
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		return err
+	}
+	if claims.DeviceID == "" {
 		return utils.BadRequest(c, "Device ID is required")
 	}
 
@@ -31,12 +35,11 @@ func (h *AuthenticationHandler) RefreshToken(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Refresh token is required")
 	}
 
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return utils.Unauthorized(c, "Unauthorized or missing user ID")
+	if claims.UserID == "" {
+		return utils.BadRequest(c, "userid is required")
 	}
 
-	tokenData, err := utils.RefreshAccessToken(userID, deviceID, body.RefreshToken)
+	tokenData, err := utils.RefreshAccessToken(claims.UserID, claims.DeviceID, body.RefreshToken)
 	if err != nil {
 		return utils.Unauthorized(c, err.Error())
 	}
@@ -60,6 +63,21 @@ func (h *AuthenticationHandler) GetMe(c *fiber.Ctx) error {
 
 	return utils.SuccessWithData(c, "User session data retrieved", data)
 
+}
+
+func (h *AuthenticationHandler) GetRegistrationStatus(c *fiber.Ctx) error {
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		log.Printf("Error getting user from context: %v", err)
+		return utils.Unauthorized(c, "unauthorized access")
+	}
+
+	res, err := h.service.GetRegistrationStatus(c.Context(), claims.UserID, claims.DeviceID)
+	if err != nil {
+		return utils.InternalServerError(c, err.Error())
+	}
+
+	return utils.SuccessWithData(c, "Registration status retrieved successfully", res)
 }
 
 func (h *AuthenticationHandler) Login(c *fiber.Ctx) error {

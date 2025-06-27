@@ -322,8 +322,9 @@ func (r *RegisterAdminRequest) ValidateRegisterAdminRequest() (map[string][]stri
 		errors["name"] = append(errors["name"], "Name is required")
 	}
 
-	if r.Gender != "male" && r.Gender != "female" {
-		errors["gender"] = append(errors["gender"], "Gender must be either 'male' or 'female'")
+	genderLower := strings.ToLower(strings.TrimSpace(r.Gender))
+	if genderLower != "laki-laki" && genderLower != "perempuan" {
+		errors["gender"] = append(errors["gender"], "Gender must be either 'laki-laki' or 'perempuan'")
 	}
 
 	if strings.TrimSpace(r.DateOfBirth) == "" {

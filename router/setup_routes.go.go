@@ -3,11 +3,13 @@ package router
 import (
 	"os"
 
+	"rijig/internal/about"
 	"rijig/internal/article"
 	"rijig/internal/authentication"
 	"rijig/internal/company"
 	"rijig/internal/identitycart"
 	"rijig/internal/role"
+	"rijig/internal/trash"
 	"rijig/internal/userpin"
 	"rijig/internal/userprofile"
 	"rijig/internal/whatsapp"
@@ -22,8 +24,8 @@ import (
 func SetupRoutes(app *fiber.App) {
 	apa := app.Group(os.Getenv("BASE_URL"))
 	apa.Static("/uploads", "./public"+os.Getenv("BASE_URL")+"/uploads")
-	a := app.Group(os.Getenv("BASE_URL"))
-	whatsapp.WhatsAppRouter(a)
+	// a := app.Group(os.Getenv("BASE_URL"))
+	// whatsapp.WhatsAppRouter(a)
 
 	api := app.Group(os.Getenv("BASE_URL"))
 	api.Use(middleware.APIKeyMiddleware)
@@ -37,6 +39,9 @@ func SetupRoutes(app *fiber.App) {
 	article.ArticleRouter(api)
 	userprofile.UserProfileRouter(api)
 	wilayahindo.WilayahRouter(api)
+	trash.TrashRouter(api)
+	about.AboutRouter(api)
+	whatsapp.WhatsAppRouter(api)
 
 	// || auth router || //
 	// presentation.AuthRouter(api)

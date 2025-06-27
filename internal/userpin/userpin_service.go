@@ -8,14 +8,13 @@ import (
 	"rijig/internal/userprofile"
 	"rijig/model"
 	"rijig/utils"
-	"strings"
 
 	"gorm.io/gorm"
 )
 
 type UserPinService interface {
 	CreateUserPin(ctx context.Context, userID, deviceId string, dto *RequestPinDTO) (*authentication.AuthResponse, error)
-	VerifyUserPin(ctx context.Context, userID, deviceID string, pin *RequestPinDTO) (*utils.TokenResponse, error)
+	VerifyUserPin(ctx context.Context, userID, deviceID string, pin *RequestPinDTO) (*authentication.AuthResponse, error)
 }
 
 type userPinService struct {
@@ -100,7 +99,7 @@ func (s *userPinService) CreateUserPin(ctx context.Context, userID, deviceId str
 	)
 
 	return &authentication.AuthResponse{
-		Message:            "Isi data diri berhasil",
+		Message:            "mantap semuanya completed",
 		AccessToken:        tokenResponse.AccessToken,
 		RefreshToken:       tokenResponse.RefreshToken,
 		TokenType:          string(tokenResponse.TokenType),
@@ -111,7 +110,7 @@ func (s *userPinService) CreateUserPin(ctx context.Context, userID, deviceId str
 	}, nil
 }
 
-func (s *userPinService) VerifyUserPin(ctx context.Context, userID, deviceID string, pin *RequestPinDTO) (*utils.TokenResponse, error) {
+func (s *userPinService) VerifyUserPin(ctx context.Context, userID, deviceID string, pin *RequestPinDTO) (*authentication.AuthResponse, error) {
 	user, err := s.authRepo.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found")
@@ -126,6 +125,42 @@ func (s *userPinService) VerifyUserPin(ctx context.Context, userID, deviceID str
 		return nil, fmt.Errorf("PIN does not match, %s , %s", userPin.Pin, pin.Pin)
 	}
 
-	roleName := strings.ToLower(user.Role.RoleName)
-	return utils.GenerateTokenPair(user.ID, roleName, deviceID, user.RegistrationStatus, int(user.RegistrationProgress))
+	// roleName := strings.ToLower(user.Role.RoleName)
+
+	// updated, err := s.userProfileRepo.GetByID(ctx, userID)
+	// if err != nil {
+	// 	if errors.Is(err, userprofile.ErrUserNotFound) {
+	// 		return nil, fmt.Errorf("user not found")
+	// 	}
+	// 	return nil, fmt.Errorf("failed to get updated user: %w", err)
+	// }
+
+	tokenResponse, err := utils.GenerateTokenPair(
+		user.ID,
+		user.Role.RoleName,
+		deviceID,
+		user.RegistrationStatus,
+		int(user.RegistrationProgress),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("gagal generate token: %v", err)
+	}
+
+	nextStep := utils.GetNextRegistrationStep(
+		user.Role.RoleName,
+		int(user.RegistrationProgress),
+		user.RegistrationStatus,
+	)
+
+	return &authentication.AuthResponse{
+		Message:            "mantap semuanya completed",
+		AccessToken:        tokenResponse.AccessToken,
+		RefreshToken:       tokenResponse.RefreshToken,
+		TokenType:          string(tokenResponse.TokenType),
+		ExpiresIn:          tokenResponse.ExpiresIn,
+		RegistrationStatus: user.RegistrationStatus,
+		NextStep:           nextStep,
+		SessionID:          tokenResponse.SessionID,
+	}, nil
 }

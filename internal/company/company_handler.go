@@ -2,7 +2,10 @@ package company
 
 import (
 	"context"
+	"log"
+	"rijig/middleware"
 	"rijig/utils"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -18,9 +21,10 @@ func NewCompanyProfileHandler(service CompanyProfileService) *CompanyProfileHand
 }
 
 func (h *CompanyProfileHandler) CreateCompanyProfile(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return utils.Unauthorized(c, "User not authenticated")
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		log.Printf("Error getting user from context: %v", err)
+		return utils.Unauthorized(c, "unauthorized access")
 	}
 
 	var req RequestCompanyProfileDTO
@@ -32,9 +36,19 @@ func (h *CompanyProfileHandler) CreateCompanyProfile(c *fiber.Ctx) error {
 		return utils.ResponseErrorData(c, fiber.StatusBadRequest, "validation failed", errors)
 	}
 
-	res, err := h.service.CreateCompanyProfile(context.Background(), userID, &req)
+	companyLogo, err := c.FormFile("company_logo")
 	if err != nil {
-		return utils.InternalServerError(c, err.Error())
+		log.Printf("Error getting company logo: %v", err)
+		return utils.BadRequest(c, "company logo is required")
+	}
+
+	res, err := h.service.CreateCompanyProfile(c.Context(), claims.UserID, claims.DeviceID, &req, companyLogo)
+	if err != nil {
+		log.Printf("Error creating identity card: %v", err)
+		if strings.Contains(err.Error(), "invalid file type") {
+			return utils.BadRequest(c, err.Error())
+		}
+		return utils.InternalServerError(c, "Failed to create company logo")
 	}
 
 	return utils.SuccessWithData(c, "company profile created successfully", res)

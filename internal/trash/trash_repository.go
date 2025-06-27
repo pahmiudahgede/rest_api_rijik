@@ -32,24 +32,24 @@ type TrashRepositoryInterface interface {
 	GetMaxStepOrderByCategory(ctx context.Context, categoryID string) (int, error)
 }
 
-type TrashRepository struct {
+type trashRepository struct {
 	db *gorm.DB
 }
 
 func NewTrashRepository(db *gorm.DB) TrashRepositoryInterface {
-	return &TrashRepository{
-		db: db,
+	return &trashRepository{
+		db,
 	}
 }
 
-func (r *TrashRepository) CreateTrashCategory(ctx context.Context, category *model.TrashCategory) error {
+func (r *trashRepository) CreateTrashCategory(ctx context.Context, category *model.TrashCategory) error {
 	if err := r.db.WithContext(ctx).Create(category).Error; err != nil {
 		return fmt.Errorf("failed to create trash category: %w", err)
 	}
 	return nil
 }
 
-func (r *TrashRepository) CreateTrashCategoryWithDetails(ctx context.Context, category *model.TrashCategory, details []model.TrashDetail) error {
+func (r *trashRepository) CreateTrashCategoryWithDetails(ctx context.Context, category *model.TrashCategory, details []model.TrashDetail) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
 		if err := tx.Create(category).Error; err != nil {
@@ -75,7 +75,7 @@ func (r *TrashRepository) CreateTrashCategoryWithDetails(ctx context.Context, ca
 	})
 }
 
-func (r *TrashRepository) UpdateTrashCategory(ctx context.Context, id string, updates map[string]interface{}) error {
+func (r *trashRepository) UpdateTrashCategory(ctx context.Context, id string, updates map[string]interface{}) error {
 
 	exists, err := r.CheckTrashCategoryExists(ctx, id)
 	if err != nil {
@@ -99,7 +99,7 @@ func (r *TrashRepository) UpdateTrashCategory(ctx context.Context, id string, up
 	return nil
 }
 
-func (r *TrashRepository) GetAllTrashCategories(ctx context.Context) ([]model.TrashCategory, error) {
+func (r *trashRepository) GetAllTrashCategories(ctx context.Context) ([]model.TrashCategory, error) {
 	var categories []model.TrashCategory
 
 	if err := r.db.WithContext(ctx).Find(&categories).Error; err != nil {
@@ -109,7 +109,7 @@ func (r *TrashRepository) GetAllTrashCategories(ctx context.Context) ([]model.Tr
 	return categories, nil
 }
 
-func (r *TrashRepository) GetAllTrashCategoriesWithDetails(ctx context.Context) ([]model.TrashCategory, error) {
+func (r *trashRepository) GetAllTrashCategoriesWithDetails(ctx context.Context) ([]model.TrashCategory, error) {
 	var categories []model.TrashCategory
 
 	if err := r.db.WithContext(ctx).Preload("Details", func(db *gorm.DB) *gorm.DB {
@@ -121,7 +121,7 @@ func (r *TrashRepository) GetAllTrashCategoriesWithDetails(ctx context.Context) 
 	return categories, nil
 }
 
-func (r *TrashRepository) GetTrashCategoryByID(ctx context.Context, id string) (*model.TrashCategory, error) {
+func (r *trashRepository) GetTrashCategoryByID(ctx context.Context, id string) (*model.TrashCategory, error) {
 	var category model.TrashCategory
 
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&category).Error; err != nil {
@@ -134,7 +134,7 @@ func (r *TrashRepository) GetTrashCategoryByID(ctx context.Context, id string) (
 	return &category, nil
 }
 
-func (r *TrashRepository) GetTrashCategoryByIDWithDetails(ctx context.Context, id string) (*model.TrashCategory, error) {
+func (r *trashRepository) GetTrashCategoryByIDWithDetails(ctx context.Context, id string) (*model.TrashCategory, error) {
 	var category model.TrashCategory
 
 	if err := r.db.WithContext(ctx).Preload("Details", func(db *gorm.DB) *gorm.DB {
@@ -149,7 +149,7 @@ func (r *TrashRepository) GetTrashCategoryByIDWithDetails(ctx context.Context, i
 	return &category, nil
 }
 
-func (r *TrashRepository) DeleteTrashCategory(ctx context.Context, id string) error {
+func (r *trashRepository) DeleteTrashCategory(ctx context.Context, id string) error {
 
 	exists, err := r.CheckTrashCategoryExists(ctx, id)
 	if err != nil {
@@ -171,7 +171,7 @@ func (r *TrashRepository) DeleteTrashCategory(ctx context.Context, id string) er
 	return nil
 }
 
-func (r *TrashRepository) CreateTrashDetail(ctx context.Context, detail *model.TrashDetail) error {
+func (r *trashRepository) CreateTrashDetail(ctx context.Context, detail *model.TrashDetail) error {
 
 	exists, err := r.CheckTrashCategoryExists(ctx, detail.TrashCategoryID)
 	if err != nil {
@@ -196,7 +196,7 @@ func (r *TrashRepository) CreateTrashDetail(ctx context.Context, detail *model.T
 	return nil
 }
 
-func (r *TrashRepository) AddTrashDetailToCategory(ctx context.Context, categoryID string, detail *model.TrashDetail) error {
+func (r *trashRepository) AddTrashDetailToCategory(ctx context.Context, categoryID string, detail *model.TrashDetail) error {
 
 	exists, err := r.CheckTrashCategoryExists(ctx, categoryID)
 	if err != nil {
@@ -223,7 +223,7 @@ func (r *TrashRepository) AddTrashDetailToCategory(ctx context.Context, category
 	return nil
 }
 
-func (r *TrashRepository) UpdateTrashDetail(ctx context.Context, id string, updates map[string]interface{}) error {
+func (r *trashRepository) UpdateTrashDetail(ctx context.Context, id string, updates map[string]interface{}) error {
 
 	exists, err := r.CheckTrashDetailExists(ctx, id)
 	if err != nil {
@@ -247,7 +247,7 @@ func (r *TrashRepository) UpdateTrashDetail(ctx context.Context, id string, upda
 	return nil
 }
 
-func (r *TrashRepository) GetTrashDetailsByCategory(ctx context.Context, categoryID string) ([]model.TrashDetail, error) {
+func (r *trashRepository) GetTrashDetailsByCategory(ctx context.Context, categoryID string) ([]model.TrashDetail, error) {
 	var details []model.TrashDetail
 
 	if err := r.db.WithContext(ctx).Where("trash_category_id = ?", categoryID).Order("step_order ASC").Find(&details).Error; err != nil {
@@ -257,7 +257,7 @@ func (r *TrashRepository) GetTrashDetailsByCategory(ctx context.Context, categor
 	return details, nil
 }
 
-func (r *TrashRepository) GetTrashDetailByID(ctx context.Context, id string) (*model.TrashDetail, error) {
+func (r *trashRepository) GetTrashDetailByID(ctx context.Context, id string) (*model.TrashDetail, error) {
 	var detail model.TrashDetail
 
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&detail).Error; err != nil {
@@ -270,7 +270,7 @@ func (r *TrashRepository) GetTrashDetailByID(ctx context.Context, id string) (*m
 	return &detail, nil
 }
 
-func (r *TrashRepository) DeleteTrashDetail(ctx context.Context, id string) error {
+func (r *trashRepository) DeleteTrashDetail(ctx context.Context, id string) error {
 
 	exists, err := r.CheckTrashDetailExists(ctx, id)
 	if err != nil {
@@ -292,7 +292,7 @@ func (r *TrashRepository) DeleteTrashDetail(ctx context.Context, id string) erro
 	return nil
 }
 
-func (r *TrashRepository) CheckTrashCategoryExists(ctx context.Context, id string) (bool, error) {
+func (r *trashRepository) CheckTrashCategoryExists(ctx context.Context, id string) (bool, error) {
 	var count int64
 
 	if err := r.db.WithContext(ctx).Model(&model.TrashCategory{}).Where("id = ?", id).Count(&count).Error; err != nil {
@@ -302,7 +302,7 @@ func (r *TrashRepository) CheckTrashCategoryExists(ctx context.Context, id strin
 	return count > 0, nil
 }
 
-func (r *TrashRepository) CheckTrashDetailExists(ctx context.Context, id string) (bool, error) {
+func (r *trashRepository) CheckTrashDetailExists(ctx context.Context, id string) (bool, error) {
 	var count int64
 
 	if err := r.db.WithContext(ctx).Model(&model.TrashDetail{}).Where("id = ?", id).Count(&count).Error; err != nil {
@@ -312,7 +312,7 @@ func (r *TrashRepository) CheckTrashDetailExists(ctx context.Context, id string)
 	return count > 0, nil
 }
 
-func (r *TrashRepository) GetMaxStepOrderByCategory(ctx context.Context, categoryID string) (int, error) {
+func (r *trashRepository) GetMaxStepOrderByCategory(ctx context.Context, categoryID string) (int, error) {
 	var maxOrder int
 
 	if err := r.db.WithContext(ctx).Model(&model.TrashDetail{}).

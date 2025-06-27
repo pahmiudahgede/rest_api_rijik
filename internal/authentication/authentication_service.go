@@ -3,6 +3,7 @@ package authentication
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 )
 
 type AuthenticationService interface {
+	GetRegistrationStatus(ctx context.Context, userID, deviceID string) (*AuthResponse, error)
 	LoginAdmin(ctx context.Context, req *LoginAdminRequest) (*AuthResponse, error)
 	RegisterAdmin(ctx context.Context, req *RegisterAdminRequest) error
 
@@ -46,6 +48,78 @@ func normalizeRoleName(roleName string) string {
 	default:
 		return strings.ToLower(roleName)
 	}
+}
+
+type GetRegistrationStatusResponse struct {
+	UserID               string `json:"userId"`
+	RegistrationStatus   string `json:"registrationStatus"`
+	RegistrationProgress int8   `json:"registrationProgress"`
+	Name                 string `json:"name"`
+	Phone                string `json:"phone"`
+	Role                 string `json:"role"`
+}
+
+func (s *authenticationService) GetRegistrationStatus(ctx context.Context, userID, deviceID string) (*AuthResponse, error) {
+	user, err := s.authRepo.FindUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	if user.Role.RoleName == "" {
+		return nil, fmt.Errorf("user role not found")
+	}
+
+	if user.RegistrationStatus == utils.RegStatusPending {
+		log.Printf("⏳ User %s (%s) registration is still pending approval", user.Name, user.Phone)
+
+		return &AuthResponse{
+			Message:            "Your registration is currently under review. Please wait for approval.",
+			RegistrationStatus: user.RegistrationStatus,
+			NextStep:           "wait_for_approval",
+		}, nil
+	}
+
+	if user.RegistrationStatus == utils.RegStatusConfirmed || user.RegistrationStatus == utils.RegStatusRejected {
+		tokenResponse, err := utils.GenerateTokenPair(
+			user.ID,
+			user.Role.RoleName,
+			deviceID,
+			user.RegistrationStatus,
+			int(user.RegistrationProgress),
+		)
+		if err != nil {
+			log.Printf("GenerateTokenPair error: %v", err)
+			return nil, fmt.Errorf("failed to generate token: %v", err)
+		}
+
+		nextStep := utils.GetNextRegistrationStep(
+			user.Role.RoleName,
+			int(user.RegistrationProgress),
+			user.RegistrationStatus,
+		)
+
+		var message string
+		if user.RegistrationStatus == utils.RegStatusConfirmed {
+			message = "Registration approved successfully"
+			log.Printf("✅ User %s (%s) registration approved - generating tokens", user.Name, user.Phone)
+		} else if user.RegistrationStatus == utils.RegStatusRejected {
+			message = "Registration has been rejected"
+			log.Printf("❌ User %s (%s) registration rejected - generating tokens for rejection flow", user.Name, user.Phone)
+		}
+
+		return &AuthResponse{
+			Message:            message,
+			AccessToken:        tokenResponse.AccessToken,
+			RefreshToken:       tokenResponse.RefreshToken,
+			TokenType:          string(tokenResponse.TokenType),
+			ExpiresIn:          tokenResponse.ExpiresIn,
+			RegistrationStatus: user.RegistrationStatus,
+			NextStep:           nextStep,
+			SessionID:          tokenResponse.SessionID,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported registration status: %s", user.RegistrationStatus)
 }
 
 func (s *authenticationService) LoginAdmin(ctx context.Context, req *LoginAdminRequest) (*AuthResponse, error) {
@@ -341,8 +415,16 @@ func (s *authenticationService) VerifyLoginOTP(ctx context.Context, req *VerifyO
 		user.RegistrationStatus,
 	)
 
+	var message string
+	if user.RegistrationStatus == utils.RegStatusComplete {
+		message = "verif pin"
+		nextStep = "verif_pin" 
+	} else {
+		message = "otp berhasil diverifikasi"
+	}
+
 	return &AuthResponse{
-		Message:            "otp berhasil diverifikasi",
+		Message:            message,
 		AccessToken:        tokenResponse.AccessToken,
 		RefreshToken:       tokenResponse.RefreshToken,
 		TokenType:          string(tokenResponse.TokenType),

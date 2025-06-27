@@ -1,7 +1,13 @@
 package main
 
 import (
+	"log"
 	"rijig/config"
+	"rijig/internal/cart"
+	"rijig/internal/trash"
+	"rijig/internal/worker"
+	"time"
+
 	// "rijig/internal/repositories"
 	// "rijig/internal/services"
 
@@ -13,21 +19,21 @@ import (
 
 func main() {
 	config.SetupConfig()
-	// cartRepo := repositories.NewCartRepository()
-	// trashRepo := repositories.NewTrashRepository(config.DB)
-	// cartService := services.NewCartService(cartRepo, trashRepo)
-	// worker := worker.NewCartWorker(cartService, cartRepo, trashRepo)
+	cartRepo := cart.NewCartRepository()
+	trashRepo := trash.NewTrashRepository(config.DB)
+	cartService := cart.NewCartService(cartRepo, trashRepo)
+	worker := worker.NewCartWorker(cartService, cartRepo, trashRepo)
 
-	// go func() {
-	// 	ticker := time.NewTicker(30 * time.Second)
-	// 	defer ticker.Stop()
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
 
-	// 	for range ticker.C {
-	// 		if err := worker.AutoCommitExpiringCarts(); err != nil {
-	// 			log.Printf("Auto-commit error: %v", err)
-	// 		}
-	// 	}
-	// }()
+		for range ticker.C {
+			if err := worker.AutoCommitExpiringCarts(); err != nil {
+				log.Printf("Auto-commit error: %v", err)
+			}
+		}
+	}()
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {

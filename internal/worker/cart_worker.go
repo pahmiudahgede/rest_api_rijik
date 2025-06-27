@@ -1,5 +1,5 @@
 package worker
-/* 
+
 import (
 	"context"
 	"encoding/json"
@@ -8,19 +8,18 @@ import (
 	"time"
 
 	"rijig/config"
-	"rijig/dto"
-	"rijig/internal/repositories"
-	"rijig/internal/services"
+	"rijig/internal/cart"
+	"rijig/internal/trash"
 	"rijig/model"
 )
 
 type CartWorker struct {
-	cartService services.CartService
-	cartRepo    repositories.CartRepository
-	trashRepo   repositories.TrashRepository
+	cartService cart.CartService
+	cartRepo    cart.CartRepository
+	trashRepo   trash.TrashRepositoryInterface
 }
 
-func NewCartWorker(cartService services.CartService, cartRepo repositories.CartRepository, trashRepo repositories.TrashRepository) *CartWorker {
+func NewCartWorker(cartService cart.CartService, cartRepo cart.CartRepository, trashRepo trash.TrashRepositoryInterface) *CartWorker {
 	return &CartWorker{
 		cartService: cartService,
 		cartRepo:    cartRepo,
@@ -32,7 +31,7 @@ func (w *CartWorker) AutoCommitExpiringCarts() error {
 	ctx := context.Background()
 	threshold := 1 * time.Minute
 
-	keys, err := services.GetExpiringCartKeys(ctx, threshold)
+	keys, err := cart.GetExpiringCartKeys(ctx, threshold)
 	if err != nil {
 		return err
 	}
@@ -59,7 +58,7 @@ func (w *CartWorker) AutoCommitExpiringCarts() error {
 
 		if hasCart {
 
-			if err := services.DeleteCartFromRedis(ctx, userID); err != nil {
+			if err := cart.DeleteCartFromRedis(ctx, userID); err != nil {
 				log.Printf("[CART-WORKER] Failed to delete Redis cache for user %s: %v", userID, err)
 			} else {
 				log.Printf("[CART-WORKER] Deleted Redis cache for user %s (already has DB cart)", userID)
@@ -78,7 +77,7 @@ func (w *CartWorker) AutoCommitExpiringCarts() error {
 			continue
 		}
 
-		if err := services.DeleteCartFromRedis(ctx, userID); err != nil {
+		if err := cart.DeleteCartFromRedis(ctx, userID); err != nil {
 			log.Printf("[CART-WORKER] Warning: Failed to delete Redis key after commit for user %s: %v", userID, err)
 		}
 
@@ -98,13 +97,13 @@ func (w *CartWorker) extractUserIDFromKey(key string) string {
 	return ""
 }
 
-func (w *CartWorker) getCartFromRedis(ctx context.Context, key string) (*dto.RequestCartDTO, error) {
+func (w *CartWorker) getCartFromRedis(ctx context.Context, key string) (*cart.RequestCartDTO, error) {
 	val, err := config.RedisClient.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	var cart dto.RequestCartDTO
+	var cart cart.RequestCartDTO
 	if err := json.Unmarshal([]byte(val), &cart); err != nil {
 		return nil, err
 	}
@@ -112,7 +111,7 @@ func (w *CartWorker) getCartFromRedis(ctx context.Context, key string) (*dto.Req
 	return &cart, nil
 }
 
-func (w *CartWorker) commitCartToDB(ctx context.Context, userID string, cartData *dto.RequestCartDTO) error {
+func (w *CartWorker) commitCartToDB(ctx context.Context, userID string, cartData *cart.RequestCartDTO) error {
 	if len(cartData.CartItems) == 0 {
 		return nil
 	}
@@ -156,4 +155,3 @@ func (w *CartWorker) commitCartToDB(ctx context.Context, userID string, cartData
 
 	return w.cartRepo.CreateCartWithItems(ctx, newCart)
 }
- */

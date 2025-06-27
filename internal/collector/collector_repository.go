@@ -30,6 +30,9 @@ type CollectorRepository interface {
 	BulkUpdateAvailableTrash(ctx context.Context, collectorID string, availableTrashList []*model.AvaibleTrashByCollector) error
 	DeleteAvailableTrashByCollectorID(ctx context.Context, collectorID string) error
 
+	GetActiveCollectorsWithTrashAndAddress(ctx context.Context) ([]model.Collector, error)
+	GetCollectorWithAddressAndTrash(ctx context.Context, collectorID string) (*model.Collector, error)
+
 	WithTx(tx *gorm.DB) CollectorRepository
 }
 
@@ -54,6 +57,36 @@ func (r *collectorRepository) Create(ctx context.Context, collector *model.Colle
 		return fmt.Errorf("failed to create collector: %w", err)
 	}
 	return nil
+}
+
+func (r *collectorRepository) GetActiveCollectorsWithTrashAndAddress(ctx context.Context) ([]model.Collector, error) {
+	var collectors []model.Collector
+	err := r.db.WithContext(ctx).
+		Preload("User").
+		Preload("Address").
+		Preload("AvaibleTrashbyCollector.TrashCategory").
+		Where("job_status = ?", "active").
+		Find(&collectors).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return collectors, nil
+}
+
+func (r *collectorRepository) GetCollectorWithAddressAndTrash(ctx context.Context, collectorID string) (*model.Collector, error) {
+	var collector model.Collector
+	err := r.db.WithContext(ctx).
+		Preload("Address").
+		Preload("AvaibleTrashbyCollector").
+		Where("id = ?", collectorID).
+		First(&collector).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &collector, nil
 }
 
 func (r *collectorRepository) GetByID(ctx context.Context, id string) (*model.Collector, error) {
