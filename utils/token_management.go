@@ -16,6 +16,13 @@ import (
 type TokenType string
 
 const (
+	RoleAdministrator = "administrator"
+	RolePengelola     = "pengelola"
+	RolePengepul      = "pengepul"
+	RoleMasyarakat    = "masyarakat"
+)
+
+const (
 	TokenTypePartial TokenType = "partial"
 	TokenTypeFull    TokenType = "full"
 	TokenTypeRefresh TokenType = "refresh"

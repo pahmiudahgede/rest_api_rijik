@@ -256,6 +256,59 @@ type LoginAdminRequest struct {
 	DeviceID string `json:"device_id"`
 }
 
+type VerifyAdminOTPRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	OTP      string `json:"otp" validate:"required,len=6,numeric"`
+	DeviceID string `json:"device_id" validate:"required"`
+}
+
+type ResendAdminOTPRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type OTPAdminResponse struct {
+	Message       string        `json:"message"`
+	Email         string        `json:"email"`
+	ExpiresIn     time.Duration `json:"expires_in_seconds"`
+	RemainingTime string        `json:"remaining_time"`
+	CanResend     bool          `json:"can_resend"`
+	MaxAttempts   int           `json:"max_attempts"`
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Email       string `json:"email" validate:"required,email"`
+	Token       string `json:"token" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required,min=6"`
+}
+
+type ResetPasswordResponse struct {
+	Message       string        `json:"message"`
+	Email         string        `json:"email"`
+	ExpiresIn     time.Duration `json:"expires_in_seconds"`
+	RemainingTime string        `json:"remaining_time"`
+}
+
+type VerifyEmailRequest struct {
+	Email string `json:"email" validate:"required,email"`
+	Token string `json:"token" validate:"required"`
+}
+
+type ResendVerificationRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type EmailVerificationResponse struct {
+	Message       string        `json:"message"`
+	Email         string        `json:"email"`
+	ExpiresIn     time.Duration `json:"expires_in_seconds"`
+	RemainingTime string        `json:"remaining_time"`
+}
+
+
 func (r *LoginorRegistRequest) ValidateLoginorRegistRequest() (map[string][]string, bool) {
 	errors := make(map[string][]string)
 

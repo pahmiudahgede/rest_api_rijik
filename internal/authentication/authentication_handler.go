@@ -106,30 +106,143 @@ func (h *AuthenticationHandler) Login(c *fiber.Ctx) error {
 
 }
 
-func (h *AuthenticationHandler) Register(c *fiber.Ctx) error {
-
+func (h *AuthenticationHandler) RegisterAdmin(c *fiber.Ctx) error {
 	var req RegisterAdminRequest
 	if err := c.BodyParser(&req); err != nil {
 		return utils.BadRequest(c, "Invalid request format")
 	}
 
-	if errs, ok := req.ValidateRegisterAdminRequest(); !ok {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"meta": fiber.Map{
-				"status":  fiber.StatusBadRequest,
-				"message": "periksa lagi inputan",
-			},
-			"errors": errs,
-		})
-	}
+	// if err := h.validator.Struct(&req); err != nil {
+	// 	return utils.BadRequest(c, "Validation failed: "+err.Error())
+	// }
 
-	err := h.service.RegisterAdmin(c.Context(), &req)
+	response, err := h.service.RegisterAdmin(c.Context(), &req)
 	if err != nil {
-		return utils.InternalServerError(c, err.Error())
+		return utils.BadRequest(c, err.Error())
 	}
 
-	return utils.Success(c, "Registration successful, Please login")
+	return utils.SuccessWithData(c, "Admin registered successfully", response)
 }
+
+// POST /auth/admin/verify-email - Verify email dari registration
+func (h *AuthenticationHandler) VerifyEmail(c *fiber.Ctx) error {
+	var req VerifyEmailRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.BadRequest(c, "Invalid request format")
+	}
+
+	// if err := h.validator.Struct(&req); err != nil {
+	// 	return utils.BadRequest(c, "Validation failed: "+err.Error())
+	// }
+
+	err := h.service.VerifyEmail(c.Context(), &req)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
+	return utils.SuccessWithData(c, "Email berhasil diverifikasi. Sekarang Anda dapat login", nil)
+}
+
+// POST /auth/admin/resend-verification - Resend verification email
+func (h *AuthenticationHandler) ResendEmailVerification(c *fiber.Ctx) error {
+	var req ResendVerificationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.BadRequest(c, "Invalid request format")
+	}
+
+	// if err := h.validator.Struct(&req); err != nil {
+	// 	return utils.BadRequest(c, "Validation failed: "+err.Error())
+	// }
+
+	response, err := h.service.ResendEmailVerification(c.Context(), &req)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
+	return utils.SuccessWithData(c, "Verification email resent", response)
+}
+
+
+func (h *AuthenticationHandler) VerifyAdminOTP(c *fiber.Ctx) error {
+	var req VerifyAdminOTPRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.BadRequest(c, "Invalid request format")
+	}
+
+	// if errs, ok := req.Valida(); !ok {
+	// 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+	// 		"meta": fiber.Map{
+	// 			"status":  fiber.StatusBadRequest,
+	// 			"message": "periksa lagi inputan",
+	// 		},
+	// 		"errors": errs,
+	// 	})
+	// }
+
+	response, err := h.service.VerifyAdminOTP(c.Context(), &req)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
+	return utils.SuccessWithData(c, "OTP resent successfully", response)
+}
+
+// POST /auth/admin/resend-otp - Resend OTP
+func (h *AuthenticationHandler) ResendAdminOTP(c *fiber.Ctx) error {
+	var req ResendAdminOTPRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.BadRequest(c, "Invalid request format")
+	}
+
+	// if err := h.validator.Struct(&req); err != nil {
+	// 	return utils.BadRequest(c, "Validation failed: "+err.Error())
+	// }
+
+	response, err := h.service.ResendAdminOTP(c.Context(), &req)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
+	return utils.SuccessWithData(c, "OTP resent successfully", response)
+}
+
+func (h *AuthenticationHandler) ForgotPassword(c *fiber.Ctx) error {
+	var req ForgotPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.BadRequest(c, "Invalid request format")
+	}
+
+	// if err := h.validator.Struct(&req); err != nil {
+	// 	return utils.BadRequest(c, "Validation failed: "+err.Error())
+	// }
+
+	response, err := h.service.ForgotPassword(c.Context(), &req)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
+	return utils.SuccessWithData(c, "Reset password email sent", response)
+}
+
+// POST /auth/admin/reset-password - Step 2: Reset password dengan token
+func (h *AuthenticationHandler) ResetPassword(c *fiber.Ctx) error {
+	var req ResetPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.BadRequest(c, "Invalid request format")
+	}
+
+	// if err := h.validator.Struct(&req); err != nil {
+	// 	return utils.BadRequest(c, "Validation failed: "+err.Error())
+	// }
+
+	err := h.service.ResetPassword(c.Context(), &req)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
+	return utils.SuccessWithData(c, "Password berhasil direset", nil)
+}
+
 
 func (h *AuthenticationHandler) RequestOtpHandler(c *fiber.Ctx) error {
 	var req LoginorRegistRequest

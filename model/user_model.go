@@ -11,6 +11,7 @@ type User struct {
 	Placeofbirth         string    `gorm:"not null" json:"placeofbirth"`
 	Phone                string    `gorm:"not null;index" json:"phone"`
 	Email                string    `json:"email,omitempty"`
+	EmailVerified        bool      `gorm:"default:false" json:"emailVerified"`
 	PhoneVerified        bool      `gorm:"default:false" json:"phoneVerified"`
 	Password             string    `json:"password,omitempty"`
 	RoleID               string    `gorm:"not null" json:"roleId"`
