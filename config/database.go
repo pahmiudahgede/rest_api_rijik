@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/pahmiudahgede/senggoldong/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -13,7 +12,6 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		os.Getenv("DB_HOST"),
@@ -30,28 +28,7 @@ func ConnectDatabase() {
 	}
 	log.Println("Database connected successfully!")
 
-	err = DB.AutoMigrate(
-		// ==wilayah indonesia==
-		&model.Province{},
-		&model.Regency{},
-		&model.District{},
-		&model.Village{},
-		// ==wilayah indonesia==
-
-		// ==main feature==
-		&model.User{},
-		&model.Role{},
-		&model.UserPin{},
-		&model.Address{},
-		&model.Article{},
-		&model.Banner{},
-		&model.InitialCoint{},
-		&model.TrashCategory{},
-		&model.TrashDetail{},
-		// ==main feature==
-	)
-	if err != nil {
+	if err := RunMigrations(DB); err != nil {
 		log.Fatalf("Error performing auto-migration: %v", err)
 	}
-	log.Println("Database migrated successfully!")
 }

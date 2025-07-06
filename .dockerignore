@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+README.md
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Environment files (kecuali yang diperlukan)
+.env
+.env.local
+.env.example
+# Kita tetap include .env.dev dan .env.docker untuk development
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+vendor/
+
+# Test files
+*_test.go
+testdata/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+
+# Build artifacts (untuk production)
+main
+*.exe
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Air specific
+.air.toml
+tmp/
+*_templ.go
+
+# Coverage
+*.out
+coverage.html
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Public uploads (jika ada)
+public/uploads/
+
+# Makefile
+Makefile

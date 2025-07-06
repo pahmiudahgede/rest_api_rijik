@@ -1,0 +1,112 @@
+# docker-compose.dev.yml - Development environment dengan Air hot reload
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: rijig_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: apirijig_v2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pahmiadmin
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - rijig_network_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d apirijig_v2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: rijig_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6378:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - rijig_network_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  # Go Application dengan Air hot reload
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: rijig_app_dev
+    restart: unless-stopped
+    ports:
+      - "7000:7000"
+    env_file:
+      - .env.docker
+    volumes:
+      # Mount source code untuk hot reload
+      - .:/app
+      # Cache Go modules untuk performance
+      - go_modules_cache:/go/pkg/mod
+      # Exclude tmp directory untuk mencegah konflik
+      - /app/tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rijig_network_dev
+    working_dir: /app
+
+  # pgAdmin (optional - untuk GUI database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rijig_pgadmin_dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@rijig.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data_dev:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - rijig_network_dev
+
+  # Redis Commander (optional - untuk GUI redis management)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: rijig_redis_commander_dev
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - rijig_network_dev
+
+networks:
+  rijig_network_dev:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+  pgadmin_data_dev:
+  go_modules_cache:

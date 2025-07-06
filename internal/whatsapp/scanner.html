@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp QR Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .whatsapp-icon {
+            width: 40px;
+            height: 40px;
+            background: #25D366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+        }
+        
+        .subtitle {
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+        
+        .qr-container {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        
+        .qr-code {
+            max-width: 300px;
+            height: auto;
+            border-radius: 8px;
+        }
+        
+        .instructions {
+            max-width: 400px;
+            margin: 1rem auto;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        
+        .steps {
+            text-align: left;
+            margin: 1rem 0;
+        }
+        
+        .steps ol {
+            padding-left: 1.5rem;
+        }
+        
+        .steps li {
+            margin: 0.5rem 0;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+        }
+        
+        .status.warning {
+            background: rgba(241, 196, 15, 0.2);
+            border: 1px solid #f1c40f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="whatsapp-icon">📱</div>
+            <h1>WhatsApp QR Scanner</h1>
+        </div>
+        
+        <p class="subtitle">Scan QR code untuk menghubungkan WhatsApp Anda</p>
+        
+        <div class="qr-container">
+            <img src="{{.}}" alt="WhatsApp QR Code" class="qr-code" />
+        </div>
+        
+        <div class="instructions">
+            <div class="steps">
+                <h3>Cara menggunakan:</h3>
+                <ol>
+                    <li>Buka WhatsApp di ponsel Anda</li>
+                    <li>Tap Menu atau Settings dan pilih WhatsApp Web</li>
+                    <li>Arahkan ponsel Anda ke QR code ini untuk memindainya</li>
+                    <li>Tunggu hingga terhubung</li>
+                </ol>
+            </div>
+            
+            <div class="status warning">
+                <span class="loading"></span>
+                Menunggu pemindaian QR code...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+        
+        setInterval(function() {
+            fetch('/api/whatsapp-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.meta.status === 'success' && data.data.is_connected) {
+                        document.querySelector('.status').innerHTML = '✅ WhatsApp berhasil terhubung!';
+                        document.querySelector('.status').className = 'status success';
+                        
+                        setTimeout(function() {
+                            alert('WhatsApp berhasil terhubung! Anda dapat menutup halaman ini.');
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.log('Status check error:', error);
+                });
+        }, 5000);
+    </script>
+</body>
+</html>

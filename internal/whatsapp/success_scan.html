@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp - Berhasil Terhubung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .whatsapp-icon {
+            width: 40px;
+            height: 40px;
+            background: #25D366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            margin: 1rem 0;
+        }
+        
+        .status-message {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+        
+        .status-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+        
+        .status-label {
+            font-weight: bold;
+        }
+        
+        .status-value {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .indicator.connected {
+            background: #2ecc71;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        }
+        
+        .indicator.disconnected {
+            background: #e74c3c;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+        
+        .actions {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .alert {
+            margin: 1rem 0;
+            padding: 0.75rem 1rem;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .alert.success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+        }
+        
+        .alert.error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 1.5rem;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="whatsapp-icon">📱</div>
+            <h1>WhatsApp Dashboard</h1>
+        </div>
+        
+        <div class="success-icon">✅</div>
+        
+        <div class="status-message" id="statusMessage">
+            WhatsApp berhasil terhubung dan siap digunakan!
+        </div>
+        
+        <div class="status-info">
+            <div class="status-item">
+                <span class="status-label">Status Koneksi:</span>
+                <div class="status-value">
+                    <span class="indicator" id="connectionIndicator"></span>
+                    <span id="connectionStatus">Checking...</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Status Login:</span>
+                <div class="status-value">
+                    <span class="indicator" id="loginIndicator"></span>
+                    <span id="loginStatus">Checking...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="alertContainer"></div>
+        
+        <div class="actions">
+            <button class="btn btn-primary" onclick="refreshStatus()">
+                <span class="loading hidden" id="refreshLoading"></span>
+                <span id="refreshText">🔄 Refresh Status</span>
+            </button>
+            
+            <button class="btn btn-secondary" onclick="window.location.href='/api/whatsapp/pw=admin1234'">
+                📱 Lihat QR Code
+            </button>
+            
+            <button class="btn btn-danger" onclick="logoutWhatsApp()">
+                <span class="loading hidden" id="logoutLoading"></span>
+                <span id="logoutText">🚪 Logout</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let statusCheckInterval;
+        
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+        
+        function updateStatusUI(data) {
+            const connectionIndicator = document.getElementById('connectionIndicator');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const loginIndicator = document.getElementById('loginIndicator');
+            const loginStatus = document.getElementById('loginStatus');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            // Update connection status
+            if (data.is_connected) {
+                connectionIndicator.className = 'indicator connected';
+                connectionStatus.textContent = 'Terhubung';
+            } else {
+                connectionIndicator.className = 'indicator disconnected';
+                connectionStatus.textContent = 'Terputus';
+            }
+            
+            // Update login status
+            if (data.is_logged_in) {
+                loginIndicator.className = 'indicator connected';
+                loginStatus.textContent = 'Login';
+            } else {
+                loginIndicator.className = 'indicator disconnected';
+                loginStatus.textContent = 'Belum Login';
+            }
+            
+            // Update main message
+            if (data.is_connected && data.is_logged_in) {
+                statusMessage.textContent = 'WhatsApp berhasil terhubung dan siap digunakan!';
+            } else if (data.is_logged_in && !data.is_connected) {
+                statusMessage.textContent = 'WhatsApp sudah login tetapi tidak terhubung. Silakan refresh atau restart koneksi.';
+            } else {
+                statusMessage.textContent = 'WhatsApp belum terhubung dengan baik. Silakan scan QR code kembali.';
+            }
+        }
+        
+        function checkStatus() {
+            fetch('/api/whatsapp-status')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.meta.status === 'success') {
+                        updateStatusUI(result.data);
+                    } else {
+                        console.error('Status check failed:', result.meta.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                    const connectionIndicator = document.getElementById('connectionIndicator');
+                    const connectionStatus = document.getElementById('connectionStatus');
+                    const loginIndicator = document.getElementById('loginIndicator');
+                    const loginStatus = document.getElementById('loginStatus');
+                    
+                    connectionIndicator.className = 'indicator disconnected';
+                    connectionStatus.textContent = 'Error';
+                    loginIndicator.className = 'indicator disconnected';
+                    loginStatus.textContent = 'Error';
+                });
+        }
+        
+        function refreshStatus() {
+            const refreshLoading = document.getElementById('refreshLoading');
+            const refreshText = document.getElementById('refreshText');
+            
+            refreshLoading.classList.remove('hidden');
+            refreshText.textContent = 'Refreshing...';
+            
+            checkStatus();
+            
+            setTimeout(() => {
+                refreshLoading.classList.add('hidden');
+                refreshText.textContent = '🔄 Refresh Status';
+                showAlert('Status berhasil diperbarui!');
+            }, 1000);
+        }
+        
+        function logoutWhatsApp() {
+            if (!confirm('Apakah Anda yakin ingin logout dari WhatsApp?')) {
+                return;
+            }
+            
+            const logoutLoading = document.getElementById('logoutLoading');
+            const logoutText = document.getElementById('logoutText');
+            
+            logoutLoading.classList.remove('hidden');
+            logoutText.textContent = 'Logging out...';
+            
+            fetch('/api/logout/whastapp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.meta.status === 'success') {
+                        showAlert('Berhasil logout dari WhatsApp!');
+                        setTimeout(() => {
+                            window.location.href = '/api/whatsapp/pw=admin1234';
+                        }, 2000);
+                    } else {
+                        showAlert(result.meta.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    showAlert('Terjadi kesalahan saat logout', 'error');
+                })
+                .finally(() => {
+                    logoutLoading.classList.add('hidden');
+                    logoutText.textContent = '🚪 Logout';
+                });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkStatus();
+            statusCheckInterval = setInterval(checkStatus, 10000); // Check every 10 seconds
+        });
+        
+        // Cleanup interval when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+        });
+    </script>
+</body>
+</html>

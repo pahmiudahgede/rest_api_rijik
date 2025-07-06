@@ -1,0 +1,49 @@
+# Multi-stage Dockerfile untuk development dengan Air hot reload
+FROM golang:1.23-alpine AS base
+
+# Install dependencies yang diperlukan
+RUN apk add --no-cache \
+    git \
+    ca-certificates \
+    curl \
+    tzdata \
+    make \
+    gcc \
+    musl-dev
+
+# Install Air untuk hot reload dengan versi yang stabil
+RUN go install github.com/cosmtrek/air@v1.49.0
+
+# Set timezone ke Asia/Jakarta
+ENV TZ=Asia/Jakarta
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Set working directory
+WORKDIR /app
+
+# Create user untuk security (non-root)
+RUN addgroup -g 1001 -S golang && \
+    adduser -S golang -u 1001 -G golang
+
+# Copy go.mod dan go.sum terlebih dahulu untuk better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY . .
+
+# Create tmp directory dengan permissions yang tepat
+RUN mkdir -p tmp && \
+    chown -R golang:golang /app && \
+    chmod -R 755 /app
+
+# Switch to non-root user
+USER golang
+
+# Expose port
+EXPOSE 7000
+
+# Command untuk menjalankan Air
+CMD ["air", "-c", ".air.toml"]
