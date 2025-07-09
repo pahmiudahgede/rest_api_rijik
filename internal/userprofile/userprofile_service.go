@@ -105,8 +105,6 @@ func (s *userProfileService) UpdateRegistUserProfile(ctx context.Context, userID
 		NextStep:           nextStep,
 		SessionID:          tokenResponse.SessionID,
 	}, nil
-
-	// return s.mapToResponseDTO(updatedUser), nil
 }
 
 func (s *userProfileService) mapToResponseDTO(user *model.User) *UserProfileResponseDTO {

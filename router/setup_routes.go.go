@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"rijig/internal/about"
+	"rijig/internal/admin"
 	"rijig/internal/article"
 	"rijig/internal/authentication"
 	"rijig/internal/company"
@@ -42,6 +43,7 @@ func SetupRoutes(app *fiber.App) {
 	trash.TrashRouter(api)
 	about.AboutRouter(api)
 	whatsapp.WhatsAppRouter(api)
+	admin.ApprovalRoutes(api)
 
 	// || auth router || //
 	// presentation.AuthRouter(api)

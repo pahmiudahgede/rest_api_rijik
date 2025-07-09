@@ -147,7 +147,7 @@ func (s *authenticationService) LoginAdmin(ctx context.Context, req *LoginAdminR
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	if user.RegistrationStatus != "completed" {
+	if user.RegistrationStatus != "complete" {
 		return nil, fmt.Errorf("account not activated")
 	}
 
@@ -470,7 +470,7 @@ func (s *authenticationService) RegisterAdmin(ctx context.Context, req *Register
 		Password:             hashedPassword,
 		RoleID:               role.ID,
 		RegistrationStatus:   "pending_email_verification",
-		RegistrationProgress: 1,
+		// RegistrationProgress: 1,
 		EmailVerified:        false,
 	}
 
