@@ -32,14 +32,14 @@ func AuthenticationRouter(api fiber.Router) {
 
 	authRoute.Get("/cekapproval", middleware.AuthMiddleware(), authHandler.GetRegistrationStatus)
 	authRoute.Post("/login/admin", authHandler.Login)
-	authRoute.Post("/register/admin", authHandler.RegisterAdmin)
+	authRoute.Post("/register/admin", middleware.RequireAdminRole(), authHandler.RegisterAdmin)
 
 	authRoute.Post("/verify-email", authHandler.VerifyEmail)
 	authRoute.Post("/resend-verification", authHandler.ResendEmailVerification)
 
 	authRoute.Post("/verify-otp-admin", authHandler.VerifyAdminOTP)
 	authRoute.Post("/resend-otp-admin", authHandler.ResendAdminOTP)
-	
+
 	authRoute.Post("/forgot-password", authHandler.ForgotPassword)
 	authRoute.Post("/reset-password", authHandler.ResetPassword)
 
