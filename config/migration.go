@@ -19,10 +19,10 @@ func RunMigrations(db *gorm.DB) error {
 		&model.Village{},
 
 		// User related models
+		&model.Role{},
 		&model.User{},
 		&model.Collector{},
 		&model.AvaibleTrashByCollector{},
-		&model.Role{},
 		&model.UserPin{},
 		&model.Address{},
 		&model.IdentityCard{},
@@ -58,6 +58,11 @@ func RunMigrations(db *gorm.DB) error {
 
 	if err != nil {
 		log.Printf("Error performing auto-migration: %v", err)
+		return err
+	}
+
+	if err := RunSeeders(db); err != nil {
+		log.Printf("Error running seeders: %v", err)
 		return err
 	}
 
