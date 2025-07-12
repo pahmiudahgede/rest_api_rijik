@@ -15,7 +15,6 @@ type PickupMatchingHandler struct {
 func NewPickupMatchingHandler(service PickupMatchingService) *PickupMatchingHandler {
 	return &PickupMatchingHandler{
 		service: service,
-		
 	}
 }
 

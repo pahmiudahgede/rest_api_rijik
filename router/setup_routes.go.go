@@ -4,11 +4,14 @@ import (
 	"os"
 
 	"rijig/internal/about"
+	"rijig/internal/address"
 	"rijig/internal/admin"
 	"rijig/internal/article"
 	"rijig/internal/authentication"
+	"rijig/internal/cart"
 	"rijig/internal/company"
 	"rijig/internal/identitycart"
+	"rijig/internal/requestpickup"
 	"rijig/internal/role"
 	"rijig/internal/trash"
 	"rijig/internal/userpin"
@@ -46,26 +49,21 @@ func SetupRoutes(app *fiber.App) {
 	admin.ApprovalRoutes(api)
 
 	// || auth router || //
-	// presentation.AuthRouter(api)
-	// presentationn.AuthAdminRouter(api)
-	// presentationn.AuthPengelolaRouter(api)
-	// presentationn.AuthPengepulRouter(api)
-	// presentationn.AuthMasyarakatRouter(api)
 	// || auth router || //
 	// presentation.IdentityCardRouter(api)
 	// presentation.CompanyProfileRouter(api)
-	// presentation.RequestPickupRouter(api)
+	requestpickup.RequestPickupRouter(api)
 	// presentation.PickupMatchingRouter(api)
 	// presentation.PickupRatingRouter(api)
 
 	// presentation.CollectorRouter(api)
-	// presentation.TrashCartRouter(api)
+	cart.TrashCartRouter(api)
 
 	// presentation.UserProfileRouter(api)
 	// presentation.UserPinRouter(api)
 	// // presentation.RoleRouter(api)
 	// presentation.WilayahRouter(api)
-	// presentation.AddressRouter(api)
+	address.AddressRouter(api)
 	// // presentation.ArticleRouter(api)
 	// // presentation.AboutRouter(api)
 	// presentation.TrashRouter(api)

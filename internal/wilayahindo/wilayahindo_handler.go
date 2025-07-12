@@ -32,7 +32,7 @@ func (h *WilayahIndonesiaHandler) ImportDataFromCSV(c *fiber.Ctx) error {
 func (h *WilayahIndonesiaHandler) GetAllProvinces(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	page, limit, err := h.parsePaginationParams(c)
+	page, limit, isPaginated, err := h.parsePaginationParams(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -42,12 +42,10 @@ func (h *WilayahIndonesiaHandler) GetAllProvinces(c *fiber.Ctx) error {
 		return utils.InternalServerError(c, "Failed to fetch provinces: "+err.Error())
 	}
 
-	response := map[string]interface{}{
-		"provinces": provinces,
-		"total":     total,
+	if isPaginated {
+		return utils.SuccessWithPaginationAndTotal(c, "Provinces retrieved successfully", provinces, page, limit, total)
 	}
-
-	return utils.SuccessWithPagination(c, "Provinces retrieved successfully", response, page, limit)
+	return utils.SuccessWithTotal(c, "Provinces retrieved successfully", provinces, total)
 }
 
 func (h *WilayahIndonesiaHandler) GetProvinceByID(c *fiber.Ctx) error {
@@ -58,7 +56,7 @@ func (h *WilayahIndonesiaHandler) GetProvinceByID(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Province ID is required")
 	}
 
-	page, limit, err := h.parsePaginationParams(c)
+	page, limit, isPaginated, err := h.parsePaginationParams(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -71,18 +69,23 @@ func (h *WilayahIndonesiaHandler) GetProvinceByID(c *fiber.Ctx) error {
 		return utils.InternalServerError(c, "Failed to fetch province: "+err.Error())
 	}
 
-	response := map[string]interface{}{
-		"province":        province,
-		"total_regencies": totalRegencies,
+	// Add total_regencies info to meta through custom response
+	responseData := map[string]interface{}{
+		"id":        province.ID,
+		"name":      province.Name,
+		"regencies": province.Regencies,
 	}
 
-	return utils.SuccessWithPagination(c, "Province retrieved successfully", response, page, limit)
+	if isPaginated {
+		return h.responseWithCustomMeta(c, "Province retrieved successfully", responseData, page, limit, totalRegencies)
+	}
+	return h.responseWithCustomMetaNoPage(c, "Province retrieved successfully", responseData, totalRegencies)
 }
 
 func (h *WilayahIndonesiaHandler) GetAllRegencies(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	page, limit, err := h.parsePaginationParams(c)
+	page, limit, isPaginated, err := h.parsePaginationParams(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -92,12 +95,10 @@ func (h *WilayahIndonesiaHandler) GetAllRegencies(c *fiber.Ctx) error {
 		return utils.InternalServerError(c, "Failed to fetch regencies: "+err.Error())
 	}
 
-	response := map[string]interface{}{
-		"regencies": regencies,
-		"total":     total,
+	if isPaginated {
+		return utils.SuccessWithPaginationAndTotal(c, "Regencies retrieved successfully", regencies, page, limit, total)
 	}
-
-	return utils.SuccessWithPagination(c, "Regencies retrieved successfully", response, page, limit)
+	return utils.SuccessWithTotal(c, "Regencies retrieved successfully", regencies, total)
 }
 
 func (h *WilayahIndonesiaHandler) GetRegencyByID(c *fiber.Ctx) error {
@@ -108,7 +109,7 @@ func (h *WilayahIndonesiaHandler) GetRegencyByID(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Regency ID is required")
 	}
 
-	page, limit, err := h.parsePaginationParams(c)
+	page, limit, isPaginated, err := h.parsePaginationParams(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -121,18 +122,23 @@ func (h *WilayahIndonesiaHandler) GetRegencyByID(c *fiber.Ctx) error {
 		return utils.InternalServerError(c, "Failed to fetch regency: "+err.Error())
 	}
 
-	response := map[string]interface{}{
-		"regency":         regency,
-		"total_districts": totalDistricts,
+	responseData := map[string]interface{}{
+		"id":          regency.ID,
+		"province_id": regency.ProvinceID,
+		"name":        regency.Name,
+		"districts":   regency.Districts,
 	}
 
-	return utils.SuccessWithPagination(c, "Regency retrieved successfully", response, page, limit)
+	if isPaginated {
+		return h.responseWithCustomMeta(c, "Regency retrieved successfully", responseData, page, limit, totalDistricts)
+	}
+	return h.responseWithCustomMetaNoPage(c, "Regency retrieved successfully", responseData, totalDistricts)
 }
 
 func (h *WilayahIndonesiaHandler) GetAllDistricts(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	page, limit, err := h.parsePaginationParams(c)
+	page, limit, isPaginated, err := h.parsePaginationParams(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -142,12 +148,10 @@ func (h *WilayahIndonesiaHandler) GetAllDistricts(c *fiber.Ctx) error {
 		return utils.InternalServerError(c, "Failed to fetch districts: "+err.Error())
 	}
 
-	response := map[string]interface{}{
-		"districts": districts,
-		"total":     total,
+	if isPaginated {
+		return utils.SuccessWithPaginationAndTotal(c, "Districts retrieved successfully", districts, page, limit, total)
 	}
-
-	return utils.SuccessWithPagination(c, "Districts retrieved successfully", response, page, limit)
+	return utils.SuccessWithTotal(c, "Districts retrieved successfully", districts, total)
 }
 
 func (h *WilayahIndonesiaHandler) GetDistrictByID(c *fiber.Ctx) error {
@@ -158,7 +162,7 @@ func (h *WilayahIndonesiaHandler) GetDistrictByID(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "District ID is required")
 	}
 
-	page, limit, err := h.parsePaginationParams(c)
+	page, limit, isPaginated, err := h.parsePaginationParams(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -171,18 +175,23 @@ func (h *WilayahIndonesiaHandler) GetDistrictByID(c *fiber.Ctx) error {
 		return utils.InternalServerError(c, "Failed to fetch district: "+err.Error())
 	}
 
-	response := map[string]interface{}{
-		"district":       district,
-		"total_villages": totalVillages,
+	responseData := map[string]interface{}{
+		"id":         district.ID,
+		"regency_id": district.RegencyID,
+		"name":       district.Name,
+		"villages":   district.Villages,
 	}
 
-	return utils.SuccessWithPagination(c, "District retrieved successfully", response, page, limit)
+	if isPaginated {
+		return h.responseWithCustomMeta(c, "District retrieved successfully", responseData, page, limit, totalVillages)
+	}
+	return h.responseWithCustomMetaNoPage(c, "District retrieved successfully", responseData, totalVillages)
 }
 
 func (h *WilayahIndonesiaHandler) GetAllVillages(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	page, limit, err := h.parsePaginationParams(c)
+	page, limit, isPaginated, err := h.parsePaginationParams(c)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
@@ -192,12 +201,10 @@ func (h *WilayahIndonesiaHandler) GetAllVillages(c *fiber.Ctx) error {
 		return utils.InternalServerError(c, "Failed to fetch villages: "+err.Error())
 	}
 
-	response := map[string]interface{}{
-		"villages": villages,
-		"total":    total,
+	if isPaginated {
+		return utils.SuccessWithPaginationAndTotal(c, "Villages retrieved successfully", villages, page, limit, total)
 	}
-
-	return utils.SuccessWithPagination(c, "Villages retrieved successfully", response, page, limit)
+	return utils.SuccessWithTotal(c, "Villages retrieved successfully", villages, total)
 }
 
 func (h *WilayahIndonesiaHandler) GetVillageByID(c *fiber.Ctx) error {
@@ -219,41 +226,102 @@ func (h *WilayahIndonesiaHandler) GetVillageByID(c *fiber.Ctx) error {
 	return utils.SuccessWithData(c, "Village retrieved successfully", village)
 }
 
-func (h *WilayahIndonesiaHandler) parsePaginationParams(c *fiber.Ctx) (int, int, error) {
+// parsePaginationParams returns page, limit, isPaginated, error
+func (h *WilayahIndonesiaHandler) parsePaginationParams(c *fiber.Ctx) (int, int, bool, error) {
+	pageStr := c.Query("page")
+	limitStr := c.Query("limit")
 
+	// If neither page nor limit is provided, return no pagination
+	if pageStr == "" && limitStr == "" {
+		return 0, 0, false, nil
+	}
+
+	// Default values when pagination is used
 	page := 1
 	limit := 10
 
-	if pageStr := c.Query("page"); pageStr != "" {
+	if pageStr != "" {
 		parsedPage, err := strconv.Atoi(pageStr)
 		if err != nil {
-			return 0, 0, fiber.NewError(fiber.StatusBadRequest, "Invalid page parameter")
+			return 0, 0, false, fiber.NewError(fiber.StatusBadRequest, "Invalid page parameter")
 		}
 		if parsedPage < 1 {
-			return 0, 0, fiber.NewError(fiber.StatusBadRequest, "Page must be greater than 0")
+			return 0, 0, false, fiber.NewError(fiber.StatusBadRequest, "Page must be greater than 0")
 		}
 		page = parsedPage
 	}
 
-	if limitStr := c.Query("limit"); limitStr != "" {
+	if limitStr != "" {
 		parsedLimit, err := strconv.Atoi(limitStr)
 		if err != nil {
-			return 0, 0, fiber.NewError(fiber.StatusBadRequest, "Invalid limit parameter")
+			return 0, 0, false, fiber.NewError(fiber.StatusBadRequest, "Invalid limit parameter")
 		}
 		if parsedLimit < 1 {
-			return 0, 0, fiber.NewError(fiber.StatusBadRequest, "Limit must be greater than 0")
+			return 0, 0, false, fiber.NewError(fiber.StatusBadRequest, "Limit must be greater than 0")
 		}
 		if parsedLimit > 100 {
-			return 0, 0, fiber.NewError(fiber.StatusBadRequest, "Limit cannot exceed 100")
+			return 0, 0, false, fiber.NewError(fiber.StatusBadRequest, "Limit cannot exceed 100")
 		}
 		limit = parsedLimit
 	}
 
-	return page, limit, nil
+	return page, limit, true, nil
+}
+
+// Custom response helpers for detailed responses with child counts
+func (h *WilayahIndonesiaHandler) responseWithCustomMeta(c *fiber.Ctx, message string, data interface{}, page, limit, total int) error {
+	type CustomMeta struct {
+		Status int `json:"status"`
+		Message string `json:"message"`
+		Page   int `json:"page"`
+		Limit  int `json:"limit"`
+		Total  int `json:"total"`
+	}
+
+	type CustomResponse struct {
+		Meta CustomMeta  `json:"meta"`
+		Data interface{} `json:"data"`
+	}
+
+	response := CustomResponse{
+		Meta: CustomMeta{
+			Status:  200,
+			Message: message,
+			Page:    page,
+			Limit:   limit,
+			Total:   total,
+		},
+		Data: data,
+	}
+
+	return c.Status(200).JSON(response)
+}
+
+func (h *WilayahIndonesiaHandler) responseWithCustomMetaNoPage(c *fiber.Ctx, message string, data interface{}, total int) error {
+	type CustomMeta struct {
+		Status int `json:"status"`
+		Message string `json:"message"`
+		Total  int `json:"total"`
+	}
+
+	type CustomResponse struct {
+		Meta CustomMeta  `json:"meta"`
+		Data interface{} `json:"data"`
+	}
+
+	response := CustomResponse{
+		Meta: CustomMeta{
+			Status:  200,
+			Message: message,
+			Total:   total,
+		},
+		Data: data,
+	}
+
+	return c.Status(200).JSON(response)
 }
 
 func (h *WilayahIndonesiaHandler) SetupRoutes(app *fiber.App) {
-
 	api := app.Group("/api/v1/wilayah")
 
 	api.Post("/import", h.ImportDataFromCSV)
