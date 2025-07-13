@@ -16,7 +16,8 @@ var Ctx = context.Background()
 
 func ConnectRedis() {
 	// Check if running on Railway (REDIS_URL provided)
-	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL != "" {
 		log.Println("Using Railway REDIS_URL")
 		connectRedisFromURL(redisURL)
 	} else {
@@ -26,8 +27,10 @@ func ConnectRedis() {
 	}
 
 	// Test connection
+	log.Println("Testing Redis connection...")
 	_, err := RedisClient.Ping(Ctx).Result()
 	if err != nil {
+		log.Printf("Redis connection failed. Error: %v", err)
 		log.Fatalf("Error connecting to Redis: %v", err)
 	}
 	log.Println("Redis connected successfully!")
