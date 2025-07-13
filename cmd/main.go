@@ -49,6 +49,58 @@ func main() {
 
 	app.Use(cors.New())
 
+	app.Get("/apirijig/v2/health", func(c *fiber.Ctx) error {
+		// Check database connection
+		db, err := config.DB.DB()
+		if err != nil {
+			return c.Status(503).JSON(fiber.Map{
+				"status":  "unhealthy",
+				"error":   "database connection failed",
+				"service": "rijig-api",
+				"version": "v2.0.0",
+				"time":    time.Now(),
+			})
+		}
+
+		if err := db.Ping(); err != nil {
+			return c.Status(503).JSON(fiber.Map{
+				"status":  "unhealthy",
+				"error":   "database ping failed",
+				"service": "rijig-api",
+				"version": "v2.0.0",
+				"time":    time.Now(),
+			})
+		}
+
+		// Check Redis connection
+		if _, err := config.RedisClient.Ping(config.Ctx).Result(); err != nil {
+			return c.Status(503).JSON(fiber.Map{
+				"status":  "unhealthy",
+				"error":   "redis connection failed",
+				"service": "rijig-api",
+				"version": "v2.0.0",
+				"time":    time.Now(),
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"status":   "healthy",
+			"service":  "rijig-api",
+			"version":  "v2.0.0",
+			"time":     time.Now(),
+			"database": "connected",
+			"redis":    "connected",
+		})
+	})
+
+	// Simple ping endpoint
+	app.Get("/ping", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"message": "pong",
+			"time":    time.Now(),
+		})
+	})
+
 	router.SetupRoutes(app)
 	config.StartServer(app)
 }

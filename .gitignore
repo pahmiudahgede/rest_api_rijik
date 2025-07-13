@@ -20,6 +20,7 @@ go.work.sum
 
 # Environment files - ignore all variations
 .env*
+.env.railway
 !.env.example
 
 # Logs
