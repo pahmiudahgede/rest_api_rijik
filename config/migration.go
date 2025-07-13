@@ -8,8 +8,30 @@ import (
 	"gorm.io/gorm"
 )
 
+
+func enableUUIDExtension(db *gorm.DB) error {
+	// Try to enable uuid-ossp extension
+	err := db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error
+	if err != nil {
+		log.Printf("Warning: Could not enable uuid-ossp extension: %v", err)
+		// Try alternative: pgcrypto extension (usually available)
+		err = db.Exec("CREATE EXTENSION IF NOT EXISTS \"pgcrypto\"").Error
+		if err != nil {
+			log.Printf("Warning: Could not enable pgcrypto extension: %v", err)
+			return err
+		}
+	}
+	log.Println("UUID extension enabled successfully!")
+	return nil
+}
+
 func RunMigrations(db *gorm.DB) error {
 	log.Println("Starting database migration...")
+
+	if err := enableUUIDExtension(db); err != nil {
+		log.Printf("Error enabling UUID extension: %v", err)
+		return err
+	}
 
 	err := db.AutoMigrate(
 		// Location models
