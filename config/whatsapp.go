@@ -5,8 +5,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	_ "github.com/lib/pq"
@@ -30,15 +32,29 @@ var whatsappService *WhatsAppService
 
 func InitWhatsApp() {
 	var err error
+	var connectionString string
 
-	connectionString := fmt.Sprintf(
-		"user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-	)
+	// Check if running on Railway (DATABASE_URL provided)
+	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
+		log.Println("Using Railway DATABASE_URL for WhatsApp")
+		connectionString, err = convertURLToLibPQFormat(databaseURL)
+		if err != nil {
+			log.Fatalf("Failed to convert DATABASE_URL for WhatsApp: %v", err)
+		}
+	} else {
+		// Fallback to individual environment variables (for local development)
+		log.Println("Using individual database environment variables for WhatsApp")
+		connectionString = fmt.Sprintf(
+			"user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_NAME"),
+			os.Getenv("DB_HOST"),
+			os.Getenv("DB_PORT"),
+		)
+	}
+
+	log.Printf("WhatsApp connecting to database with DSN: %s", sanitizeConnectionString(connectionString))
 
 	dbLog := waLog.Stdout("Database", "DEBUG", true)
 	container, err := sqlstore.New("postgres", connectionString, dbLog)
@@ -49,6 +65,57 @@ func InitWhatsApp() {
 	whatsappService = &WhatsAppService{
 		Container: container,
 	}
+
+	log.Println("WhatsApp database connected successfully!")
+}
+
+// convertURLToLibPQFormat converts DATABASE_URL to lib/pq connection string format
+func convertURLToLibPQFormat(databaseURL string) (string, error) {
+	// Parse the URL
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse DATABASE_URL: %v", err)
+	}
+
+	// Extract components
+	host := u.Hostname()
+	port := u.Port()
+	if port == "" {
+		port = "5432" // default PostgreSQL port
+	}
+
+	dbname := strings.TrimPrefix(u.Path, "/")
+	user := u.User.Username()
+	password, _ := u.User.Password()
+
+	// Determine SSL mode
+	sslmode := "require" // Railway requires SSL
+	if u.Query().Get("sslmode") != "" {
+		sslmode = u.Query().Get("sslmode")
+	}
+
+	// Build lib/pq connection string
+	connectionString := fmt.Sprintf(
+		"user=%s password=%s dbname=%s host=%s port=%s sslmode=%s",
+		user, password, dbname, host, port, sslmode,
+	)
+
+	return connectionString, nil
+}
+
+// sanitizeConnectionString removes password from connection string for logging
+func sanitizeConnectionString(connectionString string) string {
+	// Hide password in logs for security
+	if strings.Contains(connectionString, "password=") {
+		parts := strings.Split(connectionString, " ")
+		for i, part := range parts {
+			if strings.HasPrefix(part, "password=") {
+				parts[i] = "password=****"
+			}
+		}
+		return strings.Join(parts, " ")
+	}
+	return connectionString
 }
 
 func GetWhatsAppService() *WhatsAppService {
