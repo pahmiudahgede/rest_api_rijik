@@ -1,6 +1,7 @@
 package cart
 
 import (
+	"rijig/middleware"
 	"rijig/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,7 +16,11 @@ func NewCartHandler(cartService CartService) *CartHandler {
 }
 
 func (h *CartHandler) AddOrUpdateItem(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
+
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		return err
+	}
 	var req RequestCartItemDTO
 
 	if err := c.BodyParser(&req); err != nil {
@@ -36,7 +41,7 @@ func (h *CartHandler) AddOrUpdateItem(c *fiber.Ctx) error {
 		return utils.ResponseErrorData(c, fiber.StatusBadRequest, "Validasi gagal", errs)
 	}
 
-	if err := h.cartService.AddOrUpdateItem(c.Context(), userID, req); err != nil {
+	if err := h.cartService.AddOrUpdateItem(c.Context(), claims.UserID, req); err != nil {
 		return utils.InternalServerError(c, "Gagal menambahkan item ke keranjang")
 	}
 
@@ -44,9 +49,12 @@ func (h *CartHandler) AddOrUpdateItem(c *fiber.Ctx) error {
 }
 
 func (h *CartHandler) GetCart(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		return err
+	}
 
-	cart, err := h.cartService.GetCart(c.Context(), userID)
+	cart, err := h.cartService.GetCart(c.Context(), claims.UserID)
 	if err != nil {
 		return utils.InternalServerError(c, "Gagal mengambil data keranjang")
 	}
@@ -55,14 +63,17 @@ func (h *CartHandler) GetCart(c *fiber.Ctx) error {
 }
 
 func (h *CartHandler) DeleteItem(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		return err
+	}
 	trashID := c.Params("trash_id")
 
 	if trashID == "" {
 		return utils.BadRequest(c, "Trash ID tidak boleh kosong")
 	}
 
-	if err := h.cartService.DeleteItem(c.Context(), userID, trashID); err != nil {
+	if err := h.cartService.DeleteItem(c.Context(), claims.UserID, trashID); err != nil {
 		return utils.InternalServerError(c, "Gagal menghapus item dari keranjang")
 	}
 
@@ -70,9 +81,12 @@ func (h *CartHandler) DeleteItem(c *fiber.Ctx) error {
 }
 
 func (h *CartHandler) Checkout(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		return err
+	}
 
-	if err := h.cartService.Checkout(c.Context(), userID); err != nil {
+	if err := h.cartService.Checkout(c.Context(), claims.UserID); err != nil {
 		return utils.InternalServerError(c, "Gagal melakukan checkout keranjang")
 	}
 
@@ -80,9 +94,12 @@ func (h *CartHandler) Checkout(c *fiber.Ctx) error {
 }
 
 func (h *CartHandler) ClearCart(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
+	claims, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		return err
+	}
 
-	err := h.cartService.ClearCart(c.Context(), userID)
+	err = h.cartService.ClearCart(c.Context(), claims.UserID)
 	if err != nil {
 		return utils.InternalServerError(c, "Gagal menghapus keranjang")
 	}

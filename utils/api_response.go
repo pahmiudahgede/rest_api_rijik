@@ -9,6 +9,7 @@ type Meta struct {
 	Message string `json:"message"`
 	Page    *int   `json:"page,omitempty"`
 	Limit   *int   `json:"limit,omitempty"`
+	Total   *int   `json:"total,omitempty"`
 }
 
 type Response struct {
@@ -37,6 +38,18 @@ func ResponseData(c *fiber.Ctx, status int, message string, data interface{}) er
 	return c.Status(status).JSON(response)
 }
 
+func ResponseWithTotal(c *fiber.Ctx, status int, message string, data interface{}, total int) error {
+	response := Response{
+		Meta: Meta{
+			Status:  status,
+			Message: message,
+			Total:   &total,
+		},
+		Data: data,
+	}
+	return c.Status(status).JSON(response)
+}
+
 func ResponsePagination(c *fiber.Ctx, status int, message string, data interface{}, page, limit int) error {
 	response := Response{
 		Meta: Meta{
@@ -44,6 +57,20 @@ func ResponsePagination(c *fiber.Ctx, status int, message string, data interface
 			Message: message,
 			Page:    &page,
 			Limit:   &limit,
+		},
+		Data: data,
+	}
+	return c.Status(status).JSON(response)
+}
+
+func ResponsePaginationWithTotal(c *fiber.Ctx, status int, message string, data interface{}, page, limit, total int) error {
+	response := Response{
+		Meta: Meta{
+			Status:  status,
+			Message: message,
+			Page:    &page,
+			Limit:   &limit,
+			Total:   &total,
 		},
 		Data: data,
 	}
@@ -73,12 +100,20 @@ func SuccessWithData(c *fiber.Ctx, message string, data interface{}) error {
 	return ResponseData(c, fiber.StatusOK, message, data)
 }
 
+func SuccessWithTotal(c *fiber.Ctx, message string, data interface{}, total int) error {
+	return ResponseWithTotal(c, fiber.StatusOK, message, data, total)
+}
+
 func CreateSuccessWithData(c *fiber.Ctx, message string, data interface{}) error {
 	return ResponseData(c, fiber.StatusCreated, message, data)
 }
 
 func SuccessWithPagination(c *fiber.Ctx, message string, data interface{}, page, limit int) error {
 	return ResponsePagination(c, fiber.StatusOK, message, data, page, limit)
+}
+
+func SuccessWithPaginationAndTotal(c *fiber.Ctx, message string, data interface{}, page, limit, total int) error {
+	return ResponsePaginationWithTotal(c, fiber.StatusOK, message, data, page, limit, total)
 }
 
 func BadRequest(c *fiber.Ctx, message string) error {

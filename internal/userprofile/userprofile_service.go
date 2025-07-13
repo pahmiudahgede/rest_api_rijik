@@ -79,7 +79,6 @@ func (s *userProfileService) UpdateRegistUserProfile(ctx context.Context, userID
 	tokenResponse, err := utils.GenerateTokenPair(
 		updatedUser.ID,
 		updatedUser.Role.RoleName,
-		// req.DeviceID,
 		deviceId,
 		updatedUser.RegistrationStatus,
 		int(updatedUser.RegistrationProgress),
@@ -105,8 +104,6 @@ func (s *userProfileService) UpdateRegistUserProfile(ctx context.Context, userID
 		NextStep:           nextStep,
 		SessionID:          tokenResponse.SessionID,
 	}, nil
-
-	// return s.mapToResponseDTO(updatedUser), nil
 }
 
 func (s *userProfileService) mapToResponseDTO(user *model.User) *UserProfileResponseDTO {

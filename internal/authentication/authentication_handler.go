@@ -107,7 +107,12 @@ func (h *AuthenticationHandler) Login(c *fiber.Ctx) error {
 }
 
 func (h *AuthenticationHandler) RegisterAdmin(c *fiber.Ctx) error {
+
 	var req RegisterAdminRequest
+	_, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		return err
+	}
 	if err := c.BodyParser(&req); err != nil {
 		return utils.BadRequest(c, "Invalid request format")
 	}
@@ -161,7 +166,6 @@ func (h *AuthenticationHandler) ResendEmailVerification(c *fiber.Ctx) error {
 
 	return utils.SuccessWithData(c, "Verification email resent", response)
 }
-
 
 func (h *AuthenticationHandler) VerifyAdminOTP(c *fiber.Ctx) error {
 	var req VerifyAdminOTPRequest
@@ -242,7 +246,6 @@ func (h *AuthenticationHandler) ResetPassword(c *fiber.Ctx) error {
 
 	return utils.SuccessWithData(c, "Password berhasil direset", nil)
 }
-
 
 func (h *AuthenticationHandler) RequestOtpHandler(c *fiber.Ctx) error {
 	var req LoginorRegistRequest

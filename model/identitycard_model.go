@@ -4,7 +4,7 @@ import "time"
 
 type IdentityCard struct {
 	ID                  string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4();unique;not null" json:"id"`
-	UserID              string    `gorm:"not null" json:"userId"`
+	UserID              string    `gorm:"not null;unique;index" json:"userId"`
 	User                User      `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user"`
 	Identificationumber string    `gorm:"not null" json:"identificationumber"`
 	Fullname            string    `gorm:"not null" json:"fullname"`

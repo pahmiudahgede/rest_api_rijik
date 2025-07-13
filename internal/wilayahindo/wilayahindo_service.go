@@ -34,7 +34,6 @@ func NewWilayahIndonesiaService(wilayahRepo WilayahIndonesiaRepository) WilayahI
 }
 
 func (s *wilayahIndonesiaService) ImportDataFromCSV(ctx context.Context) error {
-
 	provinces, err := utils.ReadCSV("public/document/provinces.csv")
 	if err != nil {
 		return fmt.Errorf("failed to read provinces CSV: %w", err)
@@ -122,11 +121,16 @@ func (s *wilayahIndonesiaService) ImportDataFromCSV(ctx context.Context) error {
 }
 
 func (s *wilayahIndonesiaService) GetAllProvinces(ctx context.Context, page, limit int) ([]ProvinceResponseDTO, int, error) {
-	cacheKey := fmt.Sprintf("provinces_page:%d_limit:%d", page, limit)
+	var cacheKey string
+	if page > 0 && limit > 0 {
+		cacheKey = fmt.Sprintf("provinces_page:%d_limit:%d", page, limit)
+	} else {
+		cacheKey = "provinces_all"
+	}
 
 	var cachedResponse struct {
 		Data  []ProvinceResponseDTO `json:"data"`
-		Total int                       `json:"total"`
+		Total int                   `json:"total"`
 	}
 
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
@@ -148,7 +152,7 @@ func (s *wilayahIndonesiaService) GetAllProvinces(ctx context.Context, page, lim
 
 	cacheData := struct {
 		Data  []ProvinceResponseDTO `json:"data"`
-		Total int                       `json:"total"`
+		Total int                   `json:"total"`
 	}{
 		Data:  provinceDTOs,
 		Total: total,
@@ -162,11 +166,16 @@ func (s *wilayahIndonesiaService) GetAllProvinces(ctx context.Context, page, lim
 }
 
 func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string, page, limit int) (*ProvinceResponseDTO, int, error) {
-	cacheKey := fmt.Sprintf("province:%s_page:%d_limit:%d", id, page, limit)
+	var cacheKey string
+	if page > 0 && limit > 0 {
+		cacheKey = fmt.Sprintf("province:%s_page:%d_limit:%d", id, page, limit)
+	} else {
+		cacheKey = fmt.Sprintf("province:%s_all", id)
+	}
 
 	var cachedResponse struct {
 		Data           ProvinceResponseDTO `json:"data"`
-		TotalRegencies int                     `json:"total_regencies"`
+		TotalRegencies int                 `json:"total_regencies"`
 	}
 
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
@@ -195,7 +204,7 @@ func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string
 
 	cacheData := struct {
 		Data           ProvinceResponseDTO `json:"data"`
-		TotalRegencies int                     `json:"total_regencies"`
+		TotalRegencies int                 `json:"total_regencies"`
 	}{
 		Data:           provinceDTO,
 		TotalRegencies: totalRegencies,
@@ -209,11 +218,16 @@ func (s *wilayahIndonesiaService) GetProvinceByID(ctx context.Context, id string
 }
 
 func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, limit int) ([]RegencyResponseDTO, int, error) {
-	cacheKey := fmt.Sprintf("regencies_page:%d_limit:%d", page, limit)
+	var cacheKey string
+	if page > 0 && limit > 0 {
+		cacheKey = fmt.Sprintf("regencies_page:%d_limit:%d", page, limit)
+	} else {
+		cacheKey = "regencies_all"
+	}
 
 	var cachedResponse struct {
 		Data  []RegencyResponseDTO `json:"data"`
-		Total int                      `json:"total"`
+		Total int                  `json:"total"`
 	}
 
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
@@ -236,7 +250,7 @@ func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, lim
 
 	cacheData := struct {
 		Data  []RegencyResponseDTO `json:"data"`
-		Total int                      `json:"total"`
+		Total int                  `json:"total"`
 	}{
 		Data:  regencyDTOs,
 		Total: total,
@@ -250,11 +264,16 @@ func (s *wilayahIndonesiaService) GetAllRegencies(ctx context.Context, page, lim
 }
 
 func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string, page, limit int) (*RegencyResponseDTO, int, error) {
-	cacheKey := fmt.Sprintf("regency:%s_page:%d_limit:%d", id, page, limit)
+	var cacheKey string
+	if page > 0 && limit > 0 {
+		cacheKey = fmt.Sprintf("regency:%s_page:%d_limit:%d", id, page, limit)
+	} else {
+		cacheKey = fmt.Sprintf("regency:%s_all", id)
+	}
 
 	var cachedResponse struct {
 		Data           RegencyResponseDTO `json:"data"`
-		TotalDistricts int                    `json:"total_districts"`
+		TotalDistricts int                `json:"total_districts"`
 	}
 
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
@@ -284,7 +303,7 @@ func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string,
 
 	cacheData := struct {
 		Data           RegencyResponseDTO `json:"data"`
-		TotalDistricts int                    `json:"total_districts"`
+		TotalDistricts int                `json:"total_districts"`
 	}{
 		Data:           regencyDTO,
 		TotalDistricts: totalDistricts,
@@ -298,11 +317,16 @@ func (s *wilayahIndonesiaService) GetRegencyByID(ctx context.Context, id string,
 }
 
 func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, limit int) ([]DistrictResponseDTO, int, error) {
-	cacheKey := fmt.Sprintf("districts_page:%d_limit:%d", page, limit)
+	var cacheKey string
+	if page > 0 && limit > 0 {
+		cacheKey = fmt.Sprintf("districts_page:%d_limit:%d", page, limit)
+	} else {
+		cacheKey = "districts_all"
+	}
 
 	var cachedResponse struct {
 		Data  []DistrictResponseDTO `json:"data"`
-		Total int                       `json:"total"`
+		Total int                   `json:"total"`
 	}
 
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
@@ -325,7 +349,7 @@ func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, lim
 
 	cacheData := struct {
 		Data  []DistrictResponseDTO `json:"data"`
-		Total int                       `json:"total"`
+		Total int                   `json:"total"`
 	}{
 		Data:  districtDTOs,
 		Total: total,
@@ -339,11 +363,16 @@ func (s *wilayahIndonesiaService) GetAllDistricts(ctx context.Context, page, lim
 }
 
 func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string, page, limit int) (*DistrictResponseDTO, int, error) {
-	cacheKey := fmt.Sprintf("district:%s_page:%d_limit:%d", id, page, limit)
+	var cacheKey string
+	if page > 0 && limit > 0 {
+		cacheKey = fmt.Sprintf("district:%s_page:%d_limit:%d", id, page, limit)
+	} else {
+		cacheKey = fmt.Sprintf("district:%s_all", id)
+	}
 
 	var cachedResponse struct {
 		Data          DistrictResponseDTO `json:"data"`
-		TotalVillages int                     `json:"total_villages"`
+		TotalVillages int                 `json:"total_villages"`
 	}
 
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
@@ -373,7 +402,7 @@ func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string
 
 	cacheData := struct {
 		Data          DistrictResponseDTO `json:"data"`
-		TotalVillages int                     `json:"total_villages"`
+		TotalVillages int                 `json:"total_villages"`
 	}{
 		Data:          districtDTO,
 		TotalVillages: totalVillages,
@@ -387,11 +416,16 @@ func (s *wilayahIndonesiaService) GetDistrictByID(ctx context.Context, id string
 }
 
 func (s *wilayahIndonesiaService) GetAllVillages(ctx context.Context, page, limit int) ([]VillageResponseDTO, int, error) {
-	cacheKey := fmt.Sprintf("villages_page:%d_limit:%d", page, limit)
+	var cacheKey string
+	if page > 0 && limit > 0 {
+		cacheKey = fmt.Sprintf("villages_page:%d_limit:%d", page, limit)
+	} else {
+		cacheKey = "villages_all"
+	}
 
 	var cachedResponse struct {
 		Data  []VillageResponseDTO `json:"data"`
-		Total int                      `json:"total"`
+		Total int                  `json:"total"`
 	}
 
 	if err := utils.GetCache(cacheKey, &cachedResponse); err == nil {
@@ -414,7 +448,7 @@ func (s *wilayahIndonesiaService) GetAllVillages(ctx context.Context, page, limi
 
 	cacheData := struct {
 		Data  []VillageResponseDTO `json:"data"`
-		Total int                      `json:"total"`
+		Total int                  `json:"total"`
 	}{
 		Data:  villageDTOs,
 		Total: total,

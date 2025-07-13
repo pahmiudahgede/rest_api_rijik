@@ -6,7 +6,7 @@ import (
 
 type CompanyProfile struct {
 	ID                 string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4();unique;not null" json:"id"`
-	UserID             string    `gorm:"not null" json:"userId"`
+	UserID             string    `gorm:"not null;unique;index" json:"userId"`
 	User               User      `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user"`
 	CompanyName        string    `gorm:"not null" json:"company_name"`
 	CompanyAddress     string    `gorm:"not null" json:"company_address"`

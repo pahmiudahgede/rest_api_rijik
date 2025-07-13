@@ -8,7 +8,6 @@ import (
 )
 
 func WilayahRouter(api fiber.Router) {
-
 	wilayahRepo := NewWilayahIndonesiaRepository(config.DB)
 	wilayahService := NewWilayahIndonesiaService(wilayahRepo)
 	wilayahHandler := NewWilayahIndonesiaHandler(wilayahService)
@@ -18,15 +17,14 @@ func WilayahRouter(api fiber.Router) {
 	wilayahAPI := api.Group("/wilayah-indonesia")
 
 	wilayahAPI.Get("/provinces", wilayahHandler.GetAllProvinces)
-	wilayahAPI.Get("/provinces/:provinceid", wilayahHandler.GetProvinceByID)
+	wilayahAPI.Get("/provinces/:id", wilayahHandler.GetProvinceByID)
 
 	wilayahAPI.Get("/regencies", wilayahHandler.GetAllRegencies)
-	wilayahAPI.Get("/regencies/:regencyid", wilayahHandler.GetRegencyByID)
+	wilayahAPI.Get("/regencies/:id", wilayahHandler.GetRegencyByID)
 
 	wilayahAPI.Get("/districts", wilayahHandler.GetAllDistricts)
-	wilayahAPI.Get("/districts/:districtid", wilayahHandler.GetDistrictByID)
+	wilayahAPI.Get("/districts/:id", wilayahHandler.GetDistrictByID)
 
 	wilayahAPI.Get("/villages", wilayahHandler.GetAllVillages)
-	wilayahAPI.Get("/villages/:villageid", wilayahHandler.GetVillageByID)
-
+	wilayahAPI.Get("/villages/:id", wilayahHandler.GetVillageByID)
 }

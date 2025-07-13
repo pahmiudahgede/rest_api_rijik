@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"rijig/config"
 	"rijig/internal/role"
 	"rijig/model"
 	"rijig/utils"
@@ -48,21 +49,6 @@ func NewAuthenticationService(authRepo AuthenticationRepository, roleRepo role.R
 		emailService: utils.NewEmailService(),
 	}
 }
-
-// func normalizeRoleName(roleName string) string {
-// 	switch strings.ToLower(roleName) {
-// 	case "administrator", "admin":
-// 		return utils.RoleAdministrator
-// 	case "pengelola":
-// 		return utils.RolePengelola
-// 	case "pengepul":
-// 		return utils.RolePengepul
-// 	case "masyarakat":
-// 		return utils.RoleMasyarakat
-// 	default:
-// 		return strings.ToLower(roleName)
-// 	}
-// }
 
 type GetRegistrationStatusResponse struct {
 	UserID               string `json:"userId"`
@@ -147,7 +133,7 @@ func (s *authenticationService) LoginAdmin(ctx context.Context, req *LoginAdminR
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	if user.RegistrationStatus != "completed" {
+	if user.RegistrationStatus != "complete" {
 		return nil, fmt.Errorf("account not activated")
 	}
 
@@ -291,7 +277,6 @@ func (s *authenticationService) VerifyEmail(ctx context.Context, req *VerifyEmai
 
 	user.EmailVerified = true
 	user.RegistrationStatus = utils.RegStatusComplete
-	// user.RegistrationProgress = 3
 
 	if err := s.authRepo.UpdateUser(ctx, user); err != nil {
 		return fmt.Errorf("failed to update user verification status: %w", err)
@@ -461,17 +446,17 @@ func (s *authenticationService) RegisterAdmin(ctx context.Context, req *Register
 	}
 
 	user := &model.User{
-		Name:                 req.Name,
-		Phone:                req.Phone,
-		Email:                req.Email,
-		Gender:               req.Gender,
-		Dateofbirth:          req.DateOfBirth,
-		Placeofbirth:         req.PlaceOfBirth,
-		Password:             hashedPassword,
-		RoleID:               role.ID,
-		RegistrationStatus:   "pending_email_verification",
-		RegistrationProgress: 1,
-		EmailVerified:        false,
+		Name:               req.Name,
+		Phone:              req.Phone,
+		Email:              req.Email,
+		Gender:             req.Gender,
+		Dateofbirth:        req.DateOfBirth,
+		Placeofbirth:       req.PlaceOfBirth,
+		Password:           hashedPassword,
+		RoleID:             role.ID,
+		RegistrationStatus: "pending_email_verification",
+
+		EmailVerified: false,
 	}
 
 	if err := s.authRepo.CreateUser(ctx, user); err != nil {
@@ -544,6 +529,13 @@ func (s *authenticationService) SendRegistrationOTP(ctx context.Context, req *Lo
 	err = utils.SetCacheWithTTL(otpKey, otpData, 90*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("gagal menyimpan OTP: %v", err)
+	}
+
+	message := fmt.Sprintf("Kode verifikasi Aplikasi Rijig Anda adalah: \n%s\nJangan bagikan kode ini kepada siapapun.", otp)
+
+	err = config.GetWhatsAppService().SendMessage(req.Phone, message)
+	if err != nil {
+		log.Printf("Failed to send WhatsApp OTP to %s: %v", req.Phone, err)
 	}
 
 	err = sendOTP(req.Phone, otp)
@@ -786,20 +778,6 @@ func sendOTP(phone, otp string) error {
 	fmt.Printf("Sending OTP %s to %s\n", otp, phone)
 	return nil
 }
-
-// func convertUserToResponse(user *model.User) *UserResponse {
-// 	return &UserResponse{
-// 		ID:                   user.ID,
-// 		Name:                 user.Name,
-// 		Phone:                user.Phone,
-// 		Email:                user.Email,
-// 		Role:                 user.Role.RoleName,
-// 		RegistrationStatus:   user.RegistrationStatus,
-// 		RegistrationProgress: user.RegistrationProgress,
-// 		PhoneVerified:        user.PhoneVerified,
-// 		Avatar:               user.Avatar,
-// 	}
-// }
 
 func IsRegistrationComplete(role string, progress int) bool {
 	switch role {
