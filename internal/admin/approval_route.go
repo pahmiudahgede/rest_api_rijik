@@ -8,18 +8,18 @@ import (
 )
 
 func ApprovalRoutes(api fiber.Router) {
-	baseRepo := NewApprovalRepository(config.DB)
-	baseService := NewApprovalService(baseRepo)
-	baseHandler := NewApprovalHandler(baseService)
+	repo := NewAdminRepository(config.DB)
+	service := NewAdminService(repo)
+	handler := NewAdminHandler(service)
 
-	adminGroup := api.Group("/needapprove")
-	adminGroup.Use(middleware.RequireAdminRole(), middleware.AuthMiddleware())
+	admin := api.Group("/admusers")
+	admin.Use(middleware.RequireAdminRole(), middleware.AuthMiddleware())
 
-	adminGroup.Get("/pending", baseHandler.GetPendingUsers)
+	admin.Get("/getalluser", handler.GetAllUsers)
+	admin.Patch("/reguser/:userid", handler.UpdateRegistrationStatus)
 
-	adminGroup.Get("/:user_id/approval-details", baseHandler.GetUserApprovalDetails)
-	adminGroup.Post("/approval-action", baseHandler.ProcessApprovalAction)
-	adminGroup.Post("/bulk-approval", baseHandler.BulkProcessApproval)
-	adminGroup.Post("/:user_id/approve", baseHandler.ApproveUser)
-	adminGroup.Post("/:user_id/reject", baseHandler.RejectUser)
+	admin.Get("/statistics", handler.GetUserStatistics)
+	admin.Get("/export", handler.GetAllUsersExport)
+	admin.Get("/role/:role", handler.GetUsersByRole)
+	admin.Get("/health", handler.HealthCheck)
 }

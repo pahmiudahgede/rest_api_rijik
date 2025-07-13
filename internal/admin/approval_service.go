@@ -3,318 +3,213 @@ package admin
 import (
 	"context"
 	"fmt"
-	"math"
-	"rijig/model"
-	"rijig/utils"
-	"strings"
-	"time"
+	"log"
 )
 
-type ApprovalService interface {
-	GetPendingUsers(ctx context.Context, req *GetPendingUsersRequest) (*PendingUsersListResponse, error)
-	ApproveUser(ctx context.Context, userID, adminID string, notes string) (*ApprovalActionResponse, error)
-	RejectUser(ctx context.Context, userID, adminID string, notes string) (*ApprovalActionResponse, error)
-	ProcessApprovalAction(ctx context.Context, req *ApprovalActionRequest, adminID string) (*ApprovalActionResponse, error)
-	BulkProcessApproval(ctx context.Context, req *BulkApprovalRequest, adminID string) (*BulkApprovalResponse, error)
-	GetUserApprovalDetails(ctx context.Context, userID string) (*PendingUserResponse, error)
+type AdminService interface {
+	GetAllUsers(ctx context.Context, req GetAllUsersRequest) (interface{}, *int, *int, int64, error)
+	UpdateRegistrationStatus(ctx context.Context, userID string, req UpdateRegistrationStatusRequest) error
+	GetUserStatistics(ctx context.Context) (map[string]interface{}, error)
+	ValidatePaginationParams(page, limit *int) (*int, *int, error)
+	GetMessage(role string, hasPagination bool, total int64) string
 }
 
-type approvalService struct {
-	repo ApprovalRepository
+type adminService struct {
+	adminRepo AdminRepository
 }
 
-func NewApprovalService(repo ApprovalRepository) ApprovalService {
-	return &approvalService{
-		repo: repo,
+func NewAdminService(adminRepo AdminRepository) AdminService {
+	return &adminService{
+		adminRepo: adminRepo,
 	}
 }
 
-func (s *approvalService) GetPendingUsers(ctx context.Context, req *GetPendingUsersRequest) (*PendingUsersListResponse, error) {
+func (s *adminService) GetAllUsers(ctx context.Context, req GetAllUsersRequest) (interface{}, *int, *int, int64, error) {
 
-	req.SetDefaults()
+	if err := s.validateRole(req.Role); err != nil {
+		return nil, nil, nil, 0, err
+	}
 
-	users, totalRecords, err := s.repo.GetPendingUsers(ctx, req)
+	result, err := s.adminRepo.GetAllUsers(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pending users: %w", err)
+		log.Printf("Error fetching users from repository: %v", err)
+		return nil, nil, nil, 0, fmt.Errorf("failed to fetch users")
 	}
 
-	summary, err := s.repo.GetApprovalSummary(ctx)
+	responseData, err := s.buildRoleBasedResponse(result.Users, req.Role)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get approval summary: %w", err)
+		log.Printf("Error building role-based response: %v", err)
+		return nil, nil, nil, 0, fmt.Errorf("failed to build response")
 	}
 
-	totalPages := int(math.Ceil(float64(totalRecords) / float64(req.Limit)))
-	pagination := PaginationInfo{
-		Page:         req.Page,
-		Limit:        req.Limit,
-		TotalPages:   totalPages,
-		TotalRecords: totalRecords,
-		HasNext:      req.Page < totalPages,
-		HasPrev:      req.Page > 1,
-	}
-
-	userResponses := make([]PendingUserResponse, len(users))
-	for i, user := range users {
-		userResponses[i] = s.convertToUserResponse(user)
-	}
-
-	return &PendingUsersListResponse{
-		Users:      userResponses,
-		Pagination: pagination,
-		Summary:    *summary,
-	}, nil
+	return responseData, req.Page, req.Limit, result.Total, nil
 }
 
-func (s *approvalService) ApproveUser(ctx context.Context, userID, adminID string, notes string) (*ApprovalActionResponse, error) {
+func (s *adminService) UpdateRegistrationStatus(ctx context.Context, userID string, req UpdateRegistrationStatusRequest) error {
 
-	user, err := s.repo.GetUserByID(ctx, userID)
+	user, err := s.adminRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		log.Printf("Error finding user %s: %v", userID, err)
+		return fmt.Errorf("user not found")
 	}
 
-	if err := s.validateUserForApproval(user, "approved"); err != nil {
-		return nil, err
+	if err := s.validateRegistrationStatusUpdate(user.RegistrationStatus, req.Action); err != nil {
+		return err
 	}
 
-	previousStatus := user.RegistrationStatus
-
-	newStatus := utils.RegStatusConfirmed
-	newProgress := utils.ProgressDataSubmitted
-
-	if err := s.repo.UpdateUserRegistrationStatus(ctx, userID, newStatus, int8(newProgress)); err != nil {
-		return nil, fmt.Errorf("failed to approved user: %w", err)
+	if err := s.adminRepo.UpdateRegistrationStatus(ctx, userID, req.Action); err != nil {
+		log.Printf("Error updating registration status for user %s: %v", userID, err)
+		return fmt.Errorf("failed to update registration status")
 	}
 
-	if err := s.revokeUserTokens(userID); err != nil {
-
-		fmt.Printf("Warning: failed to revoke tokens for user %s: %v\n", userID, err)
-	}
-
-	return &ApprovalActionResponse{
-		UserID:         userID,
-		Action:         "approved",
-		PreviousStatus: previousStatus,
-		NewStatus:      newStatus,
-		ProcessedAt:    time.Now(),
-		ProcessedBy:    adminID,
-		Notes:          notes,
-	}, nil
+	log.Printf("Successfully updated registration status for user %s to %s", userID, req.Action)
+	return nil
 }
 
-func (s *approvalService) RejectUser(ctx context.Context, userID, adminID string, notes string) (*ApprovalActionResponse, error) {
-
-	user, err := s.repo.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
+func (s *adminService) validateRole(role string) error {
+	validRoles := map[string]bool{
+		"masyarakat": true,
+		"pengepul":   true,
+		"pengelola":  true,
 	}
 
-	if err := s.validateUserForApproval(user, "rejected"); err != nil {
-		return nil, err
-	}
-
-	previousStatus := user.RegistrationStatus
-
-	newStatus := utils.RegStatusRejected
-	newProgress := utils.ProgressOTPVerified
-
-	if err := s.repo.UpdateUserRegistrationStatus(ctx, userID, newStatus, int8(newProgress)); err != nil {
-		return nil, fmt.Errorf("failed to rejected user: %w", err)
-	}
-
-	if err := s.revokeUserTokens(userID); err != nil {
-
-		fmt.Printf("Warning: failed to revoke tokens for user %s: %v\n", userID, err)
-	}
-
-	return &ApprovalActionResponse{
-		UserID:         userID,
-		Action:         "rejected",
-		PreviousStatus: previousStatus,
-		NewStatus:      newStatus,
-		ProcessedAt:    time.Now(),
-		ProcessedBy:    adminID,
-		Notes:          notes,
-	}, nil
-}
-
-func (s *approvalService) ProcessApprovalAction(ctx context.Context, req *ApprovalActionRequest, adminID string) (*ApprovalActionResponse, error) {
-	switch req.Action {
-	case "approved":
-		return s.ApproveUser(ctx, req.UserID, adminID, req.Notes)
-	case "rejected":
-		return s.RejectUser(ctx, req.UserID, adminID, req.Notes)
-	default:
-		return nil, fmt.Errorf("invalid action: %s", req.Action)
-	}
-}
-
-func (s *approvalService) BulkProcessApproval(ctx context.Context, req *BulkApprovalRequest, adminID string) (*BulkApprovalResponse, error) {
-
-	users, err := s.repo.GetUsersByIDs(ctx, req.UserIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get users: %w", err)
-	}
-
-	var results []ApprovalActionResponse
-	var failures []ApprovalFailure
-	successCount := 0
-
-	for _, user := range users {
-
-		if err := s.validateUserForApproval(&user, req.Action); err != nil {
-			failures = append(failures, ApprovalFailure{
-				UserID: user.ID,
-				Error:  "validation_failed",
-				Reason: err.Error(),
-			})
-			continue
-		}
-
-		actionReq := &ApprovalActionRequest{
-			UserID: user.ID,
-			Action: req.Action,
-			Notes:  req.Notes,
-		}
-
-		result, err := s.ProcessApprovalAction(ctx, actionReq, adminID)
-		if err != nil {
-			failures = append(failures, ApprovalFailure{
-				UserID: user.ID,
-				Error:  "processing_failed",
-				Reason: err.Error(),
-			})
-			continue
-		}
-
-		results = append(results, *result)
-		successCount++
-	}
-
-	return &BulkApprovalResponse{
-		SuccessCount: successCount,
-		FailureCount: len(failures),
-		Results:      results,
-		Failures:     failures,
-	}, nil
-}
-
-func (s *approvalService) GetUserApprovalDetails(ctx context.Context, userID string) (*PendingUserResponse, error) {
-	user, err := s.repo.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user details: %w", err)
-	}
-
-	userResponse := s.convertToUserResponse(*user)
-	return &userResponse, nil
-}
-
-func (s *approvalService) validateUserForApproval(user *model.User, action string) error {
-
-	if user.Role == nil {
-		return fmt.Errorf("user role not found")
-	}
-
-	roleName := strings.ToLower(user.Role.RoleName)
-	if roleName != "pengelola" && roleName != "pengepul" {
-		return fmt.Errorf("only pengelola and pengepul can be approved/rejected")
-	}
-
-	if user.RegistrationStatus != utils.RegStatusPending {
-		return fmt.Errorf("user is not in awaiting_approval status")
-	}
-
-	if user.RegistrationProgress < utils.ProgressDataSubmitted {
-		return fmt.Errorf("user has not submitted required data yet")
-	}
-
-	if roleName == "pengepul" && user.IdentityCard == nil {
-		return fmt.Errorf("pengepul must have identity card data")
-	}
-
-	if roleName == "pengelola" && user.CompanyProfile == nil {
-		return fmt.Errorf("pengelola must have company profile data")
+	if !validRoles[role] {
+		return fmt.Errorf("invalid role: %s", role)
 	}
 
 	return nil
 }
 
-func (s *approvalService) revokeUserTokens(userID string) error {
+func (s *adminService) validateRegistrationStatusUpdate(currentStatus, action string) error {
 
-	return utils.RevokeAllRefreshTokens(userID)
+	if currentStatus != "awaiting_approval" && currentStatus != "pending" {
+		return fmt.Errorf("cannot update registration status: user is already %s", currentStatus)
+	}
+
+	validActions := map[string]bool{
+		"approved": true,
+		"rejected": true,
+	}
+
+	if !validActions[action] {
+		return fmt.Errorf("invalid action: %s", action)
+	}
+
+	return nil
 }
 
-func (s *approvalService) convertToUserResponse(user model.User) PendingUserResponse {
-	response := PendingUserResponse{
-		ID:                   user.ID,
-		Name:                 user.Name,
-		Phone:                user.Phone,
-		Email:                user.Email,
-		RegistrationStatus:   user.RegistrationStatus,
-		RegistrationProgress: user.RegistrationProgress,
-		SubmittedAt:          user.UpdatedAt,
+func (s *adminService) buildRoleBasedResponse(userRelations []UserWithRelations, role string) (interface{}, error) {
+	switch role {
+	case "masyarakat":
+		return s.buildMasyarakatResponse(userRelations), nil
+	case "pengepul":
+		return s.buildPengepulResponse(userRelations), nil
+	case "pengelola":
+		return s.buildPengelolaResponse(userRelations), nil
+	default:
+		return nil, fmt.Errorf("unsupported role: %s", role)
+	}
+}
+
+func (s *adminService) buildMasyarakatResponse(userRelations []UserWithRelations) []MasyarakatUserResponse {
+	responses := make([]MasyarakatUserResponse, 0, len(userRelations))
+
+	for _, userRelation := range userRelations {
+		response := ToMasyarakatResponse(userRelation)
+		responses = append(responses, response)
 	}
 
-	if user.Role != nil {
-		response.Role = RoleInfo{
-			ID:       user.Role.ID,
-			RoleName: user.Role.RoleName,
+	return responses
+}
+
+func (s *adminService) buildPengepulResponse(userRelations []UserWithRelations) []PengepulUserResponse {
+	responses := make([]PengepulUserResponse, 0, len(userRelations))
+
+	for _, userRelation := range userRelations {
+		response := ToPengepulResponse(userRelation)
+		responses = append(responses, response)
+	}
+
+	return responses
+}
+
+func (s *adminService) buildPengelolaResponse(userRelations []UserWithRelations) []PengelolaUserResponse {
+	responses := make([]PengelolaUserResponse, 0, len(userRelations))
+
+	for _, userRelation := range userRelations {
+		response := ToPengelolaResponse(userRelation)
+		responses = append(responses, response)
+	}
+
+	return responses
+}
+
+func (s *adminService) GetUserStatistics(ctx context.Context) (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	roles := []string{"masyarakat", "pengepul", "pengelola"}
+	for _, role := range roles {
+		req := GetAllUsersRequest{Role: role}
+		result, err := s.adminRepo.GetAllUsers(ctx, req)
+		if err != nil {
+			log.Printf("Error getting statistics for role %s: %v", role, err)
+			continue
 		}
+		stats[fmt.Sprintf("total_%s", role)] = result.Total
 	}
 
-	stepInfo := utils.GetRegistrationStepInfo(
-		user.Role.RoleName,
-		int(user.RegistrationProgress),
-		user.RegistrationStatus,
-	)
-	if stepInfo != nil {
-		response.RegistrationStepInfo = &RegistrationStepResponse{
-			Step:                  stepInfo.Step,
-			Status:                stepInfo.Status,
-			Description:           stepInfo.Description,
-			RequiresAdminApproval: stepInfo.RequiresAdminApproval,
-			IsAccessible:          stepInfo.IsAccessible,
-			IsCompleted:           stepInfo.IsCompleted,
-		}
+	pendingReq := GetAllUsersRequest{
+		Role:      "pengepul",
+		StatusReg: "awaiting_approval",
+	}
+	pendingPengepul, err := s.adminRepo.GetAllUsers(ctx, pendingReq)
+	if err == nil {
+		stats["pending_pengepul_approvals"] = pendingPengepul.Total
 	}
 
-	if user.IdentityCard != nil {
-		response.IdentityCard = &IdentityCardInfo{
-			ID:                   user.IdentityCard.ID,
-			IdentificationNumber: user.IdentityCard.Identificationumber,
-			Fullname:             user.IdentityCard.Fullname,
-			Placeofbirth:         user.IdentityCard.Placeofbirth,
-			Dateofbirth:          user.IdentityCard.Dateofbirth,
-			Gender:               user.IdentityCard.Gender,
-			BloodType:            user.IdentityCard.BloodType,
-			Province:             user.IdentityCard.Province,
-			District:             user.IdentityCard.District,
-			SubDistrict:          user.IdentityCard.SubDistrict,
-			Village:              user.IdentityCard.Village,
-			PostalCode:           user.IdentityCard.PostalCode,
-			Religion:             user.IdentityCard.Religion,
-			Maritalstatus:        user.IdentityCard.Maritalstatus,
-			Job:                  user.IdentityCard.Job,
-			Citizenship:          user.IdentityCard.Citizenship,
-			Validuntil:           user.IdentityCard.Validuntil,
-			Cardphoto:            user.IdentityCard.Cardphoto,
-		}
+	pendingReq.Role = "pengelola"
+	pendingPengelola, err := s.adminRepo.GetAllUsers(ctx, pendingReq)
+	if err == nil {
+		stats["pending_pengelola_approvals"] = pendingPengelola.Total
 	}
 
-	if user.CompanyProfile != nil {
-		response.CompanyProfile = &CompanyProfileInfo{
-			ID:                 user.CompanyProfile.ID,
-			CompanyName:        user.CompanyProfile.CompanyName,
-			CompanyAddress:     user.CompanyProfile.CompanyAddress,
-			CompanyPhone:       user.CompanyProfile.CompanyPhone,
-			CompanyEmail:       user.CompanyProfile.CompanyEmail,
-			CompanyLogo:        user.CompanyProfile.CompanyLogo,
-			CompanyWebsite:     user.CompanyProfile.CompanyWebsite,
-			TaxID:              user.CompanyProfile.TaxID,
-			FoundedDate:        user.CompanyProfile.FoundedDate,
-			CompanyType:        user.CompanyProfile.CompanyType,
-			CompanyDescription: user.CompanyProfile.CompanyDescription,
-		}
+	return stats, nil
+}
+
+func (s *adminService) ValidatePaginationParams(page, limit *int) (*int, *int, error) {
+
+	if page == nil && limit == nil {
+		return nil, nil, nil
 	}
 
-	return response
+	if page == nil || limit == nil {
+		return nil, nil, fmt.Errorf("both page and limit must be provided for pagination")
+	}
+
+	if *page < 1 {
+		return nil, nil, fmt.Errorf("page must be greater than 0")
+	}
+
+	if *limit < 1 {
+		return nil, nil, fmt.Errorf("limit must be greater than 0")
+	}
+
+	maxLimit := 100
+	if *limit > maxLimit {
+		return nil, nil, fmt.Errorf("limit cannot exceed %d", maxLimit)
+	}
+
+	return page, limit, nil
+}
+
+func (s *adminService) GetMessage(role string, hasPagination bool, total int64) string {
+	if hasPagination {
+		return fmt.Sprintf("Successfully retrieved %s users with pagination", role)
+	}
+
+	if total == 0 {
+		return fmt.Sprintf("No %s users found", role)
+	}
+
+	return fmt.Sprintf("Successfully retrieved all %s users", role)
 }

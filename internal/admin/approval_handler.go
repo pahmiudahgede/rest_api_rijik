@@ -1,293 +1,227 @@
-// internal/admin/approval_handler.go
 package admin
 
 import (
-	"rijig/middleware"
+	"log"
 	"rijig/utils"
+	"strconv"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
 
-type ApprovalHandler struct {
-	service   ApprovalService
+type AdminHandler struct {
+	adminService AdminService
+	validator    *validator.Validate
 }
 
-func NewApprovalHandler(service ApprovalService) *ApprovalHandler {
-	return &ApprovalHandler{
-		service:   service,
+func NewAdminHandler(adminService AdminService) *AdminHandler {
+	return &AdminHandler{
+		adminService: adminService,
+		validator:    validator.New(),
 	}
 }
 
-// GetPendingUsers menampilkan daftar pengguna yang menunggu persetujuan
-// @Summary Get pending users for approval
-// @Description Retrieve list of users (pengelola/pengepul) waiting for admin approval with filtering and pagination
-// @Tags Admin - User Approval
-// @Accept json
-// @Produce json
-// @Param role query string false "Filter by role" Enums(pengelola, pengepul)
-// @Param status query string false "Filter by status" Enums(awaiting_approval, pending) default(awaiting_approval)
-// @Param page query int false "Page number" default(1) minimum(1)
-// @Param limit query int false "Items per page" default(20) minimum(1) maximum(100)
-// @Success 200 {object} utils.Response{data=PendingUsersListResponse} "List of pending users"
-// @Failure 400 {object} utils.Response "Bad request"
-// @Failure 401 {object} utils.Response "Unauthorized"
-// @Failure 403 {object} utils.Response "Forbidden - Admin role required"
-// @Failure 500 {object} utils.Response "Internal server error"
-// @Security Bearer
-// @Router /admin/users/pending [get]
-func (h *ApprovalHandler) GetPendingUsers(c *fiber.Ctx) error {
-	// Parse query parameters
-	var req GetPendingUsersRequest
-	if err := c.QueryParser(&req); err != nil {
-		return utils.BadRequest(c, "Invalid query parameters: "+err.Error())
-	}
+func (h *AdminHandler) GetAllUsers(c *fiber.Ctx) error {
+	ctx := c.Context()
 
-	// Validate request
-	// if err := h.validator.Struct(&req); err != nil {
-	// 	return utils.ResponseErrorData(c, fiber.StatusBadRequest, "Validation failed", err.Error())
-	// }
-
-	// Call service
-	result, err := h.service.GetPendingUsers(c.Context(), &req)
+	req, err := h.parseGetAllUsersRequest(c)
 	if err != nil {
-		return utils.InternalServerError(c, "Failed to get pending users: "+err.Error())
+		log.Printf("Error parsing request parameters: %v", err)
+		return utils.BadRequest(c, err.Error())
 	}
 
-	return utils.SuccessWithData(c, "Pending users retrieved successfully", result)
+	if err := h.validator.Struct(req); err != nil {
+		log.Printf("Validation error: %v", err)
+		return utils.BadRequest(c, "Invalid request parameters")
+	}
+
+	validPage, validLimit, err := h.adminService.ValidatePaginationParams(req.Page, req.Limit)
+	if err != nil {
+		log.Printf("Pagination validation error: %v", err)
+		return utils.BadRequest(c, err.Error())
+	}
+
+	req.Page = validPage
+	req.Limit = validLimit
+
+	data, page, limit, total, err := h.adminService.GetAllUsers(ctx, *req)
+	if err != nil {
+		log.Printf("Service error in GetAllUsers: %v", err)
+		return utils.InternalServerError(c, "Failed to retrieve users")
+	}
+
+	hasPagination := page != nil && limit != nil
+	message := h.adminService.GetMessage(req.Role, hasPagination, total)
+
+	if hasPagination {
+		return utils.SuccessWithPaginationAndTotal(c, message, data, *page, *limit, int(total))
+	}
+
+	return utils.SuccessWithTotal(c, message, data, int(total))
 }
 
-// GetUserApprovalDetails menampilkan detail lengkap pengguna untuk approval
-// @Summary Get user approval details
-// @Description Get detailed information of a specific user for approval decision
-// @Tags Admin - User Approval
-// @Accept json
-// @Produce json
-// @Param user_id path string true "User ID" format(uuid)
-// @Success 200 {object} utils.Response{data=PendingUserResponse} "User approval details"
-// @Failure 400 {object} utils.Response "Bad request"
-// @Failure 401 {object} utils.Response "Unauthorized"
-// @Failure 403 {object} utils.Response "Forbidden - Admin role required"
-// @Failure 404 {object} utils.Response "User not found"
-// @Failure 500 {object} utils.Response "Internal server error"
-// @Security Bearer
-// @Router /admin/users/{user_id}/approval-details [get]
-func (h *ApprovalHandler) GetUserApprovalDetails(c *fiber.Ctx) error {
-	userID := c.Params("user_id")
+func (h *AdminHandler) UpdateRegistrationStatus(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	userID := c.Params("userid")
 	if userID == "" {
+		log.Printf("Missing userid parameter")
 		return utils.BadRequest(c, "User ID is required")
 	}
 
-	// Validate UUID format
-	// if err := h.validator.Var(userID, "uuid"); err != nil {
-	// 	return utils.BadRequest(c, "Invalid user ID format")
-	// }
-
-	// Call service
-	result, err := h.service.GetUserApprovalDetails(c.Context(), userID)
-	if err != nil {
-		if err.Error() == "user not found" {
-			return utils.NotFound(c, "User not found")
-		}
-		return utils.InternalServerError(c, "Failed to get user details: "+err.Error())
-	}
-
-	return utils.SuccessWithData(c, "User approval details retrieved successfully", result)
-}
-
-// ProcessApprovalAction memproses aksi approval (approve/reject) untuk satu user
-// @Summary Process approval action
-// @Description Approve or reject a user registration
-// @Tags Admin - User Approval
-// @Accept json
-// @Produce json
-// @Param request body ApprovalActionRequest true "Approval action request"
-// @Success 200 {object} utils.Response{data=ApprovalActionResponse} "Approval processed successfully"
-// @Failure 400 {object} utils.Response "Bad request"
-// @Failure 401 {object} utils.Response "Unauthorized"
-// @Failure 403 {object} utils.Response "Forbidden - Admin role required"
-// @Failure 404 {object} utils.Response "User not found"
-// @Failure 500 {object} utils.Response "Internal server error"
-// @Security Bearer
-// @Router /admin/users/approval-action [post]
-func (h *ApprovalHandler) ProcessApprovalAction(c *fiber.Ctx) error {
-	// Get admin ID from context
-	adminClaims, err := middleware.GetUserFromContext(c)
-	if err != nil {
-		return utils.Unauthorized(c, "Admin authentication required")
-	}
-
-	// Parse request body
-	var req ApprovalActionRequest
+	var req UpdateRegistrationStatusRequest
 	if err := c.BodyParser(&req); err != nil {
-		return utils.BadRequest(c, "Invalid request body: "+err.Error())
+		log.Printf("Error parsing request body: %v", err)
+		return utils.BadRequest(c, "Invalid request body")
 	}
 
-	// Validate request
-	// if err := h.validator.Struct(&req); err != nil {
-	// 	return utils.ResponseErrorData(c, fiber.StatusBadRequest, "Validation failed", err.Error())
-	// }
+	if err := h.validator.Struct(req); err != nil {
+		log.Printf("Validation error for registration status update: %v", err)
+		return utils.BadRequest(c, "Invalid action. Must be 'approved' or 'rejected'")
+	}
 
-	// Call service
-	result, err := h.service.ProcessApprovalAction(c.Context(), &req, adminClaims.UserID)
-	if err != nil {
+	if err := h.adminService.UpdateRegistrationStatus(ctx, userID, req); err != nil {
+		log.Printf("Service error in UpdateRegistrationStatus: %v", err)
+
 		if err.Error() == "user not found" {
 			return utils.NotFound(c, "User not found")
 		}
-		return utils.InternalServerError(c, "Failed to process approval: "+err.Error())
-	}
 
-	actionMessage := "User approved successfully"
-	if req.Action == "reject" {
-		actionMessage = "User rejected successfully"
-	}
-
-	return utils.SuccessWithData(c, actionMessage, result)
-}
-
-// BulkProcessApproval memproses aksi approval untuk multiple users sekaligus
-// @Summary Bulk process approval actions
-// @Description Approve or reject multiple users at once
-// @Tags Admin - User Approval
-// @Accept json
-// @Produce json
-// @Param request body BulkApprovalRequest true "Bulk approval request"
-// @Success 200 {object} utils.Response{data=BulkApprovalResponse} "Bulk approval processed"
-// @Failure 400 {object} utils.Response "Bad request"
-// @Failure 401 {object} utils.Response "Unauthorized"
-// @Failure 403 {object} utils.Response "Forbidden - Admin role required"
-// @Failure 500 {object} utils.Response "Internal server error"
-// @Security Bearer
-// @Router /admin/users/bulk-approval [post]
-func (h *ApprovalHandler) BulkProcessApproval(c *fiber.Ctx) error {
-	// Get admin ID from context
-	adminClaims, err := middleware.GetUserFromContext(c)
-	if err != nil {
-		return utils.Unauthorized(c, "Admin authentication required")
-	}
-
-	// Parse request body
-	var req BulkApprovalRequest
-	if err := c.BodyParser(&req); err != nil {
-		return utils.BadRequest(c, "Invalid request body: "+err.Error())
-	}
-
-	// Validate request
-	// if err := h.validator.Struct(&req); err != nil {
-	// 	return utils.ResponseErrorData(c, fiber.StatusBadRequest, "Validation failed", err.Error())
-	// }
-
-	// Call service
-	result, err := h.service.BulkProcessApproval(c.Context(), &req, adminClaims.UserID)
-	if err != nil {
-		return utils.InternalServerError(c, "Failed to process bulk approval: "+err.Error())
-	}
-
-	actionMessage := "Bulk approval processed successfully"
-	if req.Action == "reject" {
-		actionMessage = "Bulk rejection processed successfully"
-	}
-
-	return utils.SuccessWithData(c, actionMessage, result)
-}
-
-// ApproveUser endpoint khusus untuk approve satu user (shortcut)
-// @Summary Approve user
-// @Description Approve a user registration (shortcut endpoint)
-// @Tags Admin - User Approval
-// @Accept json
-// @Produce json
-// @Param user_id path string true "User ID" format(uuid)
-// @Param notes body string false "Optional approval notes"
-// @Success 200 {object} utils.Response{data=ApprovalActionResponse} "User approved successfully"
-// @Failure 400 {object} utils.Response "Bad request"
-// @Failure 401 {object} utils.Response "Unauthorized"
-// @Failure 403 {object} utils.Response "Forbidden - Admin role required"
-// @Failure 404 {object} utils.Response "User not found"
-// @Failure 500 {object} utils.Response "Internal server error"
-// @Security Bearer
-// @Router /admin/users/{user_id}/approve [post]
-func (h *ApprovalHandler) ApproveUser(c *fiber.Ctx) error {
-	userID := c.Params("user_id")
-	if userID == "" {
-		return utils.BadRequest(c, "User ID is required")
-	}
-
-	// Validate UUID format
-	// if err := h.validator.Var(userID, "uuid"); err != nil {
-	// 	return utils.BadRequest(c, "Invalid user ID format")
-	// }
-
-	// Get admin ID from context
-	adminClaims, err := middleware.GetUserFromContext(c)
-	if err != nil {
-		return utils.Unauthorized(c, "Admin authentication required")
-	}
-
-	// Parse optional notes from body
-	var body struct {
-		Notes string `json:"notes"`
-	}
-	c.BodyParser(&body) // Ignore error as notes are optional
-
-	// Call service
-	result, err := h.service.ApproveUser(c.Context(), userID, adminClaims.UserID, body.Notes)
-	if err != nil {
-		if err.Error() == "user not found" {
-			return utils.NotFound(c, "User not found")
+		if err.Error() == "failed to update registration status" {
+			return utils.InternalServerError(c, "Failed to update registration status")
 		}
-		return utils.InternalServerError(c, "Failed to approve user: "+err.Error())
+
+		return utils.BadRequest(c, err.Error())
 	}
 
-	return utils.SuccessWithData(c, "User approved successfully", result)
+	message := h.generateUpdateMessage(req.Action)
+	return utils.Success(c, message)
 }
 
-// RejectUser endpoint khusus untuk reject satu user (shortcut)
-// @Summary Reject user
-// @Description Reject a user registration (shortcut endpoint)
-// @Tags Admin - User Approval
-// @Accept json
-// @Produce json
-// @Param user_id path string true "User ID" format(uuid)
-// @Param notes body string false "Optional rejection notes"
-// @Success 200 {object} utils.Response{data=ApprovalActionResponse} "User rejected successfully"
-// @Failure 400 {object} utils.Response "Bad request"
-// @Failure 401 {object} utils.Response "Unauthorized"
-// @Failure 403 {object} utils.Response "Forbidden - Admin role required"
-// @Failure 404 {object} utils.Response "User not found"
-// @Failure 500 {object} utils.Response "Internal server error"
-// @Security Bearer
-// @Router /admin/users/{user_id}/reject [post]
-func (h *ApprovalHandler) RejectUser(c *fiber.Ctx) error {
-	userID := c.Params("user_id")
-	if userID == "" {
-		return utils.BadRequest(c, "User ID is required")
-	}
+func (h *AdminHandler) GetUserStatistics(c *fiber.Ctx) error {
+	ctx := c.Context()
 
-	// Validate UUID format
-	// if err := h.validator.Var(userID, "uuid"); err != nil {
-	// 	return utils.BadRequest(c, "Invalid user ID format")
-	// }
-
-	// Get admin ID from context
-	adminClaims, err := middleware.GetUserFromContext(c)
+	stats, err := h.adminService.GetUserStatistics(ctx)
 	if err != nil {
-		return utils.Unauthorized(c, "Admin authentication required")
+		log.Printf("Error getting user statistics: %v", err)
+		return utils.InternalServerError(c, "Failed to get user statistics")
 	}
 
-	// Parse optional notes from body
-	var body struct {
-		Notes string `json:"notes"`
-	}
-	c.BodyParser(&body) // Ignore error as notes are optional
+	return utils.SuccessWithData(c, "Successfully retrieved user statistics", stats)
+}
 
-	// Call service
-	result, err := h.service.RejectUser(c.Context(), userID, adminClaims.UserID, body.Notes)
-	if err != nil {
-		if err.Error() == "user not found" {
-			return utils.NotFound(c, "User not found")
+func (h *AdminHandler) parseGetAllUsersRequest(c *fiber.Ctx) (*GetAllUsersRequest, error) {
+	req := &GetAllUsersRequest{}
+
+	req.Role = c.Query("role")
+	if req.Role == "" {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "role parameter is required")
+	}
+
+	req.StatusReg = c.Query("statusreg")
+
+	if pageStr := c.Query("page"); pageStr != "" {
+		page, err := strconv.Atoi(pageStr)
+		if err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "invalid page parameter")
 		}
-		return utils.InternalServerError(c, "Failed to reject user: "+err.Error())
+		req.Page = &page
 	}
 
-	return utils.SuccessWithData(c, "User rejected successfully", result)
+	if limitStr := c.Query("limit"); limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "invalid limit parameter")
+		}
+		req.Limit = &limit
+	}
+
+	return req, nil
+}
+
+func (h *AdminHandler) generateUpdateMessage(action string) string {
+	switch action {
+	case "approved":
+		return "User registration has been approved successfully"
+	case "rejected":
+		return "User registration has been rejected successfully"
+	default:
+		return "Registration status updated successfully"
+	}
+}
+
+func (h *AdminHandler) ValidateAdminPermissions(c *fiber.Ctx) error {
+
+	userRole := c.Locals("userRole")
+	if userRole != "admin" && userRole != "super_admin" {
+		return utils.Forbidden(c, "Admin permissions required")
+	}
+
+	return nil
+}
+
+func (h *AdminHandler) GetAllUsersExport(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	req, err := h.parseGetAllUsersRequest(c)
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
+	req.Page = nil
+	req.Limit = nil
+
+	data, _, _, total, err := h.adminService.GetAllUsers(ctx, *req)
+	if err != nil {
+		log.Printf("Error exporting users: %v", err)
+		return utils.InternalServerError(c, "Failed to export users")
+	}
+
+	c.Set("Content-Type", "text/csv")
+	c.Set("Content-Disposition", "attachment; filename=users_export.csv")
+
+	return utils.SuccessWithTotal(c, "Users data for export", data, int(total))
+}
+
+func (h *AdminHandler) GetUsersByRole(c *fiber.Ctx) error {
+	role := c.Params("role")
+	if role == "" {
+		return utils.BadRequest(c, "Role parameter is required")
+	}
+
+	req := GetAllUsersRequest{
+		Role: role,
+	}
+
+	return h.handleGetUsersRequest(c, req)
+}
+
+func (h *AdminHandler) handleGetUsersRequest(c *fiber.Ctx, req GetAllUsersRequest) error {
+	ctx := c.Context()
+
+	if err := h.validator.Struct(req); err != nil {
+		return utils.BadRequest(c, "Invalid request parameters")
+	}
+
+	data, page, limit, total, err := h.adminService.GetAllUsers(ctx, req)
+	if err != nil {
+		return utils.InternalServerError(c, "Failed to retrieve users")
+	}
+
+	hasPagination := page != nil && limit != nil
+	message := h.adminService.GetMessage(req.Role, hasPagination, total)
+
+	if hasPagination {
+		return utils.SuccessWithPaginationAndTotal(c, message, data, *page, *limit, int(total))
+	}
+
+	return utils.SuccessWithTotal(c, message, data, int(total))
+}
+
+func (h *AdminHandler) HealthCheck(c *fiber.Ctx) error {
+	return utils.SuccessWithData(c, "Admin module is healthy", fiber.Map{
+		"module":  "admin",
+		"status":  "healthy",
+		"version": "1.0.0",
+	})
 }

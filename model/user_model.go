@@ -18,8 +18,6 @@ type User struct {
 	Role                 *Role           `gorm:"foreignKey:RoleID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"role"`
 	RegistrationStatus   string          `json:"registrationstatus"`
 	RegistrationProgress int8            `json:"registration_progress"`
-	IdentityCard         *IdentityCard   `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"identity_card,omitempty"`
-	CompanyProfile       *CompanyProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"company_profile,omitempty"`
 	CreatedAt            time.Time       `gorm:"default:current_timestamp" json:"createdAt"`
 	UpdatedAt            time.Time       `gorm:"default:current_timestamp" json:"updatedAt"`
 }

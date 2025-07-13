@@ -79,7 +79,6 @@ func (s *userProfileService) UpdateRegistUserProfile(ctx context.Context, userID
 	tokenResponse, err := utils.GenerateTokenPair(
 		updatedUser.ID,
 		updatedUser.Role.RoleName,
-		// req.DeviceID,
 		deviceId,
 		updatedUser.RegistrationStatus,
 		int(updatedUser.RegistrationProgress),

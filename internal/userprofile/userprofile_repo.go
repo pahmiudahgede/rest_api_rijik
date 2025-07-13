@@ -11,8 +11,6 @@ import (
 type UserProfileRepository interface {
 	GetByID(ctx context.Context, userID string) (*model.User, error)
 	GetByRoleName(ctx context.Context, roleName string) ([]*model.User, error)
-	// GetIdentityCardsByUserRegStatus(ctx context.Context, userRegStatus string) ([]model.IdentityCard, error)
-	// GetCompanyProfileByUserRegStatus(ctx context.Context, userRegStatus string) ([]model.IdentityCard, error)
 	Update(ctx context.Context, userID string, user *model.User) error
 }
 
@@ -59,35 +57,6 @@ func (r *userProfileRepository) GetByRoleName(ctx context.Context, roleName stri
 
 	return users, nil
 }
-
-/* func (r *userProfileRepository) GetIdentityCardsByUserRegStatus(ctx context.Context, userRegStatus string) ([]model.IdentityCard, error) {
-	var identityCards []model.IdentityCard
-
-	if err := r.db.WithContext(ctx).
-		Joins("JOIN users ON identity_cards.user_id = users.id").
-		Where("users.registration_status = ?", userRegStatus).
-		Preload("User").
-		Find(&identityCards).Error; err != nil {
-		log.Printf("Error fetching identity cards by user registration status: %v", err)
-		return nil, fmt.Errorf("error fetching identity cards by user registration status: %w", err)
-	}
-
-	return identityCards, nil
-}
-
-func (r *userProfileRepository) GetCompanyProfileByUserRegStatus(ctx context.Context, userRegStatus string) ([]model.IdentityCard, error) {
-	var identityCards []model.IdentityCard
-
-	if err := r.db.WithContext(ctx).
-		Joins("JOIN users ON company_profiles.user_id = users.id").
-		Where("users.registration_status = ?", userRegStatus).
-		Preload("User").
-		Find(&identityCards).Error; err != nil {
-		log.Printf("Error fetching identity cards by user registration status: %v", err)
-		return nil, fmt.Errorf("error fetching identity cards by user registration status: %w", err)
-	}
-	return identityCards, nil
-} */
 
 func (r *userProfileRepository) Update(ctx context.Context, userID string, user *model.User) error {
 	result := r.db.WithContext(ctx).

@@ -1,144 +1,198 @@
 package admin
 
-import "time"
+import (
+	"rijig/model"
+)
 
-// Request DTOs
-type GetPendingUsersRequest struct {
-	Role   string `query:"role" validate:"omitempty,oneof=pengelola pengepul"`
-	Status string `query:"status" validate:"omitempty,oneof=awaiting_approval pending"`
-	Page   int    `query:"page" validate:"min=1"`
-	Limit  int    `query:"limit" validate:"min=1,max=100"`
+type GetAllUsersRequest struct {
+	Role      string `query:"role" validate:"required,oneof=masyarakat pengepul pengelola"`
+	StatusReg string `query:"statusreg"`
+	Page      *int   `query:"page"`
+	Limit     *int   `query:"limit"`
 }
 
-type ApprovalActionRequest struct {
-	UserID string `json:"user_id" validate:"required,uuid"`
-	Action string `json:"action" validate:"required,oneof=approve reject"`
-	Notes  string `json:"notes" validate:"omitempty,max=500"`
+type UpdateRegistrationStatusRequest struct {
+	Action string `json:"action" validate:"required,oneof=approved rejected"`
 }
 
-type BulkApprovalRequest struct {
-	UserIDs []string `json:"user_ids" validate:"required,min=1,max=50,dive,uuid"`
-	Action  string   `json:"action" validate:"required,oneof=approve reject"`
-	Notes   string   `json:"notes" validate:"omitempty,max=500"`
+type BaseUserResponse struct {
+	ID                   string  `json:"id"`
+	Avatar               *string `json:"avatar,omitempty"`
+	Name                 string  `json:"name"`
+	Gender               string  `json:"gender"`
+	Dateofbirth          string  `json:"dateofbirth"`
+	Placeofbirth         string  `json:"placeofbirth"`
+	Phone                string  `json:"phone"`
+	Email                string  `json:"email,omitempty"`
+	EmailVerified        bool    `json:"emailVerified"`
+	PhoneVerified        bool    `json:"phoneVerified"`
+	RoleID               string  `json:"roleId"`
+	RoleName             string  `json:"rolename"`
+	RegistrationStatus   string  `json:"registrationstatus"`
+	RegistrationProgress int8    `json:"registration_progress"`
+	CreatedAt            string  `json:"createdAt"`
+	UpdatedAt            string  `json:"updatedAt"`
 }
 
-// Response DTOs
-type PendingUserResponse struct {
-	ID                   string                    `json:"id"`
-	Name                 string                    `json:"name,omitempty"`
-	Phone                string                    `json:"phone"`
-	Email                string                    `json:"email,omitempty"`
-	Role                 RoleInfo                  `json:"role"`
-	RegistrationStatus   string                    `json:"registration_status"`
-	RegistrationProgress int8                      `json:"registration_progress"`
-	SubmittedAt          time.Time                 `json:"submitted_at"`
-	IdentityCard         *IdentityCardInfo         `json:"identity_card,omitempty"`
-	CompanyProfile       *CompanyProfileInfo       `json:"company_profile,omitempty"`
-	RegistrationStepInfo *RegistrationStepResponse `json:"step_info"`
+type MasyarakatUserResponse struct {
+	BaseUserResponse
 }
 
-type RoleInfo struct {
-	ID       string `json:"id"`
-	RoleName string `json:"role_name"`
+type PengepulUserResponse struct {
+	BaseUserResponse
+	IdentityCard *IdentityCardResponse `json:"identitycard,omitempty"`
 }
 
-type IdentityCardInfo struct {
-	ID                   string `json:"id"`
-	IdentificationNumber string `json:"identification_number"`
-	Fullname             string `json:"fullname"`
-	Placeofbirth         string `json:"place_of_birth"`
-	Dateofbirth          string `json:"date_of_birth"`
-	Gender               string `json:"gender"`
-	BloodType            string `json:"blood_type"`
-	Province             string `json:"province"`
-	District             string `json:"district"`
-	SubDistrict          string `json:"sub_district"`
-	Village              string `json:"village"`
-	PostalCode           string `json:"postal_code"`
-	Religion             string `json:"religion"`
-	Maritalstatus        string `json:"marital_status"`
-	Job                  string `json:"job"`
-	Citizenship          string `json:"citizenship"`
-	Validuntil           string `json:"valid_until"`
-	Cardphoto            string `json:"card_photo"`
+type PengelolaUserResponse struct {
+	BaseUserResponse
+	CompanyProfile *CompanyProfileResponse `json:"companyprofile,omitempty"`
 }
 
-type CompanyProfileInfo struct {
+type IdentityCardResponse struct {
+	ID                  string `json:"id"`
+	UserID              string `json:"userId"`
+	Identificationumber string `json:"identificationumber"`
+	Fullname            string `json:"fullname"`
+	Placeofbirth        string `json:"placeofbirth"`
+	Dateofbirth         string `json:"dateofbirth"`
+	Gender              string `json:"gender"`
+	BloodType           string `json:"bloodtype"`
+	Province            string `json:"province"`
+	District            string `json:"district"`
+	SubDistrict         string `json:"subdistrict"`
+	Hamlet              string `json:"hamlet"`
+	Village             string `json:"village"`
+	Neighbourhood       string `json:"neighbourhood"`
+	PostalCode          string `json:"postalcode"`
+	Religion            string `json:"religion"`
+	Maritalstatus       string `json:"maritalstatus"`
+	Job                 string `json:"job"`
+	Citizenship         string `json:"citizenship"`
+	Validuntil          string `json:"validuntil"`
+	Cardphoto           string `json:"cardphoto"`
+	CreatedAt           string `json:"createdAt"`
+	UpdatedAt           string `json:"updatedAt"`
+}
+
+type CompanyProfileResponse struct {
 	ID                 string `json:"id"`
+	UserID             string `json:"userId"`
 	CompanyName        string `json:"company_name"`
 	CompanyAddress     string `json:"company_address"`
 	CompanyPhone       string `json:"company_phone"`
-	CompanyEmail       string `json:"company_email"`
-	CompanyLogo        string `json:"company_logo"`
-	CompanyWebsite     string `json:"company_website"`
-	TaxID              string `json:"tax_id"`
-	FoundedDate        string `json:"founded_date"`
-	CompanyType        string `json:"company_type"`
+	CompanyEmail       string `json:"company_email,omitempty"`
+	CompanyLogo        string `json:"company_logo,omitempty"`
+	CompanyWebsite     string `json:"company_website,omitempty"`
+	TaxID              string `json:"tax_id,omitempty"`
+	FoundedDate        string `json:"founded_date,omitempty"`
+	CompanyType        string `json:"company_type,omitempty"`
 	CompanyDescription string `json:"company_description"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
 }
 
-type RegistrationStepResponse struct {
-	Step                  int    `json:"step"`
-	Status                string `json:"status"`
-	Description           string `json:"description"`
-	RequiresAdminApproval bool   `json:"requires_admin_approval"`
-	IsAccessible          bool   `json:"is_accessible"`
-	IsCompleted           bool   `json:"is_completed"`
+type UserWithRelations struct {
+	User           model.User
+	IdentityCard   *model.IdentityCard
+	CompanyProfile *model.CompanyProfile
 }
 
-type PendingUsersListResponse struct {
-	Users      []PendingUserResponse `json:"users"`
-	Pagination PaginationInfo        `json:"pagination"`
-	Summary    ApprovalSummary       `json:"summary"`
+type PaginatedUsersResult struct {
+	Users []UserWithRelations
+	Total int64
 }
 
-type PaginationInfo struct {
-	Page         int   `json:"page"`
-	Limit        int   `json:"limit"`
-	TotalPages   int   `json:"total_pages"`
-	TotalRecords int64 `json:"total_records"`
-	HasNext      bool  `json:"has_next"`
-	HasPrev      bool  `json:"has_prev"`
-}
-
-type ApprovalSummary struct {
-	TotalPending     int64 `json:"total_pending"`
-	PengelolaPending int64 `json:"pengelola_pending"`
-	PengepulPending  int64 `json:"pengepul_pending"`
-}
-
-type ApprovalActionResponse struct {
-	UserID         string    `json:"user_id"`
-	Action         string    `json:"action"`
-	PreviousStatus string    `json:"previous_status"`
-	NewStatus      string    `json:"new_status"`
-	ProcessedAt    time.Time `json:"processed_at"`
-	ProcessedBy    string    `json:"processed_by"`
-	Notes          string    `json:"notes,omitempty"`
-}
-
-type BulkApprovalResponse struct {
-	SuccessCount int                      `json:"success_count"`
-	FailureCount int                      `json:"failure_count"`
-	Results      []ApprovalActionResponse `json:"results"`
-	Failures     []ApprovalFailure        `json:"failures,omitempty"`
-}
-
-type ApprovalFailure struct {
-	UserID string `json:"user_id"`
-	Error  string `json:"error"`
-	Reason string `json:"reason"`
-}
-
-// Validation helper
-func (r *GetPendingUsersRequest) SetDefaults() {
-	if r.Page <= 0 {
-		r.Page = 1
+func ToBaseUserResponse(user model.User) BaseUserResponse {
+	roleName := ""
+	if user.Role != nil {
+		roleName = user.Role.RoleName
 	}
-	if r.Limit <= 0 {
-		r.Limit = 20
+
+	return BaseUserResponse{
+		ID:                   user.ID,
+		Avatar:               user.Avatar,
+		Name:                 user.Name,
+		Gender:               user.Gender,
+		Dateofbirth:          user.Dateofbirth,
+		Placeofbirth:         user.Placeofbirth,
+		Phone:                user.Phone,
+		Email:                user.Email,
+		EmailVerified:        user.EmailVerified,
+		PhoneVerified:        user.PhoneVerified,
+		RoleID:               user.RoleID,
+		RoleName:             roleName,
+		RegistrationStatus:   user.RegistrationStatus,
+		RegistrationProgress: user.RegistrationProgress,
+		CreatedAt:            user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:            user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
-	if r.Status == "" {
-		r.Status = "awaiting_approval"
+}
+
+func ToMasyarakatResponse(userWithRelations UserWithRelations) MasyarakatUserResponse {
+	return MasyarakatUserResponse{
+		BaseUserResponse: ToBaseUserResponse(userWithRelations.User),
 	}
+}
+
+func ToPengepulResponse(userWithRelations UserWithRelations) PengepulUserResponse {
+	response := PengepulUserResponse{
+		BaseUserResponse: ToBaseUserResponse(userWithRelations.User),
+	}
+
+	if userWithRelations.IdentityCard != nil {
+		response.IdentityCard = &IdentityCardResponse{
+			ID:                  userWithRelations.IdentityCard.ID,
+			UserID:              userWithRelations.IdentityCard.UserID,
+			Identificationumber: userWithRelations.IdentityCard.Identificationumber,
+			Fullname:            userWithRelations.IdentityCard.Fullname,
+			Placeofbirth:        userWithRelations.IdentityCard.Placeofbirth,
+			Dateofbirth:         userWithRelations.IdentityCard.Dateofbirth,
+			Gender:              userWithRelations.IdentityCard.Gender,
+			BloodType:           userWithRelations.IdentityCard.BloodType,
+			Province:            userWithRelations.IdentityCard.Province,
+			District:            userWithRelations.IdentityCard.District,
+			SubDistrict:         userWithRelations.IdentityCard.SubDistrict,
+			Hamlet:              userWithRelations.IdentityCard.Hamlet,
+			Village:             userWithRelations.IdentityCard.Village,
+			Neighbourhood:       userWithRelations.IdentityCard.Neighbourhood,
+			PostalCode:          userWithRelations.IdentityCard.PostalCode,
+			Religion:            userWithRelations.IdentityCard.Religion,
+			Maritalstatus:       userWithRelations.IdentityCard.Maritalstatus,
+			Job:                 userWithRelations.IdentityCard.Job,
+			Citizenship:         userWithRelations.IdentityCard.Citizenship,
+			Validuntil:          userWithRelations.IdentityCard.Validuntil,
+			Cardphoto:           userWithRelations.IdentityCard.Cardphoto,
+			CreatedAt:           userWithRelations.IdentityCard.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:           userWithRelations.IdentityCard.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+
+	return response
+}
+
+func ToPengelolaResponse(userWithRelations UserWithRelations) PengelolaUserResponse {
+	response := PengelolaUserResponse{
+		BaseUserResponse: ToBaseUserResponse(userWithRelations.User),
+	}
+
+	if userWithRelations.CompanyProfile != nil {
+		response.CompanyProfile = &CompanyProfileResponse{
+			ID:                 userWithRelations.CompanyProfile.ID,
+			UserID:             userWithRelations.CompanyProfile.UserID,
+			CompanyName:        userWithRelations.CompanyProfile.CompanyName,
+			CompanyAddress:     userWithRelations.CompanyProfile.CompanyAddress,
+			CompanyPhone:       userWithRelations.CompanyProfile.CompanyPhone,
+			CompanyEmail:       userWithRelations.CompanyProfile.CompanyEmail,
+			CompanyLogo:        userWithRelations.CompanyProfile.CompanyLogo,
+			CompanyWebsite:     userWithRelations.CompanyProfile.CompanyWebsite,
+			TaxID:              userWithRelations.CompanyProfile.TaxID,
+			FoundedDate:        userWithRelations.CompanyProfile.FoundedDate,
+			CompanyType:        userWithRelations.CompanyProfile.CompanyType,
+			CompanyDescription: userWithRelations.CompanyProfile.CompanyDescription,
+			CreatedAt:          userWithRelations.CompanyProfile.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:          userWithRelations.CompanyProfile.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+
+	return response
 }

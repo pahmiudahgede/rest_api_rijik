@@ -4,180 +4,281 @@ import (
 	"context"
 	"fmt"
 	"rijig/model"
-	"strings"
 
 	"gorm.io/gorm"
 )
 
-type ApprovalRepository interface {
-	GetPendingUsers(ctx context.Context, req *GetPendingUsersRequest) ([]model.User, int64, error)
+type AdminRepository interface {
+	GetAllUsers(ctx context.Context, req GetAllUsersRequest) (*PaginatedUsersResult, error)
+	UpdateRegistrationStatus(ctx context.Context, userID string, status string) error
 	GetUserByID(ctx context.Context, userID string) (*model.User, error)
-	UpdateUserRegistrationStatus(ctx context.Context, userID, status string, progress int8) error
-	GetApprovalSummary(ctx context.Context) (*ApprovalSummary, error)
-	GetUsersByIDs(ctx context.Context, userIDs []string) ([]model.User, error)
-	BulkUpdateRegistrationStatus(ctx context.Context, userIDs []string, status string, progress int8) error
 }
 
-type approvalRepository struct {
+type adminRepository struct {
 	db *gorm.DB
 }
 
-func NewApprovalRepository(db *gorm.DB) ApprovalRepository {
-	return &approvalRepository{
+func NewAdminRepository(db *gorm.DB) AdminRepository {
+	return &adminRepository{
 		db: db,
 	}
 }
 
-func (r *approvalRepository) GetPendingUsers(ctx context.Context, req *GetPendingUsersRequest) ([]model.User, int64, error) {
+func (r *adminRepository) GetAllUsers(ctx context.Context, req GetAllUsersRequest) (*PaginatedUsersResult, error) {
 	var users []model.User
-	var totalRecords int64
+	var total int64
 
 	query := r.db.WithContext(ctx).Model(&model.User{}).
-		Preload("Role").
-		Preload("IdentityCard").
-		Preload("CompanyProfile")
+		Joins("LEFT JOIN roles ON users.role_id = roles.id").
+		Where("roles.role_name = ?", req.Role)
 
-	query = r.applyFilters(query, req)
-
-	if err := query.Count(&totalRecords).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to count pending users: %w", err)
+	if req.StatusReg != "" {
+		query = query.Where("users.registration_status = ?", req.StatusReg)
 	}
 
-	offset := (req.Page - 1) * req.Limit
-	if err := query.
-		Order("created_at DESC").
-		Limit(req.Limit).
-		Offset(offset).
-		Find(&users).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to fetch pending users: %w", err)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("failed to count users: %w", err)
 	}
 
-	return users, totalRecords, nil
+	if req.Page != nil && req.Limit != nil {
+		offset := (*req.Page - 1) * *req.Limit
+		query = query.Offset(offset).Limit(*req.Limit)
+	}
+
+	query = query.Preload("Role")
+
+	if err := query.Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch users: %w", err)
+	}
+
+	userRelations, err := r.fetchUserRelations(ctx, users, req.Role)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user relations: %w", err)
+	}
+
+	return &PaginatedUsersResult{
+		Users: userRelations,
+		Total: total,
+	}, nil
 }
 
-func (r *approvalRepository) applyFilters(query *gorm.DB, req *GetPendingUsersRequest) *gorm.DB {
+func (r *adminRepository) UpdateRegistrationStatus(ctx context.Context, userID string, status string) error {
 
-	if req.Status != "" {
-
-		if req.Status == "pending" {
-			req.Status = "awaiting_approval"
-		}
-		query = query.Where("registration_status = ?", req.Status)
+	var registrationStatus string
+	switch status {
+	case "approved":
+		registrationStatus = "approved"
+	case "rejected":
+		registrationStatus = "rejected"
+	default:
+		return fmt.Errorf("invalid action: %s", status)
 	}
 
-	if req.Role != "" {
+	result := r.db.WithContext(ctx).Model(&model.User{}).
+		Where("id = ?", userID).
+		Update("registration_status", registrationStatus)
 
-		query = query.Joins("JOIN roles ON roles.id = users.role_id").
-			Where("LOWER(roles.role_name) = ?", strings.ToLower(req.Role))
+	if result.Error != nil {
+		return fmt.Errorf("failed to update registration status: %w", result.Error)
 	}
 
-	query = query.Where("registration_progress >= ?", 2)
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("user with ID %s not found", userID)
+	}
 
-	return query
+	return nil
 }
 
-func (r *approvalRepository) GetUserByID(ctx context.Context, userID string) (*model.User, error) {
+func (r *adminRepository) GetUserByID(ctx context.Context, userID string) (*model.User, error) {
 	var user model.User
 
-	if err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Preload("Role").
-		Preload("IdentityCard").
-		Preload("CompanyProfile").
 		Where("id = ?", userID).
-		First(&user).Error; err != nil {
+		First(&user).Error
+
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("user not found")
+			return nil, fmt.Errorf("user with ID %s not found", userID)
 		}
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 
 	return &user, nil
 }
 
-func (r *approvalRepository) UpdateUserRegistrationStatus(ctx context.Context, userID, status string, progress int8) error {
-	result := r.db.WithContext(ctx).
-		Model(&model.User{}).
-		Where("id = ?", userID).
-		Updates(map[string]interface{}{
-			"registration_status":   status,
-			"registration_progress": progress,
-			"updated_at":            "NOW()",
-		})
+func (r *adminRepository) fetchUserRelations(ctx context.Context, users []model.User, role string) ([]UserWithRelations, error) {
+	userRelations := make([]UserWithRelations, 0, len(users))
 
-	if result.Error != nil {
-		return fmt.Errorf("failed to update user registration status: %w", result.Error)
+	switch role {
+	case "pengepul":
+
+		identityCards, err := r.getIdentityCardsByUserIDs(ctx, r.extractUserIDs(users))
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch identity cards: %w", err)
+		}
+
+		identityCardMap := make(map[string]*model.IdentityCard)
+		for i := range identityCards {
+			identityCardMap[identityCards[i].UserID] = &identityCards[i]
+		}
+
+		for _, user := range users {
+			userRelations = append(userRelations, UserWithRelations{
+				User:           user,
+				IdentityCard:   identityCardMap[user.ID],
+				CompanyProfile: nil,
+			})
+		}
+
+	case "pengelola":
+
+		companyProfiles, err := r.getCompanyProfilesByUserIDs(ctx, r.extractUserIDs(users))
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch company profiles: %w", err)
+		}
+
+		companyProfileMap := make(map[string]*model.CompanyProfile)
+		for i := range companyProfiles {
+			companyProfileMap[companyProfiles[i].UserID] = &companyProfiles[i]
+		}
+
+		for _, user := range users {
+			userRelations = append(userRelations, UserWithRelations{
+				User:           user,
+				IdentityCard:   nil,
+				CompanyProfile: companyProfileMap[user.ID],
+			})
+		}
+
+	case "masyarakat":
+
+		for _, user := range users {
+			userRelations = append(userRelations, UserWithRelations{
+				User:           user,
+				IdentityCard:   nil,
+				CompanyProfile: nil,
+			})
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported role: %s", role)
 	}
 
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("user not found")
-	}
-
-	return nil
+	return userRelations, nil
 }
 
-func (r *approvalRepository) GetApprovalSummary(ctx context.Context) (*ApprovalSummary, error) {
-	var summary ApprovalSummary
-
-	if err := r.db.WithContext(ctx).
-		Model(&model.User{}).
-		Where("registration_status = ? AND registration_progress >= ?", "awaiting_approval", 2).
-		Count(&summary.TotalPending).Error; err != nil {
-		return nil, fmt.Errorf("failed to count total pending users: %w", err)
+func (r *adminRepository) extractUserIDs(users []model.User) []string {
+	userIDs := make([]string, 0, len(users))
+	for _, user := range users {
+		userIDs = append(userIDs, user.ID)
 	}
-
-	if err := r.db.WithContext(ctx).
-		Model(&model.User{}).
-		Joins("JOIN roles ON roles.id = users.role_id").
-		Where("users.registration_status = ? AND users.registration_progress >= ? AND LOWER(roles.role_name) = ?",
-			"awaiting_approval", 2, "pengelola").
-		Count(&summary.PengelolaPending).Error; err != nil {
-		return nil, fmt.Errorf("failed to count pengelola pending: %w", err)
-	}
-
-	if err := r.db.WithContext(ctx).
-		Model(&model.User{}).
-		Joins("JOIN roles ON roles.id = users.role_id").
-		Where("users.registration_status = ? AND users.registration_progress >= ? AND LOWER(roles.role_name) = ?",
-			"awaiting_approval", 2, "pengepul").
-		Count(&summary.PengepulPending).Error; err != nil {
-		return nil, fmt.Errorf("failed to count pengepul pending: %w", err)
-	}
-
-	return &summary, nil
+	return userIDs
 }
 
-func (r *approvalRepository) GetUsersByIDs(ctx context.Context, userIDs []string) ([]model.User, error) {
+func (r *adminRepository) getIdentityCardsByUserIDs(ctx context.Context, userIDs []string) ([]model.IdentityCard, error) {
+	var identityCards []model.IdentityCard
+
+	if len(userIDs) == 0 {
+		return identityCards, nil
+	}
+
+	err := r.db.WithContext(ctx).
+		Where("user_id IN ?", userIDs).
+		Find(&identityCards).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch identity cards: %w", err)
+	}
+
+	return identityCards, nil
+}
+
+func (r *adminRepository) getCompanyProfilesByUserIDs(ctx context.Context, userIDs []string) ([]model.CompanyProfile, error) {
+	var companyProfiles []model.CompanyProfile
+
+	if len(userIDs) == 0 {
+		return companyProfiles, nil
+	}
+
+	err := r.db.WithContext(ctx).
+		Where("user_id IN ?", userIDs).
+		Find(&companyProfiles).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch company profiles: %w", err)
+	}
+
+	return companyProfiles, nil
+}
+
+func (r *adminRepository) GetUsersByRole(ctx context.Context, role string) ([]model.User, error) {
 	var users []model.User
 
-	if err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
+		Joins("LEFT JOIN roles ON users.role_id = roles.id").
+		Where("roles.role_name = ?", role).
 		Preload("Role").
-		Preload("IdentityCard").
-		Preload("CompanyProfile").
-		Where("id IN ?", userIDs).
-		Find(&users).Error; err != nil {
-		return nil, fmt.Errorf("failed to get users by IDs: %w", err)
+		Find(&users).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users by role: %w", err)
 	}
 
 	return users, nil
 }
 
-func (r *approvalRepository) BulkUpdateRegistrationStatus(ctx context.Context, userIDs []string, status string, progress int8) error {
-	result := r.db.WithContext(ctx).
-		Model(&model.User{}).
-		Where("id IN ?", userIDs).
-		Updates(map[string]interface{}{
-			"registration_status":   status,
-			"registration_progress": progress,
-			"updated_at":            "NOW()",
-		})
+func (r *adminRepository) GetUsersByStatus(ctx context.Context, status string) ([]model.User, error) {
+	var users []model.User
 
-	if result.Error != nil {
-		return fmt.Errorf("failed to bulk update registration status: %w", result.Error)
+	err := r.db.WithContext(ctx).
+		Where("registration_status = ?", status).
+		Preload("Role").
+		Find(&users).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users by status: %w", err)
 	}
 
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("no users found to update")
+	return users, nil
+}
+
+func (r *adminRepository) BatchUpdateRegistrationStatus(ctx context.Context, userIDs []string, status string) error {
+	result := r.db.WithContext(ctx).Model(&model.User{}).
+		Where("id IN ?", userIDs).
+		Update("registration_status", status)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to batch update registration status: %w", result.Error)
 	}
 
 	return nil
+}
+
+func (r *adminRepository) GetIdentityCardByUserID(ctx context.Context, userID string) (*model.IdentityCard, error) {
+	var identityCard model.IdentityCard
+
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&identityCard).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to fetch identity card: %w", err)
+	}
+
+	return &identityCard, nil
+}
+
+func (r *adminRepository) GetCompanyProfileByUserID(ctx context.Context, userID string) (*model.CompanyProfile, error) {
+	var companyProfile model.CompanyProfile
+
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&companyProfile).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to fetch company profile: %w", err)
+	}
+
+	return &companyProfile, nil
 }
