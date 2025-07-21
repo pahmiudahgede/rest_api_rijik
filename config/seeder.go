@@ -406,6 +406,74 @@ func GetRoleIDByName(db *gorm.DB, roleName string) (string, error) {
 	return role.ID, nil
 }
 
+func SeedTrashCategories(db *gorm.DB) error {
+	log.Println("Starting trash categories seeder...")
+
+	defaultTrashCategories := []model.TrashCategory{
+		{
+			ID:             "131c7ca9-6f2d-4e98-a016-916c23ec45e9",
+			Name:           "kaca/beling",
+			IconTrash:      "/uploads/icontrash/3be4f3ab-99a2-4b3c-930b-b2e0055cd705_icontrash.png",
+			EstimatedPrice: 500,
+			Variety:        "botol kaca minuman, botol kaca kosmetik, botol sirup, botol saus, botol kecap, gelas kaca, piring kaca dan sejenisnya",
+		},
+		{
+			ID:             "8636ceee-6c13-41ab-abc6-5b0c603ba360",
+			Name:           "Kertas",
+			IconTrash:      "/uploads/icontrash/a6414ed3-0675-4b38-a2c7-c6d3d24810cf_icontrash.png",
+			EstimatedPrice: 1250,
+			Variety:        "Kertas HVS, koran, majalah, buku, kertas, karton dan sejenisnya",
+		},
+		{
+			ID:             "9520dfd4-3bc8-4173-ac3d-4b17d466bc90",
+			Name:           "Plastik",
+			IconTrash:      "/uploads/icontrash/a4e99d8c-8380-470f-87f1-01dc62fbe114_icontrash.png",
+			EstimatedPrice: 1500,
+			Variety:        "Jerigen palstik, tempat makanan thin wall, ember, galon air mineral, botol sabun, botol, sampo dan plastik keras sejenisnya",
+		},
+		{
+			ID:             "9af0a2f2-4c9c-49b0-8f0b-ea8c38d9edd3",
+			Name:           "besi/tembaga",
+			IconTrash:      "/uploads/icontrash/2a80005a-3038-4192-b70c-b22a54f11ae6_icontrash.png",
+			EstimatedPrice: 3500,
+			Variety:        "besi, tembaga, alumunium",
+		},
+		{
+			ID:             "bec932a7-da0a-4e7b-b33c-a5e225e56cef",
+			Name:           "kaleng",
+			IconTrash:      "/uploads/icontrash/49b2ca06-cbfe-4650-bfb9-7d14aff2e09b_icontrash.png",
+			EstimatedPrice: 1000,
+			Variety:        "kaleng sarden, kaleng aerosol, kaleng makanan, dll",
+		},
+		{
+			ID:             "c5319782-b658-4639-83aa-8b88feb1b2a8",
+			Name:           "kardus",
+			IconTrash:      "/uploads/icontrash/1d900090-4b24-4d42-9c0e-e486839b9f63_icontrash.png",
+			EstimatedPrice: 1500,
+			Variety:        "kardus paket, kardus kemasan prosuk , dll",
+		},
+	}
+
+	for _, trashCategory := range defaultTrashCategories {
+		var existingCategory model.TrashCategory
+		result := db.Where("id = ? OR name = ?", trashCategory.ID, trashCategory.Name).First(&existingCategory)
+
+		if result.Error == nil {
+			log.Printf("Trash category '%s' already exists, skipping", trashCategory.Name)
+			continue
+		}
+
+		if err := db.Create(&trashCategory).Error; err != nil {
+			log.Printf("Error creating trash category '%s': %v", trashCategory.Name, err)
+			return err
+		}
+		log.Printf("Trash category '%s' created successfully with ID: %s", trashCategory.Name, trashCategory.ID)
+	}
+
+	log.Println("Trash categories seeder completed successfully!")
+	return nil
+}
+
 func RunSeeders(db *gorm.DB) error {
 	log.Println("Starting database seeders...")
 
@@ -436,6 +504,11 @@ func RunSeeders(db *gorm.DB) error {
 	// Seed masyarakat users
 	if err := SeedMasyarakatUsers(db); err != nil {
 		log.Printf("Error seeding masyarakat users: %v", err)
+		return err
+	}
+
+	if err := SeedTrashCategories(db); err != nil {
+		log.Printf("Error seeding trash categories: %v", err)
 		return err
 	}
 

@@ -70,3 +70,5 @@ debug
 
 # Local development files
 *.local
+
+codget.sh
