@@ -33,24 +33,46 @@ var whatsappService *WhatsAppService
 
 func InitWhatsApp() {
 	var err error
+	var connectionString string
 
-	connectionString := fmt.Sprintf(
-		"user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-	)
+	// Check if DATABASE_URL is available (Railway provides this)
+	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
+		connectionString = databaseURL
+		log.Println("Using DATABASE_URL for connection")
+	} else {
+		// Fallback to individual environment variables
+		dbUser := os.Getenv("DB_USER")
+		dbPassword := os.Getenv("DB_PASSWORD")
+		dbName := os.Getenv("DB_NAME")
+		dbHost := os.Getenv("DB_HOST")
+		dbPort := os.Getenv("DB_PORT")
 
-	dbLog := waLog.Stdout("Database", "DEBUG", true)
+		// Validate required environment variables
+		if dbUser == "" || dbPassword == "" || dbName == "" || dbHost == "" || dbPort == "" {
+			log.Fatal("Missing required database environment variables")
+		}
 
-	// Add context as first parameter
-	ctx := context.Background()
+		connectionString = fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+			dbHost, dbPort, dbUser, dbPassword, dbName,
+		)
+		log.Println("Using individual DB environment variables")
+	}
+
+	log.Printf("Attempting to connect to database...")
+
+	dbLog := waLog.Stdout("Database", "INFO", true)
+
+	// Add context with timeout for database connection
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	container, err := sqlstore.New(ctx, "postgres", connectionString, dbLog)
 	if err != nil {
 		log.Fatalf("Failed to connect to WhatsApp database: %v", err)
 	}
+
+	log.Println("Successfully connected to WhatsApp database")
 
 	whatsappService = &WhatsAppService{
 		Container: container,
@@ -94,22 +116,27 @@ func (wa *WhatsAppService) GenerateQR() (string, error) {
 		wa.Client = nil
 	}
 
-	// Add context for GetFirstDevice
-	ctx := context.Background()
+	// Add context with timeout for GetFirstDevice
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	deviceStore, err := wa.Container.GetFirstDevice(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get first device: %v", err)
 	}
 
-	clientLog := waLog.Stdout("Client", "DEBUG", true)
+	clientLog := waLog.Stdout("Client", "INFO", true)
 	wa.Client = whatsmeow.NewClient(deviceStore, clientLog)
 	wa.Client.AddEventHandler(eventHandler)
 
 	if wa.Client.Store.ID == nil {
 		fmt.Println("Client is not logged in, generating QR code...")
 
-		// Use background context without timeout - let the client handle timeouts
-		qrChan, err := wa.Client.GetQRChannel(context.Background())
+		// Use context with reasonable timeout for QR generation
+		qrCtx, qrCancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer qrCancel()
+
+		qrChan, err := wa.Client.GetQRChannel(qrCtx)
 		if err != nil {
 			return "", fmt.Errorf("failed to get QR channel: %v", err)
 		}
@@ -153,8 +180,8 @@ func (wa *WhatsAppService) GenerateQR() (string, error) {
 				}
 			}
 
-		case <-time.After(30 * time.Second):
-			return "", fmt.Errorf("timeout waiting for QR code")
+		case <-qrCtx.Done():
+			return "", fmt.Errorf("timeout waiting for QR code: %v", qrCtx.Err())
 		}
 	} else {
 		fmt.Println("Client already logged in, connecting...")
@@ -164,7 +191,7 @@ func (wa *WhatsAppService) GenerateQR() (string, error) {
 		}
 
 		// Wait a bit to ensure connection is established
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		if wa.Client.IsConnected() {
 			return "already_connected", nil
@@ -212,7 +239,10 @@ func (wa *WhatsAppService) SendMessage(phoneNumber, message string) error {
 		Conversation: proto.String(message),
 	}
 
-	_, err = wa.Client.SendMessage(context.Background(), targetJID, msg)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_, err = wa.Client.SendMessage(ctx, targetJID, msg)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -225,8 +255,10 @@ func (wa *WhatsAppService) Logout() error {
 		return fmt.Errorf("no active client session")
 	}
 
-	// Add context for Logout
-	ctx := context.Background()
+	// Add context with timeout for Logout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	err := wa.Client.Logout(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to logout: %v", err)
