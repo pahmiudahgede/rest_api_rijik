@@ -53,7 +53,7 @@ func InitWhatsApp() {
 		}
 
 		connectionString = fmt.Sprintf(
-			"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 			dbHost, dbPort, dbUser, dbPassword, dbName,
 		)
 		log.Println("Using individual DB environment variables")
@@ -61,7 +61,7 @@ func InitWhatsApp() {
 
 	log.Printf("Attempting to connect to database...")
 
-	dbLog := waLog.Stdout("Database", "INFO", true)
+	dbLog := waLog.Stdout("Database", "DEBUG", true)
 
 	// Add context with timeout for database connection
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
