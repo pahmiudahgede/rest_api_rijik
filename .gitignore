@@ -52,7 +52,7 @@ Thumbs.db
 .air.toml
 
 # Public uploads - user generated content
-/public/apirijig/v2/uploads/
+# /public/apirijig/v2/uploads/
 
 # Build outputs
 /bin/
