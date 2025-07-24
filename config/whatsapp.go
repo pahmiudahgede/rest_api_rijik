@@ -37,7 +37,8 @@ func InitWhatsApp() {
 
 	// Check if DATABASE_URL is available (Railway provides this)
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
-		connectionString = databaseURL
+		// connectionString = databaseURL
+		connectionString = processDatabaseURL(databaseURL)
 		log.Println("Using DATABASE_URL for connection")
 	} else {
 		// Fallback to individual environment variables
