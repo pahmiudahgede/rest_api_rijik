@@ -650,6 +650,13 @@ func (s *authenticationService) SendLoginOTP(ctx context.Context, req *LoginorRe
 		return nil, fmt.Errorf("gagal generate OTP: %v", err)
 	}
 
+	message := fmt.Sprintf("Kode verifikasi Aplikasi Rijig Anda adalah: \n%s\nJangan bagikan kode ini kepada siapapun.", otp)
+
+	err = config.GetWhatsAppService().SendMessage(req.Phone, message)
+	if err != nil {
+		log.Printf("Failed to send WhatsApp OTP to %s: %v", req.Phone, err)
+	}
+
 	otpKey := fmt.Sprintf("otp:%s:login", req.Phone)
 	otpData := OTPData{
 		Phone:    req.Phone,
